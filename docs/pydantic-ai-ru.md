@@ -1,230 +1,697 @@
-# Pydantic AI — краткая документация на русском
+# Pydantic AI — практическое руководство для термодинамических расчётов
 
-Pydantic AI — это Python-фреймворк для создания агентных систем и приложений на базе генеративных моделей с упором на типобезопасность, структурированный вывод, удобство разработки и наблюдаемость. Проект создан командой Pydantic и наследует принципы эргономики, знакомые по FastAPI: активное использование подсказок типов, строгая валидация данных и понятные контракты интерфейсов.
+Pydantic AI — это Python-фреймворк для создания агентных систем на базе LLM с упором на типобезопасность, структурированный вывод и наблюдаемость. Создан командой Pydantic, наследует принципы FastAPI: типизация, валидация данных и понятные контракты.
 
-Основные идеи:
-- Модель-агностичный подход: работает с OpenAI, Anthropic, Gemini, DeepSeek, Groq, Cohere, Mistral, Perplexity и многими другими поставщиками и хостингами (Azure, Bedrock, Vertex, Ollama, Together, OpenRouter и др.). Можно реализовать собственную интеграцию модели.
-- Типобезопасность и валидируемые контракты: структура ответа описывается через Pydantic-модели; ошибки смещаются из рантайма во время разработки благодаря статической проверке типов.
-- Инструменты и DI: функции-инструменты валидируются Pydantic, а зависимости типобезопасно передаются через контекст выполнения.
-- Наблюдаемость и производственные практики: готовая интеграция с Pydantic Logfire (OpenTelemetry) для трассировки, мониторинга, оценки качества (evals) и контроля стоимости.
-- Дополнительно: потоковая выдача, графы вычислений, долговременное выполнение, MCP/A2A/AG‑UI, ретраи запросов и многое другое.
+## Ключевые преимущества для научных расчётов
+
+- **Типобезопасность**: все входы/выходы строго типизированы через Pydantic-модели
+- **Структурированный вывод**: гарантированно валидные результаты с возможностью ретраев
+- **Модульность**: разделение логики через агентов, инструменты и зависимости
+- **Наблюдаемость**: встроенная интеграция с Logfire для отладки и мониторинга
+- **Универсальность**: работает с OpenAI, Anthropic, Gemini, Groq, Cohere и другими провайдерами
 
 
-## Установка
-
-Вы можете установить библиотеку стандартным способом или через uv:
+## Установка и настройка
 
 ```powershell
-# pip
-pip install pydantic-ai
-
-# uv (рекомендуется для проектов на uv)
+# Установка через uv (рекомендуется)
 uv add pydantic-ai
+
+# Альтернативно через pip
+pip install pydantic-ai
 ```
 
-Дополнительно для конкретного провайдера могут потребоваться переменные окружения (например, ключи API) и/или дополнительные пакеты.
+Для работы с конкретными провайдерами:
+```powershell
+# OpenAI
+uv add pydantic-ai[openai]
+$env:OPENAI_API_KEY = "your-key"
 
+# Anthropic  
+uv add pydantic-ai[anthropic]
+$env:ANTHROPIC_API_KEY = "your-key"
 
-## Базовые понятия
-
-- Agent — основной объект, инкапсулирующий модель, инструкции и опциональные инструменты. Агент можно запускать синхронно или асинхронно.
-- Инструкции (instructions) — статические и динамические подсказки модели (system/instructions), определяющие стиль и поведение.
-- Инструменты (tools) — функции, которые модель может вызывать для доступа к данным или выполнению действий; аргументы валидируются Pydantic.
-- Зависимости (deps) — данные и сервисы, которые вы передаете агенту через типизированный контекст выполнения.
-- Структурированный вывод (output_type) — агент гарантированно вернет данные, соответствующие заданной Pydantic‑модели (или повторит попытку при валидационных ошибках).
-
-
-## Быстрый старт
-
-Минимальный пример, который задает стиль ответа и выполняет один запрос к модели:
-
-```python
-from pydantic_ai import Agent
-
-# Явно указываем модель провайдера (можно задать при запуске)
-agent = Agent(
-    'anthropic:claude-3-5-sonnet-latest',
-    instructions='Отвечай кратко одним предложением.'
-)
-
-result = agent.run_sync('Откуда пошло выражение «hello world»?')
-print(result.output)
-```
-
-Аналогично можно использовать асинхронный запуск:
-
-```python
-import asyncio
-from pydantic_ai import Agent
-
-async def main() -> None:
-    agent = Agent('openai:gpt-4o-mini', instructions='Будь краток.')
-    res = await agent.run('Привет!')
-    print(res.output)
-
-asyncio.run(main())
+# Google Gemini
+uv add pydantic-ai[google]
+$env:GOOGLE_API_KEY = "your-key"
 ```
 
 
-## Инструменты и внедрение зависимостей (DI)
+## Основные концепции
 
-Инструменты описываются как функции; их аргументы валидируются, а зависимости передаются через контекст выполнения `RunContext[Deps]`.
+### Agent — центральный объект системы
+Инкапсулирует модель, инструкции, инструменты и схему вывода. Типизируется как `Agent[DepsType, OutputType]`.
+
+### Инструкции (instructions) vs Системные промпты
+- **instructions**: динамически применяются для текущего агента (рекомендуется)
+- **system_prompt**: сохраняются в истории сообщений между вызовами
+
+### Инструменты (tools) — функции для доступа к данным
+Два типа регистрации:
+- `@agent.tool`: для функций, требующих `RunContext[Deps]`
+- `@agent.tool_plain`: для простых функций без контекста
+
+### Зависимости (deps) — типобезопасная инъекция данных
+Передаются через `RunContext[DepsType]` в инструменты и инструкции.
+
+### Структурированный вывод (output_type)
+Гарантирует возврат данных, соответствующих Pydantic-модели. При ошибках валидации — автоматический ретрай.
+
+
+## Пример агента для термодинамических расчётов
 
 ```python
 from dataclasses import dataclass
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext
+import sqlite3
 
-# Зависимости, которые будет видеть агент и инструменты
+# Зависимости агента
 @dataclass
-class SupportDeps:
-    customer_id: int
-    # Здесь могут быть подключения к БД, API‑клиенты и т.д.
+class ThermoDbDeps:
+    db_path: str
+    T_ref: float = 298.15
 
-# Структура ответа, которую агент обязан вернуть
-class SupportOutput(BaseModel):
-    support_advice: str = Field(description='Совет для клиента')
-    block_card: bool = Field(description='Нужно ли блокировать карту')
-    risk: int = Field(ge=0, le=10, description='Оценка риска')
+# Структура результата
+class ThermoResult(BaseModel):
+    formula: str = Field(description="Химическая формула")
+    T: float = Field(description="Температура, K") 
+    Cp: float = Field(description="Теплоёмкость, Дж/(моль·К)")
+    delta_H: float = Field(description="Изменение энтальпии, Дж/моль")
+    delta_S: float = Field(description="Изменение энтропии, Дж/(моль·К)")
+    delta_G: float = Field(description="Энергия Гиббса, Дж/моль")
+    in_range: bool = Field(description="T в рабочем диапазоне")
 
-support_agent = Agent(
+# Создание агента
+thermo_agent = Agent(
     'openai:gpt-4o',
-    deps_type=SupportDeps,
-    output_type=SupportOutput,
-    instructions='Ты сотрудник поддержки банка: помогай клиенту и оценивай риск.'
+    deps_type=ThermoDbDeps,
+    output_type=ThermoResult,
+    instructions="""
+    Ты специалист по термодинамическим расчётам.
+    Используй инструменты для поиска веществ в БД и расчёта свойств.
+    Всегда проверяй температурные диапазоны.
+    """
 )
 
-# Динамические инструкции (добавляются к статическим)
-@support_agent.instructions
-async def add_customer_hint(ctx: RunContext[SupportDeps]) -> str:
-    # В реальном коде имя клиента можно добыть из БД по customer_id
-    return "Имя клиента — Иван. Отвечай, обращаясь по имени."
+@thermo_agent.tool
+async def find_species(ctx: RunContext[ThermoDbDeps], formula: str) -> dict:
+    """Найти вещество в термодинамической БД по формуле"""
+    # Подключение к БД и поиск
+    with sqlite3.connect(ctx.deps.db_path) as conn:
+        cursor = conn.execute(
+            "SELECT * FROM compounds WHERE Formula = ?", (formula,)
+        )
+        row = cursor.fetchone()
+        if row:
+            return dict(zip([col[0] for col in cursor.description], row))
+    raise ValueError(f"Вещество {formula} не найдено")
 
-# Инструмент, доступный модели
-@support_agent.tool
-async def customer_balance(
-    ctx: RunContext[SupportDeps], include_pending: bool
-) -> float:
-    """Возвращает текущий баланс клиента. Параметр include_pending включает/исключает незавершенные операции."""
-    # Заглушка; в реальности — обращение к внешнему источнику
-    return 123.45 if include_pending else 120.00
+@thermo_agent.tool
+def calc_thermo_props(
+    ctx: RunContext[ThermoDbDeps], 
+    T: float, 
+    H298: float, S298: float,
+    f1: float, f2: float, f3: float, f4: float, f5: float, f6: float,
+    Tmin: float, Tmax: float
+) -> dict:
+    """Вычислить термодинамические свойства при температуре T"""
+    
+    # Проверка диапазона
+    in_range = Tmin <= T <= Tmax
+    
+    # Расчёт Cp по коэффициентам (упрощённо)
+    T_scaled = T / 1000.0
+    Cp = f1 + f2*T_scaled + f3*T_scaled**2 + f4*T_scaled**3 + f5/T_scaled**2
+    
+    # Интегрирование для ΔH и ΔS (упрощённо)
+    delta_T = T - ctx.deps.T_ref
+    delta_H = H298 * 1000 + Cp * delta_T  # kJ/mol -> J/mol
+    delta_S = S298 + Cp * (T / ctx.deps.T_ref - 1)
+    
+    # Энергия Гиббса
+    delta_G = delta_H - T * delta_S
+    
+    return {
+        'Cp': Cp, 'delta_H': delta_H, 'delta_S': delta_S, 
+        'delta_G': delta_G, 'in_range': in_range
+    }
 
-# Запуск
-# deps передаем при каждом запуске; модель сможет вызывать инструменты
-# и получит доступ к данным через ctx.deps
-# result.output будет иметь тип SupportOutput
+# Использование
+deps = ThermoDbDeps("data/thermo_data.db")
+result = thermo_agent.run_sync(
+    "Рассчитай термосвойства ZrO2(s) при 1000K", 
+    deps=deps
+)
+print(result.output)
 ```
 
-Ключевые моменты:
-- Аргументы инструментов валидируются Pydantic; ошибки возвращаются модели для повторной попытки с корректными аргументами.
-- Типизации `RunContext[Deps]` и `output_type` помогают статическому анализу и IDE.
-- Зависимости удобны при тестировании/эвалах: можно подменять окружение.
+
+## Режимы структурированного вывода
+
+Pydantic AI поддерживает три режима получения структурированных данных:
+
+### 1. Tool Output (по умолчанию, рекомендуется)
+Использует инструменты модели для генерации структурированного вывода. Поддерживается всеми моделями.
+
+```python
+from pydantic import BaseModel
+from pydantic_ai import Agent, ToolOutput
+
+class ReactionResult(BaseModel):
+    equation: str
+    delta_G: float  # кДж/моль
+    feasible: bool
+
+agent = Agent(
+    'openai:gpt-4o',
+    output_type=ToolOutput(ReactionResult, name='reaction_analysis')
+)
+```
+
+### 2. Native Output
+Использует встроенные возможности модели для структурированного вывода (не все модели поддерживают).
+
+```python
+from pydantic_ai import Agent, NativeOutput
+
+agent = Agent(
+    'openai:gpt-4o',
+    output_type=NativeOutput(ReactionResult)
+)
+```
+
+### 3. Prompted Output  
+Модель получает инструкции в тексте промпта. Менее надёжно, но работает со всеми моделями.
+
+```python
+from pydantic_ai import Agent, PromptedOutput
+
+agent = Agent(
+    'openai:gpt-4o',
+    output_type=PromptedOutput(ReactionResult)
+)
+```
 
 
-## Структурированный вывод
+## Валидация и обработка ошибок
 
-Задайте `output_type=YourPydanticModel`, и агент вернет строго валидируемую структуру. Если модель сгенерировала некорректные данные, фреймворк инициирует повтор с прояснением требований (reflection/self‑correction), чтобы добиться валидного результата.
+### Автоматические ретраи
+Pydantic AI автоматически повторяет запросы при ошибках валидации:
 
-Также поддерживается потоковая выдача структурированных результатов: можно получать валидируемые части ответа по мере генерации.
+```python
+from pydantic_ai import Agent, ModelRetry
+
+@agent.tool
+def calculate_with_validation(temperature: float) -> float:
+    if temperature < 0:
+        raise ModelRetry("Температура не может быть отрицательной")
+    return temperature + 273.15
+
+# При retries=3 будет до 3 попыток исправить ошибку
+agent = Agent('openai:gpt-4o', retries=3)
+```
+
+### Output Validators
+Дополнительная валидация результатов:
+
+```python
+@agent.output_validator
+async def validate_thermo_result(
+    ctx: RunContext[ThermoDbDeps], output: ThermoResult
+) -> ThermoResult:
+    # Проверка физической корректности
+    if output.delta_G > 1000000:  # > 1 МДж/моль
+        raise ModelRetry("Энергия Гиббса физически некорректна")
+    return output
+```
 
 
-## История сообщений и диалоги
+## Управление сообщениями и диалоги
 
-Агенты поддерживают хранение и управление сообщениями, что позволяет строить многошаговые диалоги, сохранять контекст и контролировать, какие части истории передаются в модель.
+### Доступ к истории сообщений
+```python
+result = agent.run_sync('Первый вопрос')
+print(result.output)
+
+# Продолжение диалога с контекстом
+result2 = agent.run_sync(
+    'Дополнительный вопрос', 
+    message_history=result.new_messages()
+)
+
+# Все сообщения
+all_msgs = result2.all_messages()
+# Только новые сообщения из последнего запуска  
+new_msgs = result2.new_messages()
+```
+
+### Обработка истории сообщений
+Ограничение количества сообщений для экономии токенов:
+
+```python
+from pydantic_ai.messages import ModelMessage
+
+async def keep_recent_messages(messages: list[ModelMessage]) -> list[ModelMessage]:
+    """Оставить только последние 5 сообщений"""
+    return messages[-5:] if len(messages) > 5 else messages
+
+agent = Agent('openai:gpt-4o', history_processors=[keep_recent_messages])
+```
+
+### Сохранение и загрузка истории
+```python
+from pydantic_ai.messages import ModelMessagesTypeAdapter
+import json
+
+# Сохранение
+history = result.all_messages()
+with open('history.json', 'w') as f:
+    json.dump(ModelMessagesTypeAdapter.dump_python(history), f)
+
+# Загрузка
+with open('history.json') as f:
+    loaded_history = ModelMessagesTypeAdapter.validate_python(json.load(f))
+```
 
 
-## Модели и провайдеры
+## Потоковый вывод
 
-Фреймворк не привязан к одному провайдеру. Из коробки поддерживаются распространенные платформы (OpenAI, Anthropic, Gemini, Mistral, Groq, Cohere и др.), а также хостинги и прокси (Azure, Bedrock, Vertex AI, Ollama, Together, OpenRouter и т.д.).
+### Потоковый текст
+```python
+async def stream_example():
+    async with agent.run_stream('Объясни процесс хлорирования') as result:
+        async for text in result.stream_text():
+            print(text)  # Выводит накопленный текст
+            
+        # Для дельт (только изменения)
+        async for delta in result.stream_text(delta=True):
+            print(delta, end='')
+```
 
-Если нужного провайдера нет, можно реализовать собственную модель и использовать ее в агенте (кастомные драйверы).
+### Потоковый структурированный вывод
+```python
+from typing_extensions import NotRequired, TypedDict
+
+class ReactionAnalysis(TypedDict):
+    reactants: list[str]
+    products: NotRequired[list[str]]
+    delta_G: NotRequired[float]
+    
+agent = Agent('openai:gpt-4o', output_type=ReactionAnalysis)
+
+async def stream_structured():
+    query = 'Проанализируй реакцию: ZrO2 + 4HCl -> ZrCl4 + 2H2O'
+    async with agent.run_stream(query) as result:
+        async for partial in result.stream_output():
+            print(partial)  # Частично заполненный результат
+```
 
 
-## Наблюдаемость: Pydantic Logfire
+## Настройки модели и ограничения
 
-Интеграция с Pydantic Logfire (OpenTelemetry) дает:
-- трассировку шагов агента и вызовов инструментов;
-- отладку и мониторинг производительности;
-- метрики стоимости и качества (включая evals);
-- автоматическую инструментализацию популярных библиотек (например, БД‑клиентов).
+### Настройки модели (ModelSettings)
+```python
+from pydantic_ai import Agent, ModelSettings
 
-Быстрые шаги:
-1) Настройте Logfire в проекте, задайте переменные окружения/проект.
-2) Включите инструментирование Pydantic AI (глобально или для конкретного агента).
+agent = Agent(
+    'openai:gpt-4o',
+    model_settings=ModelSettings(
+        temperature=0.1,  # Низкая температура для научных расчётов
+        max_tokens=2000,
+        timeout=30.0
+    )
+)
+
+# Переопределение на уровне запуска
+result = agent.run_sync(
+    'Рассчитай энтальпию',
+    model_settings=ModelSettings(temperature=0.0)  # Детерминированный вывод
+)
+```
+
+### Ограничения использования (UsageLimits)
+```python
+from pydantic_ai import Agent, UsageLimits
+
+agent = Agent('openai:gpt-4o')
+
+try:
+    result = agent.run_sync(
+        'Сложная задача',
+        usage_limits=UsageLimits(
+            request_limit=5,        # Максимум 5 запросов к модели
+            tool_calls_limit=10,    # Максимум 10 вызовов инструментов
+            response_tokens_limit=1000  # Максимум токенов в ответе
+        )
+    )
+except UsageLimitExceeded as e:
+    print(f"Превышен лимит: {e}")
+```
+
+
+## Наблюдаемость с Logfire
+
+Встроенная интеграция с Pydantic Logfire для отладки и мониторинга:
 
 ```python
 import logfire
+from pydantic_ai import Agent
 
+# Глобальная настройка
 logfire.configure()
 logfire.instrument_pydantic_ai()
-# Дополнительно — инструментализация конкретных клиентов, например:
-# logfire.instrument_asyncpg()
+
+# Дополнительные инструменты
+logfire.instrument_sqlite3()  # Для SQLite запросов
+
+agent = Agent('openai:gpt-4o')
+result = agent.run_sync('Анализ')  # Автоматически логируется
+
+# Или выборочно для конкретного вызова
+from pydantic_ai.direct import model_request_sync
+
+response = model_request_sync(
+    'openai:gpt-4o',
+    [{'role': 'user', 'content': 'Привет'}],
+    instrument=True  # Включить только для этого запроса
+)
+```
+
+Преимущества:
+- Трассировка всех шагов агента и вызовов инструментов
+- Мониторинг производительности и стоимости
+- Отладка ошибок валидации и ретраев
+- Метрики использования токенов по провайдерам
+
+
+## Тестирование агентов
+
+### Переопределение зависимостей
+```python
+from dataclasses import dataclass
+
+@dataclass 
+class MockThermoDb:
+    def get_compound(self, formula: str):
+        # Тестовые данные вместо реальной БД
+        return {"Formula": formula, "H298": -1000, "S298": 50}
+
+# В тестах
+def test_thermo_calculation():
+    test_deps = MockThermoDb()
+    
+    with thermo_agent.override(deps=test_deps):
+        result = thermo_agent.run_sync("Рассчитай для H2O")
+        assert result.output.formula == "H2O"
+```
+
+### Тестирование с FunctionModel
+```python
+from pydantic_ai.models.function import FunctionModel
+from pydantic_ai.messages import ModelResponse, TextPart
+
+def test_function(messages, info):
+    # Детерминированные ответы для тестов
+    return ModelResponse(parts=[TextPart(content="Test response")])
+
+test_model = FunctionModel(test_function)
+result = agent.run_sync("Test", model=test_model)
+```
+
+### Ограничения в тестах
+```python
+# Быстрые тесты с ограничениями
+result = agent.run_sync(
+    "Simple test",
+    usage_limits=UsageLimits(request_limit=1, tool_calls_limit=3)
+)
 ```
 
 
-## Долговременное выполнение (Durable Execution)
+## Многоагентные паттерны
 
-Для долгих и ненадежных процессов есть режим «durable agents», позволяющий:
-- переживать временные ошибки API и рестарты приложения;
-- продолжать выполнение после сбоев;
-- строить человек‑в‑контуре (HITL) и асинхронные сценарии с подтверждениями.
+### Оркестратор + специализированные агенты
+```python
+# Агент для поиска в БД
+db_agent = Agent[ThermoDbDeps, dict](
+    'openai:gpt-4o-mini',  # Дешёвая модель для простых задач
+    deps_type=ThermoDbDeps,
+    output_type=dict,
+    instructions="Найди вещество в БД по формуле"
+)
+
+# Агент для расчётов 
+calc_agent = Agent[None, ThermoResult](
+    'openai:gpt-4o',  # Мощная модель для сложных расчётов
+    output_type=ThermoResult,
+    instructions="Вычисли термодинамические свойства"
+)
+
+# Оркестратор
+orchestrator = Agent(
+    'openai:gpt-4o',
+    instructions="Координируй работу других агентов"
+)
+
+@orchestrator.tool
+async def delegate_to_db_agent(formula: str) -> dict:
+    """Найти вещество через агента БД"""
+    result = await db_agent.run(f"Найди {formula}", deps=db_deps)
+    return result.output
+
+@orchestrator.tool  
+async def delegate_to_calc_agent(compound_data: dict, temperature: float) -> ThermoResult:
+    """Рассчитать свойства через агента расчётов"""
+    result = await calc_agent.run(
+        f"Рассчитай свойства при {temperature}K для: {compound_data}"
+    )
+    return result.output
+```
+
+### Передача контекста между агентами
+```python
+# Первый агент
+result1 = agent1.run_sync("Анализ реакции")
+
+# Второй агент с контекстом от первого
+result2 = agent2.run_sync(
+    "Продолжи анализ", 
+    message_history=result1.new_messages()
+)
+```
 
 
-## Потоковые результаты (Streaming)
+## Лучшие практики для научных расчётов
 
-Агент может выдавать структурированные результаты потоково, валидируя части ответа по мере генерации. Это удобно для UI/чатов и интерактивных сценариев.
+### 1. Типобезопасность
+```python
+# Всегда указывайте типы зависимостей и выходов
+agent: Agent[ThermoDbDeps, ThermoResult] = Agent(
+    'openai:gpt-4o',
+    deps_type=ThermoDbDeps,
+    output_type=ThermoResult
+)
+```
+
+### 2. Валидация научных данных
+```python
+class ThermoResult(BaseModel):
+    temperature: float = Field(gt=0, description="Температура > 0K")
+    delta_G: float = Field(description="Энергия Гиббса, Дж/моль")
+    
+    @field_validator('temperature')
+    @classmethod
+    def validate_temperature(cls, v):
+        if v > 6000:  # Выше температуры плазмы
+            raise ValueError("Нереалистично высокая температура")
+        return v
+```
+
+### 3. Детерминированность для расчётов
+```python
+# Низкая температура для точных вычислений
+model_settings = ModelSettings(temperature=0.1, max_tokens=2000)
+agent = Agent('openai:gpt-4o', model_settings=model_settings)
+```
+
+### 4. Обработка ошибок диапазонов
+```python
+@agent.tool
+def check_temperature_range(T: float, Tmin: float, Tmax: float) -> bool:
+    """Проверить, что температура в допустимом диапазоне"""
+    if not (Tmin <= T <= Tmax):
+        raise ModelRetry(
+            f"Температура {T}K вне диапазона [{Tmin}, {Tmax}]K. "
+            f"Используй ближайшие допустимые значения."
+        )
+    return True
+```
+
+### 5. Кэширование для производительности
+```python
+from functools import lru_cache
+
+@lru_cache(maxsize=1000)
+def get_compound_data(formula: str) -> dict:
+    """Кэшированный поиск соединений"""
+    # Дорогой запрос к БД
+    pass
+
+@agent.tool
+def cached_compound_lookup(formula: str) -> dict:
+    return get_compound_data(formula)
+```
 
 
-## MCP, A2A и AG‑UI
+## Решение распространённых проблем
 
-- MCP (Model Context Protocol) — доступ к внешним данным и инструментам через стандартизованный протокол (клиент/сервер).
-- A2A (Agent‑to‑Agent) — взаимодействие агентов между собой.
-- AG‑UI — компонент для интерактивных приложений с событийной потоковой коммуникацией.
+### Превышение лимитов токенов
+```python
+# Ограничьте историю сообщений
+def truncate_history(messages: list[ModelMessage]) -> list[ModelMessage]:
+    return messages[-10:]  # Последние 10 сообщений
+
+agent = Agent('openai:gpt-4o', history_processors=[truncate_history])
+```
+
+### Ошибки валидации
+```python
+# Детальная диагностика через output validator
+@agent.output_validator
+async def detailed_validation(ctx, output: ThermoResult) -> ThermoResult:
+    issues = []
+    if output.delta_G > 1e6:
+        issues.append("Энергия Гиббса слишком высокая")
+    if output.temperature < 0:
+        issues.append("Отрицательная температура")
+    
+    if issues:
+        raise ModelRetry(f"Проблемы с результатом: {'; '.join(issues)}")
+    return output
+```
+
+### Отладка инструментов
+```python
+import logging
+
+# Включить логирование для отладки
+logging.basicConfig(level=logging.DEBUG)
+
+@agent.tool
+def debug_tool(param: str) -> str:
+    print(f"Вызов инструмента с параметром: {param}")
+    # Ваша логика
+    return "result"
+```
+
+### Работа с отсутствующими данными
+```python
+@agent.tool
+def robust_compound_search(formula: str) -> dict:
+    """Поиск с обработкой отсутствующих данных"""
+    try:
+        return find_compound(formula)
+    except CompoundNotFound:
+        # Предложить альтернативы
+        alternatives = find_similar_compounds(formula)
+        raise ModelRetry(
+            f"Соединение {formula} не найдено. "
+            f"Доступные альтернативы: {alternatives}"
+        )
+```
 
 
-## Эвалы и тестирование
+## Интеграция с научным стеком Python
 
-Pydantic AI позволяет систематически оценивать качество агента (evals) и писать тесты, используя те же контракты типов и зависимости. Результаты удобно наблюдать в Logfire.
+### Работа с NumPy/SciPy
+```python
+import numpy as np
+from scipy.integrate import quad
 
+@agent.tool
+def numerical_integration(
+    coefficients: list[float], 
+    T_start: float, 
+    T_end: float
+) -> float:
+    """Численное интегрирование теплоёмкости"""
+    def cp_func(T):
+        T_scaled = T / 1000.0
+        return sum(c * T_scaled**i for i, c in enumerate(coefficients))
+    
+    result, _ = quad(cp_func, T_start, T_end)
+    return float(result)
+```
 
-## Графы (pydantic_graph)
+### Работа с Pandas DataFrame
+```python
+import pandas as pd
 
-Можно определять ориентированные графы вычислений типами Python. Это помогает строить сложные сценарии без «спагетти‑логики», явно описывая узлы и связи.
+@agent.tool
+def analyze_data_table(csv_path: str) -> dict:
+    """Анализ табличных данных"""
+    df = pd.read_csv(csv_path)
+    return {
+        'mean_temperature': float(df['Temperature'].mean()),
+        'max_pressure': float(df['Pressure'].max()),
+        'compound_count': len(df['Formula'].unique())
+    }
+```
 
+### Matplotlib для графиков
+```python
+import matplotlib.pyplot as plt
+import io
+import base64
 
-## Повторы и устойчивость запросов
-
-Есть встроенная поддержка ретраев HTTP/LLM‑запросов с конфигурацией стратегий и бэк‑оффов.
-
-
-## Настройки и профили
-
-- Настройки провайдеров и моделей можно задавать в коде и/или через переменные окружения.
-- Профили (profiles) помогают переключать окружения (локальная разработка, предпрод, прод) и наборы параметров.
-
-
-## Практические советы
-
-- Всегда описывайте `output_type` Pydantic‑моделью — это лучший способ зафиксировать контракт и ловить ошибки рано.
-- Используйте зависимости (`deps_type` + `RunContext`) вместо глобальных синглтонов — тесты и эволюция кода станут проще.
-- Для наблюдаемости включите Logfire с самого начала — это упростит отладку сложных цепочек инструментов.
-- Для сложных сценариев разносите логику на несколько инструментов и/или узлов графа.
+@agent.tool
+def plot_phase_diagram(temperatures: list[float], pressures: list[float]) -> str:
+    """Создать фазовую диаграмму и вернуть как base64"""
+    fig, ax = plt.subplots()
+    ax.plot(temperatures, pressures)
+    ax.set_xlabel('Температура, K')
+    ax.set_ylabel('Давление, атм')
+    
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    
+    image_base64 = base64.b64encode(buffer.getvalue()).decode()
+    plt.close()
+    return image_base64
+```
 
 
 ## Полезные ссылки
 
-- Домашняя страница: https://ai.pydantic.dev/
-- Установка: https://ai.pydantic.dev/install/
-- Руководства: https://ai.pydantic.dev/agents/
-- API Reference (агенты): https://ai.pydantic.dev/api/agent/
-- Инструменты: https://ai.pydantic.dev/tools/
-- Модели и провайдеры: https://ai.pydantic.dev/models/overview/
-- Logfire: https://ai.pydantic.dev/logfire/
-- Durable Execution: https://ai.pydantic.dev/durable_execution/overview/
-- MCP: https://ai.pydantic.dev/mcp/overview/
-- Примеры: https://ai.pydantic.dev/examples/setup/
+### Основная документация
+- [Официальный сайт](https://ai.pydantic.dev/)
+- [Установка](https://ai.pydantic.dev/install/)
+- [Руководство по агентам](https://ai.pydantic.dev/agents/)
+- [Инструменты](https://ai.pydantic.dev/tools/)
+- [Зависимости](https://ai.pydantic.dev/dependencies/)
+- [Структурированный вывод](https://ai.pydantic.dev/output/)
+- [История сообщений](https://ai.pydantic.dev/message-history/)
 
+### API Reference  
+- [pydantic_ai.agent](https://ai.pydantic.dev/api/agent/)
+- [pydantic_ai.tools](https://ai.pydantic.dev/api/tools/)
+- [pydantic_ai.output](https://ai.pydantic.dev/api/output/)
+- [pydantic_ai.messages](https://ai.pydantic.dev/api/messages/)
+- [pydantic_ai.settings](https://ai.pydantic.dev/api/settings/)
+
+### Модели и провайдеры
+- [OpenAI](https://ai.pydantic.dev/models/openai/)
+- [Anthropic](https://ai.pydantic.dev/models/anthropic/)
+- [Google Gemini](https://ai.pydantic.dev/models/google/)
+- [Groq](https://ai.pydantic.dev/models/groq/)
+
+### Примеры проектов
+- [Пример с SQL](https://ai.pydantic.dev/examples/sql-gen/)
+- [Чат-приложение](https://ai.pydantic.dev/examples/chat-app/)
+- [Анализ данных](https://ai.pydantic.dev/examples/data-analyst/)
 
 ---
 
-Эта памятка — адаптированный обзор возможностей Pydantic AI на русском языке. За деталями и актуальными API обращайтесь к официальной документации.
+Эта документация охватывает основные возможности Pydantic AI применительно к задачам термодинамических расчётов. Для актуальной информации обращайтесь к официальной документации.
