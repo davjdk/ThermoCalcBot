@@ -11,16 +11,16 @@ import asyncio
 import logging
 import sqlite3
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from thermo_agents.agent_storage import AgentStorage, get_storage
-from thermo_agents.prompts import SQL_GENERATION_PROMPT
-from thermo_agents.thermo_agents_logger import SessionLogger
+from .agent_storage import AgentStorage, get_storage
+from .prompts import SQL_GENERATION_PROMPT
+from .thermo_agents_logger import SessionLogger
 
 
 class SQLQueryResult(BaseModel):
@@ -51,7 +51,7 @@ class SQLAgentConfig:
 class SQLGenerationAgent:
     """
     Инкапсулированный SQL агент.
-    
+
     Работает автономно:
     - Слушает входящие сообщения из хранилища
     - Генерирует SQL запросы на основе извлеченных параметров
@@ -63,7 +63,7 @@ class SQLGenerationAgent:
     def __init__(self, config: SQLAgentConfig):
         """
         Инициализация агента.
-        
+
         Args:
             config: Конфигурация агента
         """
@@ -72,17 +72,20 @@ class SQLGenerationAgent:
         self.storage = config.storage
         self.logger = config.logger
         self.running = False
-        
+
         # Инициализация PydanticAI агента
         self.agent = self._initialize_agent()
-        
+
         # Регистрация в хранилище
-        self.storage.start_session(self.agent_id, {
-            "status": "initialized",
-            "capabilities": ["generate_sql", "execute_query", "explain_query"],
-            "database": config.db_path
-        })
-        
+        self.storage.start_session(
+            self.agent_id,
+            {
+                "status": "initialized",
+                "capabilities": ["generate_sql", "execute_query", "explain_query"],
+                "database": config.db_path,
+            },
+        )
+
         self.logger.info(f"SQLGenerationAgent '{self.agent_id}' initialized")
 
     def _initialize_agent(self) -> Agent:
@@ -105,16 +108,15 @@ class SQLGenerationAgent:
         # Добавляем инструменты
         @agent.tool
         async def execute_query(
-            ctx: RunContext[SQLAgentConfig],
-            sql_query: str
+            ctx: RunContext[SQLAgentConfig], sql_query: str
         ) -> Dict[str, Any]:
             """
             Выполнить SQL запрос к базе данных.
-            
+
             Args:
                 ctx: Контекст выполнения
                 sql_query: SQL запрос
-                
+
             Returns:
                 Результаты запроса
             """
@@ -122,25 +124,35 @@ class SQLGenerationAgent:
                 conn = sqlite3.connect(ctx.deps.db_path)
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
-                
+
                 cursor.execute(sql_query)
-                columns = [desc[0] for desc in cursor.description] if cursor.description else []
+                columns = (
+                    [desc[0] for desc in cursor.description]
+                    if cursor.description
+                    else []
+                )
                 rows = cursor.fetchall()
-                
+
                 # Конвертируем в списки
                 data_rows = [list(row) for row in rows] if rows else []
-                
+
                 conn.close()
-                
-                ctx.deps.logger.info(f"Executed query, found {len(data_rows)} rows")
-                
+
+                # Логируем результаты в виде таблицы через session_logger
+                if ctx.deps.session_logger:
+                    ctx.deps.session_logger.log_query_results_table(
+                        sql_query=sql_query, columns=columns, rows=data_rows
+                    )
+                else:
+                    ctx.deps.logger.info(f"Executed query, found {len(data_rows)} rows")
+
                 return {
                     "success": True,
                     "columns": columns,
                     "rows": data_rows,
-                    "row_count": len(data_rows)
+                    "row_count": len(data_rows),
                 }
-                
+
             except Exception as e:
                 ctx.deps.logger.error(f"Query execution error: {e}")
                 return {
@@ -148,38 +160,37 @@ class SQLGenerationAgent:
                     "error": str(e),
                     "columns": [],
                     "rows": [],
-                    "row_count": 0
+                    "row_count": 0,
                 }
 
         @agent.tool
         async def get_table_schema(
-            ctx: RunContext[SQLAgentConfig],
-            table_name: str = "compounds"
+            ctx: RunContext[SQLAgentConfig], table_name: str = "compounds"
         ) -> Dict[str, Any]:
             """
             Получить схему таблицы.
-            
+
             Args:
                 ctx: Контекст выполнения
                 table_name: Имя таблицы
-                
+
             Returns:
                 Информация о схеме таблицы
             """
             try:
                 conn = sqlite3.connect(ctx.deps.db_path)
                 cursor = conn.cursor()
-                
+
                 # Получаем информацию о колонках
                 cursor.execute(f"PRAGMA table_info({table_name})")
                 columns = cursor.fetchall()
-                
+
                 # Получаем количество записей
                 cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
                 count = cursor.fetchone()[0]
-                
+
                 conn.close()
-                
+
                 return {
                     "table_name": table_name,
                     "columns": [
@@ -187,21 +198,20 @@ class SQLGenerationAgent:
                             "name": col[1],
                             "type": col[2],
                             "nullable": not col[3],
-                            "primary_key": bool(col[5])
-                        } for col in columns
+                            "primary_key": bool(col[5]),
+                        }
+                        for col in columns
                     ],
-                    "row_count": count
+                    "row_count": count,
                 }
-                
+
             except Exception as e:
                 ctx.deps.logger.error(f"Schema query error: {e}")
                 return {"error": str(e)}
 
         @agent.tool
         async def save_query_result(
-            ctx: RunContext[SQLAgentConfig],
-            key: str,
-            result: Dict[str, Any]
+            ctx: RunContext[SQLAgentConfig], key: str, result: Dict[str, Any]
         ) -> bool:
             """Сохранить результат запроса в хранилище."""
             ctx.deps.storage.set(key, result, ttl_seconds=600)
@@ -212,7 +222,7 @@ class SQLGenerationAgent:
     async def start(self):
         """
         Запустить агента в режиме прослушивания сообщений.
-        
+
         Агент будет работать в цикле, проверяя новые сообщения
         и обрабатывая их асинхронно.
         """
@@ -224,8 +234,7 @@ class SQLGenerationAgent:
             try:
                 # Получаем новые сообщения
                 messages = self.storage.receive_messages(
-                    self.agent_id,
-                    message_type="generate_query"
+                    self.agent_id, message_type="generate_query"
                 )
 
                 # Обрабатываем каждое сообщение
@@ -248,17 +257,19 @@ class SQLGenerationAgent:
     async def _process_message(self, message):
         """
         Обработать входящее сообщение.
-        
+
         Args:
             message: Сообщение из хранилища
         """
-        self.logger.info(f"Processing message: {message.id} from {message.source_agent}")
+        self.logger.info(
+            f"Processing message: {message.id} from {message.source_agent}"
+        )
 
         try:
             # Извлекаем данные из сообщения
             sql_hint = message.payload.get("sql_hint")
             extracted_params = message.payload.get("extracted_params", {})
-            
+
             if not sql_hint:
                 raise ValueError("No sql_hint in message payload")
 
@@ -274,7 +285,7 @@ class SQLGenerationAgent:
                 "sql_query": sql_result.sql_query,
                 "explanation": sql_result.explanation,
                 "expected_columns": sql_result.expected_columns,
-                "extracted_params": extracted_params
+                "extracted_params": extracted_params,
             }
 
             # Если включено автоматическое выполнение, выполняем запрос
@@ -293,8 +304,8 @@ class SQLGenerationAgent:
                 payload={
                     "status": "success",
                     "result_key": result_key,
-                    "sql_result": result_data
-                }
+                    "sql_result": result_data,
+                },
             )
 
             # Логирование для сессии
@@ -302,7 +313,7 @@ class SQLGenerationAgent:
                 self.config.session_logger.log_sql_generation(
                     sql_result.sql_query,
                     sql_result.expected_columns,
-                    sql_result.explanation
+                    sql_result.explanation,
                 )
 
             # Если есть оркестратор в цепочке, уведомляем его
@@ -314,8 +325,8 @@ class SQLGenerationAgent:
                     correlation_id=message.correlation_id,
                     payload={
                         "result_key": result_key,
-                        "sql_query": sql_result.sql_query
-                    }
+                        "sql_query": sql_result.sql_query,
+                    },
                 )
 
         except Exception as e:
@@ -327,10 +338,7 @@ class SQLGenerationAgent:
                 target_agent=message.source_agent,
                 message_type="error",
                 correlation_id=message.id,
-                payload={
-                    "status": "error",
-                    "error": str(e)
-                }
+                payload={"status": "error", "error": str(e)},
             )
 
             if self.config.session_logger:
@@ -339,10 +347,10 @@ class SQLGenerationAgent:
     async def _execute_query(self, sql_query: str) -> Dict[str, Any]:
         """
         Выполнить SQL запрос к базе данных.
-        
+
         Args:
             sql_query: SQL запрос
-            
+
         Returns:
             Результаты выполнения
         """
@@ -350,37 +358,36 @@ class SQLGenerationAgent:
             conn = sqlite3.connect(self.config.db_path)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            
+
             cursor.execute(sql_query)
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
+            columns = (
+                [desc[0] for desc in cursor.description] if cursor.description else []
+            )
             rows = cursor.fetchall()
-            
+
             # Конвертируем в списки
             data_rows = [list(row) for row in rows] if rows else []
-            
+
             conn.close()
-            
+
             return {
                 "success": True,
                 "columns": columns,
                 "rows": data_rows,
-                "row_count": len(data_rows)
+                "row_count": len(data_rows),
             }
-            
+
         except Exception as e:
             self.logger.error(f"Query execution error: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     async def process_single_query(self, sql_hint: str) -> SQLQueryResult:
         """
         Обработать одиночный запрос (для совместимости и тестирования).
-        
+
         Args:
             sql_hint: Подсказка для SQL генерации
-            
+
         Returns:
             Результат генерации SQL
         """
@@ -392,7 +399,7 @@ class SQLGenerationAgent:
             return SQLQueryResult(
                 sql_query="SELECT * FROM compounds LIMIT 1",
                 explanation="Error occurred during SQL generation",
-                expected_columns=[]
+                expected_columns=[],
             )
 
     def get_status(self) -> Dict:
@@ -402,13 +409,14 @@ class SQLGenerationAgent:
             "agent_id": self.agent_id,
             "running": self.running,
             "session": session,
-            "database": self.config.db_path
+            "database": self.config.db_path,
         }
 
 
 # =============================================================================
 # ФАБРИЧНЫЕ ФУНКЦИИ
 # =============================================================================
+
 
 def create_sql_agent(
     llm_api_key: str,
@@ -417,11 +425,11 @@ def create_sql_agent(
     db_path: str = "data/thermo_data.db",
     storage: Optional[AgentStorage] = None,
     logger: Optional[logging.Logger] = None,
-    auto_execute: bool = False
+    auto_execute: bool = False,
 ) -> SQLGenerationAgent:
     """
     Создать SQL агента.
-    
+
     Args:
         llm_api_key: API ключ для LLM
         llm_base_url: URL для LLM API
@@ -430,7 +438,7 @@ def create_sql_agent(
         storage: Хранилище (или будет использовано глобальное)
         logger: Логгер
         auto_execute: Автоматически выполнять SQL запросы
-        
+
     Returns:
         Настроенный SQL агент
     """
@@ -441,21 +449,21 @@ def create_sql_agent(
         db_path=db_path,
         storage=storage or get_storage(),
         logger=logger or logging.getLogger(__name__),
-        auto_execute=auto_execute
+        auto_execute=auto_execute,
     )
-    
+
     return SQLGenerationAgent(config)
 
 
 async def run_sql_agent_standalone(config: SQLAgentConfig):
     """
     Запустить агента в standalone режиме для тестирования.
-    
+
     Args:
         config: Конфигурация агента
     """
     agent = SQLGenerationAgent(config)
-    
+
     try:
         await agent.start()
     except KeyboardInterrupt:

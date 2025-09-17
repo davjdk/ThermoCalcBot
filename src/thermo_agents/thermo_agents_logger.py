@@ -97,6 +97,86 @@ class SessionLogger:
             for line in formatted_table.split("\n"):
                 self.logger.info(f"    {line}")
 
+    def format_table(self, columns: list, rows: list, max_rows: int = 10) -> str:
+        """
+        Форматирование данных в виде таблицы для логирования.
+
+        Args:
+            columns: Список названий колонок
+            rows: Список строк данных
+            max_rows: Максимальное количество строк для отображения
+
+        Returns:
+            Отформатированная таблица в виде строки
+        """
+        if not columns or not rows:
+            return "No data to display"
+
+        # Ограничиваем количество строк
+        display_rows = rows[:max_rows]
+        if len(rows) > max_rows:
+            display_rows.append(["..."] * len(columns))
+
+        # Вычисляем ширину колонок
+        col_widths = []
+        for i, col in enumerate(columns):
+            # Ширина колонки = max(длина названия, max(длина значений в колонке))
+            col_name_len = len(str(col))
+            max_value_len = max([len(str(row[i])) for row in display_rows] + [0])
+            col_widths.append(max(col_name_len, max_value_len, 3))  # минимум 3 символа
+
+        # Создаем разделитель
+        separator = "+" + "+".join("-" * (width + 2) for width in col_widths) + "+"
+
+        # Создаем заголовок
+        header = (
+            "|"
+            + "|".join(
+                f" {str(col):<{width}} " for col, width in zip(columns, col_widths)
+            )
+            + "|"
+        )
+
+        # Создаем строки данных
+        data_lines = []
+        for row in display_rows:
+            line = (
+                "|"
+                + "|".join(
+                    f" {str(cell):<{width}} " for cell, width in zip(row, col_widths)
+                )
+                + "|"
+            )
+            data_lines.append(line)
+
+        # Собираем таблицу
+        table_lines = [separator, header, separator] + data_lines + [separator]
+
+        return "\n".join(table_lines)
+
+    def log_query_results_table(self, sql_query: str, columns: list, rows: list):
+        """
+        Логирование результатов запроса в виде таблицы.
+
+        Args:
+            sql_query: Выполненный SQL запрос
+            columns: Список названий колонок
+            rows: Список строк данных
+        """
+        row_count = len(rows)
+        formatted_table = self.format_table(columns, rows)
+
+        self.logger.info(f"Executed query, found {row_count} rows")
+        self.logger.info("QUERY RESULTS:")
+        self.logger.info(f"  SQL: {sql_query}")
+
+        # Выводим таблицу построчно
+        for line in formatted_table.split("\n"):
+            self.logger.info(f"  {line}")
+
+        if row_count > 10:
+            self.logger.info(f"  ... and {row_count - 10} more rows")
+
     def close(self):
         """Закрытие сессии."""
         self.logger.info("SESSION ENDED")

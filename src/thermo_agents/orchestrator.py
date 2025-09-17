@@ -17,8 +17,8 @@ from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from thermo_agents.agent_storage import AgentStorage, get_storage
-from thermo_agents.thermo_agents_logger import SessionLogger
+from .agent_storage import AgentStorage, get_storage
+from .thermo_agents_logger import SessionLogger
 
 
 class OrchestratorRequest(BaseModel):

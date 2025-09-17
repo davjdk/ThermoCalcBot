@@ -17,9 +17,9 @@ from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from thermo_agents.agent_storage import AgentStorage, get_storage
-from thermo_agents.prompts import EXTRACT_INPUTS_PROMPT
-from thermo_agents.thermo_agents_logger import SessionLogger
+from .agent_storage import AgentStorage, get_storage
+from .prompts import EXTRACT_INPUTS_PROMPT
+from .thermo_agents_logger import SessionLogger
 
 
 class ExtractedParameters(BaseModel):
@@ -52,7 +52,7 @@ class ThermoAgentConfig:
 class ThermodynamicAgent:
     """
     Инкапсулированный термодинамический агент.
-    
+
     Работает автономно:
     - Слушает входящие сообщения из хранилища
     - Обрабатывает запросы на извлечение параметров
@@ -63,7 +63,7 @@ class ThermodynamicAgent:
     def __init__(self, config: ThermoAgentConfig):
         """
         Инициализация агента.
-        
+
         Args:
             config: Конфигурация агента
         """
@@ -72,16 +72,23 @@ class ThermodynamicAgent:
         self.storage = config.storage
         self.logger = config.logger
         self.running = False
-        
+
         # Инициализация PydanticAI агента
         self.agent = self._initialize_agent()
-        
+
         # Регистрация в хранилище
-        self.storage.start_session(self.agent_id, {
-            "status": "initialized",
-            "capabilities": ["extract_parameters", "normalize_formulas", "convert_temperature"]
-        })
-        
+        self.storage.start_session(
+            self.agent_id,
+            {
+                "status": "initialized",
+                "capabilities": [
+                    "extract_parameters",
+                    "normalize_formulas",
+                    "convert_temperature",
+                ],
+            },
+        )
+
         self.logger.info(f"ThermodynamicAgent '{self.agent_id}' initialized")
 
     def _initialize_agent(self) -> Agent:
@@ -107,7 +114,7 @@ class ThermodynamicAgent:
             ctx: RunContext[ThermoAgentConfig],
             key: str,
             value: Dict,
-            ttl: Optional[int] = None
+            ttl: Optional[int] = None,
         ) -> bool:
             """Сохранить данные в хранилище."""
             ctx.deps.storage.set(key, value, ttl)
@@ -116,8 +123,7 @@ class ThermodynamicAgent:
 
         @agent.tool
         async def load_from_storage(
-            ctx: RunContext[ThermoAgentConfig],
-            key: str
+            ctx: RunContext[ThermoAgentConfig], key: str
         ) -> Optional[Dict]:
             """Загрузить данные из хранилища."""
             value = ctx.deps.storage.get(key)
@@ -129,7 +135,7 @@ class ThermodynamicAgent:
     async def start(self):
         """
         Запустить агента в режиме прослушивания сообщений.
-        
+
         Агент будет работать в цикле, проверяя новые сообщения
         и обрабатывая их асинхронно.
         """
@@ -141,8 +147,7 @@ class ThermodynamicAgent:
             try:
                 # Получаем новые сообщения
                 messages = self.storage.receive_messages(
-                    self.agent_id,
-                    message_type="extract_parameters"
+                    self.agent_id, message_type="extract_parameters"
                 )
 
                 # Обрабатываем каждое сообщение
@@ -165,11 +170,13 @@ class ThermodynamicAgent:
     async def _process_message(self, message):
         """
         Обработать входящее сообщение.
-        
+
         Args:
             message: Сообщение из хранилища
         """
-        self.logger.info(f"Processing message: {message.id} from {message.source_agent}")
+        self.logger.info(
+            f"Processing message: {message.id} from {message.source_agent}"
+        )
 
         try:
             # Извлекаем запрос пользователя из сообщения
@@ -181,15 +188,13 @@ class ThermodynamicAgent:
             result = await self.agent.run(user_query, deps=self.config)
             extracted_params = result.output
 
-            self.logger.info(f"Successfully extracted parameters: {extracted_params.intent}")
+            self.logger.info(
+                f"Successfully extracted parameters: {extracted_params.intent}"
+            )
 
             # Сохраняем результат в хранилище
             result_key = f"thermo_result_{message.id}"
-            self.storage.set(
-                result_key,
-                extracted_params.model_dump(),
-                ttl_seconds=600
-            )
+            self.storage.set(result_key, extracted_params.model_dump(), ttl_seconds=600)
 
             # Отправляем ответное сообщение
             self.storage.send_message(
@@ -200,8 +205,8 @@ class ThermodynamicAgent:
                 payload={
                     "status": "success",
                     "result_key": result_key,
-                    "extracted_params": extracted_params.model_dump()
-                }
+                    "extracted_params": extracted_params.model_dump(),
+                },
             )
 
             # Логирование для сессии
@@ -218,8 +223,8 @@ class ThermodynamicAgent:
                     payload={
                         "sql_hint": extracted_params.sql_query_hint,
                         "extracted_params": extracted_params.model_dump(),
-                        "original_query": user_query
-                    }
+                        "original_query": user_query,
+                    },
                 )
                 self.logger.info(f"Forwarded to SQL agent: {sql_message_id}")
 
@@ -232,10 +237,7 @@ class ThermodynamicAgent:
                 target_agent=message.source_agent,
                 message_type="error",
                 correlation_id=message.id,
-                payload={
-                    "status": "error",
-                    "error": str(e)
-                }
+                payload={"status": "error", "error": str(e)},
             )
 
             if self.config.session_logger:
@@ -244,10 +246,10 @@ class ThermodynamicAgent:
     async def process_single_query(self, user_query: str) -> ExtractedParameters:
         """
         Обработать одиночный запрос (для совместимости и тестирования).
-        
+
         Args:
             user_query: Запрос пользователя
-            
+
         Returns:
             Извлеченные параметры
         """
@@ -264,40 +266,37 @@ class ThermodynamicAgent:
                 temperature_range_k=[200, 2000],
                 phases=[],
                 properties=["basic"],
-                sql_query_hint="Error occurred during parameter extraction"
+                sql_query_hint="Error occurred during parameter extraction",
             )
 
     def get_status(self) -> Dict:
         """Получить статус агента."""
         session = self.storage.get_session(self.agent_id)
-        return {
-            "agent_id": self.agent_id,
-            "running": self.running,
-            "session": session
-        }
+        return {"agent_id": self.agent_id, "running": self.running, "session": session}
 
 
 # =============================================================================
-# ФАБРИЧНЫЕ ФУНКЦИИ
+# ФАБРИКТНЫЕ ФУНКЦИИ
 # =============================================================================
+
 
 def create_thermo_agent(
     llm_api_key: str,
     llm_base_url: str,
     llm_model: str = "openai:gpt-4o",
     storage: Optional[AgentStorage] = None,
-    logger: Optional[logging.Logger] = None
+    logger: Optional[logging.Logger] = None,
 ) -> ThermodynamicAgent:
     """
     Создать термодинамического агента.
-    
+
     Args:
         llm_api_key: API ключ для LLM
         llm_base_url: URL для LLM API
         llm_model: Модель LLM
         storage: Хранилище (или будет использовано глобальное)
         logger: Логгер
-        
+
     Returns:
         Настроенный термодинамический агент
     """
@@ -306,21 +305,21 @@ def create_thermo_agent(
         llm_base_url=llm_base_url,
         llm_model=llm_model,
         storage=storage or get_storage(),
-        logger=logger or logging.getLogger(__name__)
+        logger=logger or logging.getLogger(__name__),
     )
-    
+
     return ThermodynamicAgent(config)
 
 
 async def run_thermo_agent_standalone(config: ThermoAgentConfig):
     """
     Запустить агента в standalone режиме для тестирования.
-    
+
     Args:
         config: Конфигурация агента
     """
     agent = ThermodynamicAgent(config)
-    
+
     try:
         await agent.start()
     except KeyboardInterrupt:
