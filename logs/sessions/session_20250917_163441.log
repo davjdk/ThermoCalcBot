@@ -1,0 +1,20 @@
+2025-09-17 16:34:41,509 - __main__ - INFO - ThermoSystem initialized
+2025-09-17 16:34:41,509 - __main__ - INFO - Initializing agents...
+2025-09-17 16:34:41,763 - thermo_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-09-17 16:34:41,772 - sql_agent - INFO - SQLGenerationAgent 'sql_agent' initialized
+2025-09-17 16:34:41,777 - __main__ - INFO - All agents initialized successfully
+2025-09-17 16:34:41,777 - __main__ - INFO - Starting agents...
+2025-09-17 16:34:41,779 - thermo_agent - INFO - Agent 'thermo_agent' started listening for messages
+2025-09-17 16:34:41,779 - sql_agent - INFO - Agent 'sql_agent' started listening for messages
+2025-09-17 16:34:42,798 - __main__ - INFO - All agents started
+2025-09-17 16:34:45,637 - orchestrator - INFO - Processing request: При какой температуре идет взаимодействие карбида вольфрама с магнием?...
+2025-09-17 16:34:50,889 - __main__ - ERROR - Interactive mode error: 
+Traceback (most recent call last):
+  File "c:\IDE\repository\agents_for_david\main.py", line 306, in interactive_mode
+    user_input = input("Query> ").strip()
+                 ^^^^^^^^^^^^^^^^
+EOFError
+2025-09-17 16:34:51,465 - __main__ - INFO - Stopping agents...
+2025-09-17 16:34:51,466 - thermo_agent - INFO - Agent 'thermo_agent' stopped
+2025-09-17 16:34:51,466 - sql_agent - INFO - Agent 'sql_agent' stopped
+2025-09-17 16:34:51,466 - orchestrator - INFO - Shutting down orchestrator
