@@ -1,0 +1,1334 @@
+2025-09-17 17:19:58,250 - __main__ - INFO - ThermoSystem initialized
+2025-09-17 17:19:58,250 - __main__ - INFO - Initializing agents...
+2025-09-17 17:19:58,517 - thermo_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-09-17 17:19:58,519 - sql_agent - INFO - SQLGenerationAgent 'sql_agent' initialized
+2025-09-17 17:19:58,523 - __main__ - INFO - All agents initialized successfully
+2025-09-17 17:19:58,523 - __main__ - INFO - Starting agents...
+2025-09-17 17:19:58,523 - thermo_agent - INFO - Agent 'thermo_agent' started listening for messages
+2025-09-17 17:19:58,523 - sql_agent - INFO - Agent 'sql_agent' started listening for messages
+2025-09-17 17:19:59,546 - __main__ - INFO - All agents started
+2025-09-17 17:20:01,783 - orchestrator - INFO - Processing request: При какой температуре идет взаимодействие карбида вольфрама с магнием?...
+2025-09-17 17:20:01,784 - thermo_agent - INFO - Processing message: 46236417-af40-486d-887d-47c277c5f5ac from orchestrator
+2025-09-17 17:20:03,242 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-17 17:20:10,681 - thermo_agent - INFO - Successfully extracted parameters: reaction</parameter name>\n<parameter name="compounds">["WC", "Mg", "W", "Mg2C"]</parameter name>\n<parameter name="temperature_k">298.15</parameter name>\n<parameter name="temperature_range_k">[200, 2000]</parameter name>\n<parameter name="phases">["s", "s", "s", "s"]</parameter name>\n<parameter name="properties">["all"]</parameter name>\n<parameter name="sql_query_hint">Find thermodynamic data for WC(s), Mg(s), W(s), and Mg2C(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis of WC + 2Mg → W + Mg2C.
+2025-09-17 17:20:10 - INFO - EXTRACTED PARAMETERS:
+2025-09-17 17:20:10,682 - thermo_agents_session_20250917_171958 - INFO - EXTRACTED PARAMETERS:
+2025-09-17 17:20:10 - INFO -   Intent: reaction</parameter name>\n<parameter name="compounds">["WC", "Mg", "W", "Mg2C"]</parameter name>\n<parameter name="temperature_k">298.15</parameter name>\n<parameter name="temperature_range_k">[200, 2000]</parameter name>\n<parameter name="phases">["s", "s", "s", "s"]</parameter name>\n<parameter name="properties">["all"]</parameter name>\n<parameter name="sql_query_hint">Find thermodynamic data for WC(s), Mg(s), W(s), and Mg2C(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis of WC + 2Mg → W + Mg2C.
+2025-09-17 17:20:10,682 - thermo_agents_session_20250917_171958 - INFO -   Intent: reaction</parameter name>\n<parameter name="compounds">["WC", "Mg", "W", "Mg2C"]</parameter name>\n<parameter name="temperature_k">298.15</parameter name>\n<parameter name="temperature_range_k">[200, 2000]</parameter name>\n<parameter name="phases">["s", "s", "s", "s"]</parameter name>\n<parameter name="properties">["all"]</parameter name>\n<parameter name="sql_query_hint">Find thermodynamic data for WC(s), Mg(s), W(s), and Mg2C(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis of WC + 2Mg → W + Mg2C.
+2025-09-17 17:20:10 - INFO -   Compounds: ['WC', 'Mg', 'W', 'Mg2C']
+2025-09-17 17:20:10,684 - thermo_agents_session_20250917_171958 - INFO -   Compounds: ['WC', 'Mg', 'W', 'Mg2C']
+2025-09-17 17:20:10 - INFO -   Temperature: 298.15 K
+2025-09-17 17:20:10,684 - thermo_agents_session_20250917_171958 - INFO -   Temperature: 298.15 K
+2025-09-17 17:20:10 - INFO -   Temperature Range: [200.0, 2000.0]
+2025-09-17 17:20:10,684 - thermo_agents_session_20250917_171958 - INFO -   Temperature Range: [200.0, 2000.0]
+2025-09-17 17:20:10 - INFO -   Phases: ['s', 's', 's', 's']
+2025-09-17 17:20:10,684 - thermo_agents_session_20250917_171958 - INFO -   Phases: ['s', 's', 's', 's']
+2025-09-17 17:20:10 - INFO -   Properties: ['all']
+2025-09-17 17:20:10,685 - thermo_agents_session_20250917_171958 - INFO -   Properties: ['all']
+2025-09-17 17:20:10 - INFO -   SQL Hint: Find thermodynamic data for WC(s), Mg(s), W(s), and Mg2C(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis.
+2025-09-17 17:20:10,685 - thermo_agents_session_20250917_171958 - INFO -   SQL Hint: Find thermodynamic data for WC(s), Mg(s), W(s), and Mg2C(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis.
+2025-09-17 17:20:10,686 - thermo_agent - INFO - Forwarded to SQL agent: d05da652-df5a-4607-8d80-77bdd53e279c
+2025-09-17 17:20:10,969 - sql_agent - INFO - Processing message: d05da652-df5a-4607-8d80-77bdd53e279c from thermo_agent
+2025-09-17 17:20:11,650 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-17 17:20:14,772 - sql_agent - INFO - Generated SQL query: SELECT Formula, FirstName, Phase, H298, S298, f1, f2, f3, f4, f5, f6, Tmin, Tmax FROM compounds WHER...
+2025-09-17 17:20:14 - INFO - GENERATED SQL:
+2025-09-17 17:20:14,774 - thermo_agents_session_20250917_171958 - INFO - GENERATED SQL:
+2025-09-17 17:20:14 - INFO -   SQL Query: SELECT Formula, FirstName, Phase, H298, S298, f1, f2, f3, f4, f5, f6, Tmin, Tmax FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') AND Phase = 's') OR ((Formula = 'Mg' OR Formula = 'Mg(s)') AND Phase = 's') OR ((Formula = 'W' OR Formula = 'W(s)') AND Phase = 's') OR ((Formula = 'Mg2C' OR Formula = 'Mg2C(s)') AND Phase = 's') AND Tmin <= 2000 AND Tmax >= 200 ORDER BY Formula LIMIT 100;
+2025-09-17 17:20:14,775 - thermo_agents_session_20250917_171958 - INFO -   SQL Query: SELECT Formula, FirstName, Phase, H298, S298, f1, f2, f3, f4, f5, f6, Tmin, Tmax FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') AND Phase = 's') OR ((Formula = 'Mg' OR Formula = 'Mg(s)') AND Phase = 's') OR ((Formula = 'W' OR Formula = 'W(s)') AND Phase = 's') OR ((Formula = 'Mg2C' OR Formula = 'Mg2C(s)') AND Phase = 's') AND Tmin <= 2000 AND Tmax >= 200 ORDER BY Formula LIMIT 100;
+2025-09-17 17:20:14 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax']
+2025-09-17 17:20:14,775 - thermo_agents_session_20250917_171958 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax']
+2025-09-17 17:20:14 - INFO -   Explanation: Query selects thermodynamic data for specified solid compounds within the temperature range, including necessary fields for reaction analysis.
+2025-09-17 17:20:14,776 - thermo_agents_session_20250917_171958 - INFO -   Explanation: Query selects thermodynamic data for specified solid compounds within the temperature range, including necessary fields for reaction analysis.
+2025-09-17 17:20:14,776 - sql_agent - INFO - Processing message: 32ac2f91-cacb-4e3c-bc7c-c2d9ef7b6d30 from orchestrator
+2025-09-17 17:20:15,271 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-17 17:20:18 - INFO - Executed query, found 10 rows
+2025-09-17 17:20:18,156 - thermo_agents_session_20250917_171958 - INFO - Executed query, found 10 rows
+2025-09-17 17:20:18 - INFO - QUERY RESULTS:
+2025-09-17 17:20:18,157 - thermo_agents_session_20250917_171958 - INFO - QUERY RESULTS:
+2025-09-17 17:20:18 - INFO -   SQL: SELECT Formula, Phase, FirstName FROM compounds WHERE (Formula LIKE 'WC%' OR Formula LIKE 'W%') AND Phase = 's' LIMIT 10;
+2025-09-17 17:20:18,158 - thermo_agents_session_20250917_171958 - INFO -   SQL: SELECT Formula, Phase, FirstName FROM compounds WHERE (Formula LIKE 'WC%' OR Formula LIKE 'W%') AND Phase = 's' LIMIT 10;
+2025-09-17 17:20:18 - INFO -   row_0:
+2025-09-17 17:20:18,159 - thermo_agents_session_20250917_171958 - INFO -   row_0:
+2025-09-17 17:20:18 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:18,161 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:18 - INFO -     Formula: W
+2025-09-17 17:20:18,161 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:18 - INFO -     Phase: s
+2025-09-17 17:20:18,161 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:18 - INFO -   row_1:
+2025-09-17 17:20:18,161 - thermo_agents_session_20250917_171958 - INFO -   row_1:
+2025-09-17 17:20:18 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:18,162 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:18 - INFO -     Formula: W
+2025-09-17 17:20:18,162 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:18 - INFO -     Phase: s
+2025-09-17 17:20:18,163 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:18 - INFO -   row_2:
+2025-09-17 17:20:18,163 - thermo_agents_session_20250917_171958 - INFO -   row_2:
+2025-09-17 17:20:18 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:18,163 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:18 - INFO -     Formula: W
+2025-09-17 17:20:18,164 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:18 - INFO -     Phase: s
+2025-09-17 17:20:18,164 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:18 - INFO -   row_3:
+2025-09-17 17:20:18,164 - thermo_agents_session_20250917_171958 - INFO -   row_3:
+2025-09-17 17:20:18 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:18,164 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:18 - INFO -     Formula: W
+2025-09-17 17:20:18,166 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:18 - INFO -     Phase: s
+2025-09-17 17:20:18,166 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:18 - INFO -   row_4:
+2025-09-17 17:20:18,166 - thermo_agents_session_20250917_171958 - INFO -   row_4:
+2025-09-17 17:20:18 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:18,167 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:18 - INFO -     Formula: W
+2025-09-17 17:20:18,167 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:18 - INFO -     Phase: s
+2025-09-17 17:20:18,167 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:18 - INFO -   row_5:
+2025-09-17 17:20:18,167 - thermo_agents_session_20250917_171958 - INFO -   row_5:
+2025-09-17 17:20:18 - INFO -     FirstName: Tungsten boride
+2025-09-17 17:20:18,167 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten boride
+2025-09-17 17:20:18 - INFO -     Formula: WB
+2025-09-17 17:20:18,168 - thermo_agents_session_20250917_171958 - INFO -     Formula: WB
+2025-09-17 17:20:18 - INFO -     Phase: s
+2025-09-17 17:20:18,168 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:18 - INFO -   row_6:
+2025-09-17 17:20:18,168 - thermo_agents_session_20250917_171958 - INFO -   row_6:
+2025-09-17 17:20:18 - INFO -     FirstName: Tungsten boride
+2025-09-17 17:20:18,168 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten boride
+2025-09-17 17:20:18 - INFO -     Formula: WB
+2025-09-17 17:20:18,168 - thermo_agents_session_20250917_171958 - INFO -     Formula: WB
+2025-09-17 17:20:18 - INFO -     Phase: s
+2025-09-17 17:20:18,168 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:18 - INFO -   row_7:
+2025-09-17 17:20:18,169 - thermo_agents_session_20250917_171958 - INFO -   row_7:
+2025-09-17 17:20:18 - INFO -     FirstName: Ditungsten monoboride
+2025-09-17 17:20:18,169 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Ditungsten monoboride
+2025-09-17 17:20:18 - INFO -     Formula: W2B
+2025-09-17 17:20:18,169 - thermo_agents_session_20250917_171958 - INFO -     Formula: W2B
+2025-09-17 17:20:18 - INFO -     Phase: s
+2025-09-17 17:20:18,169 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:18 - INFO -   row_8:
+2025-09-17 17:20:18,169 - thermo_agents_session_20250917_171958 - INFO -   row_8:
+2025-09-17 17:20:18 - INFO -     FirstName: Ditungsten pentaboride
+2025-09-17 17:20:18,169 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Ditungsten pentaboride
+2025-09-17 17:20:18 - INFO -     Formula: W2B5
+2025-09-17 17:20:18,169 - thermo_agents_session_20250917_171958 - INFO -     Formula: W2B5
+2025-09-17 17:20:18 - INFO -     Phase: s
+2025-09-17 17:20:18,169 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:18 - INFO -   row_9:
+2025-09-17 17:20:18,169 - thermo_agents_session_20250917_171958 - INFO -   row_9:
+2025-09-17 17:20:18 - INFO -     FirstName: Ditungsten pentaboride
+2025-09-17 17:20:18,170 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Ditungsten pentaboride
+2025-09-17 17:20:18 - INFO -     Formula: W2B5
+2025-09-17 17:20:18,170 - thermo_agents_session_20250917_171958 - INFO -     Formula: W2B5
+2025-09-17 17:20:18 - INFO -     Phase: s
+2025-09-17 17:20:18,170 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:18,908 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-17 17:20:21 - INFO - Executed query, found 42 rows
+2025-09-17 17:20:21,283 - thermo_agents_session_20250917_171958 - INFO - Executed query, found 42 rows
+2025-09-17 17:20:21 - INFO - QUERY RESULTS:
+2025-09-17 17:20:21,284 - thermo_agents_session_20250917_171958 - INFO - QUERY RESULTS:
+2025-09-17 17:20:21 - INFO -   SQL: SELECT Formula, FirstName, Phase, H298, S298, f1, f2, f3, f4, f5, f6, Tmin, Tmax FROM compounds WHERE Phase = 's' AND ((Formula = 'W') OR (Formula = 'Mg') OR (Formula = 'WC') OR (Formula = 'Mg2C')) AND Tmax >= 200 AND Tmin <= 2000 ORDER BY Formula, Tmin LIMIT 50;
+2025-09-17 17:20:21,284 - thermo_agents_session_20250917_171958 - INFO -   SQL: SELECT Formula, FirstName, Phase, H298, S298, f1, f2, f3, f4, f5, f6, Tmin, Tmax FROM compounds WHERE Phase = 's' AND ((Formula = 'W') OR (Formula = 'Mg') OR (Formula = 'WC') OR (Formula = 'Mg2C')) AND Tmax >= 200 AND Tmin <= 2000 ORDER BY Formula, Tmin LIMIT 50;
+2025-09-17 17:20:21 - INFO -   row_0:
+2025-09-17 17:20:21,299 - thermo_agents_session_20250917_171958 - INFO -   row_0:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,299 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,300 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,300 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,301 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,301 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21,301 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21 - INFO -     Tmin: 180.0
+2025-09-17 17:20:21,301 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 180.0
+2025-09-17 17:20:21 - INFO -     f1: 24.882788782
+2025-09-17 17:20:21,302 - thermo_agents_session_20250917_171958 - INFO -     f1: 24.882788782
+2025-09-17 17:20:21 - INFO -     f2: 0.5922749064
+2025-09-17 17:20:21,302 - thermo_agents_session_20250917_171958 - INFO -     f2: 0.5922749064
+2025-09-17 17:20:21 - INFO -     f3: -1.113181052888
+2025-09-17 17:20:21,302 - thermo_agents_session_20250917_171958 - INFO -     f3: -1.113181052888
+2025-09-17 17:20:21 - INFO -     f4: 10.86553926264
+2025-09-17 17:20:21,302 - thermo_agents_session_20250917_171958 - INFO -     f4: 10.86553926264
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,303 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,303 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_1:
+2025-09-17 17:20:21,303 - thermo_agents_session_20250917_171958 - INFO -   row_1:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,303 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,303 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,303 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,304 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,304 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21,304 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21 - INFO -     Tmin: 180.0
+2025-09-17 17:20:21,304 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 180.0
+2025-09-17 17:20:21 - INFO -     f1: 24.88279079032
+2025-09-17 17:20:21,304 - thermo_agents_session_20250917_171958 - INFO -     f1: 24.88279079032
+2025-09-17 17:20:21 - INFO -     f2: 0.5922749064
+2025-09-17 17:20:21,304 - thermo_agents_session_20250917_171958 - INFO -     f2: 0.5922749064
+2025-09-17 17:20:21 - INFO -     f3: -1.1131812328
+2025-09-17 17:20:21,305 - thermo_agents_session_20250917_171958 - INFO -     f3: -1.1131812328
+2025-09-17 17:20:21 - INFO -     f4: 10.8655442416
+2025-09-17 17:20:21,305 - thermo_agents_session_20250917_171958 - INFO -     f4: 10.8655442416
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,305 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,305 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_10:
+2025-09-17 17:20:21,305 - thermo_agents_session_20250917_171958 - INFO -   row_10:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,305 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,305 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,305 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,305 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,306 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 923.0
+2025-09-17 17:20:21,306 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 923.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,306 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 28.45470815848
+2025-09-17 17:20:21,306 - thermo_agents_session_20250917_171958 - INFO -     f1: 28.45470815848
+2025-09-17 17:20:21 - INFO -     f2: -6.44746224464
+2025-09-17 17:20:21,306 - thermo_agents_session_20250917_171958 - INFO -     f2: -6.44746224464
+2025-09-17 17:20:21 - INFO -     f3: -2.4810124208
+2025-09-17 17:20:21,306 - thermo_agents_session_20250917_171958 - INFO -     f3: -2.4810124208
+2025-09-17 17:20:21 - INFO -     f4: 11.93175446784
+2025-09-17 17:20:21,306 - thermo_agents_session_20250917_171958 - INFO -     f4: 11.93175446784
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,306 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,308 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_11:
+2025-09-17 17:20:21,308 - thermo_agents_session_20250917_171958 - INFO -   row_11:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,308 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,308 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,308 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,308 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,308 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 923.0
+2025-09-17 17:20:21,308 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 923.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,309 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 28.4547081
+2025-09-17 17:20:21,309 - thermo_agents_session_20250917_171958 - INFO -     f1: 28.4547081
+2025-09-17 17:20:21 - INFO -     f2: -6.447462
+2025-09-17 17:20:21,309 - thermo_agents_session_20250917_171958 - INFO -     f2: -6.447462
+2025-09-17 17:20:21 - INFO -     f3: -2.48101258
+2025-09-17 17:20:21,309 - thermo_agents_session_20250917_171958 - INFO -     f3: -2.48101258
+2025-09-17 17:20:21 - INFO -     f4: 11.9317541
+2025-09-17 17:20:21,309 - thermo_agents_session_20250917_171958 - INFO -     f4: 11.9317541
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,309 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_12:
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -   row_12:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.677002
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.677002
+2025-09-17 17:20:21 - INFO -     Tmax: 922.0
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 922.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 21.3885841
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -     f1: 21.3885841
+2025-09-17 17:20:21 - INFO -     f2: 11.7779474
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -     f2: 11.7779474
+2025-09-17 17:20:21 - INFO -     f3: 0.0
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.0
+2025-09-17 17:20:21 - INFO -     f4: 0.0
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -     f4: 0.0
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,310 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,311 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_13:
+2025-09-17 17:20:21,311 - thermo_agents_session_20250917_171958 - INFO -   row_13:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,311 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,311 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,311 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,311 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.677002
+2025-09-17 17:20:21,312 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.677002
+2025-09-17 17:20:21 - INFO -     Tmax: 922.0
+2025-09-17 17:20:21,312 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 922.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,312 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 21.3885841
+2025-09-17 17:20:21,312 - thermo_agents_session_20250917_171958 - INFO -     f1: 21.3885841
+2025-09-17 17:20:21 - INFO -     f2: 11.7779474
+2025-09-17 17:20:21,312 - thermo_agents_session_20250917_171958 - INFO -     f2: 11.7779474
+2025-09-17 17:20:21 - INFO -     f3: 0.0
+2025-09-17 17:20:21,312 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.0
+2025-09-17 17:20:21 - INFO -     f4: 0.0
+2025-09-17 17:20:21,312 - thermo_agents_session_20250917_171958 - INFO -     f4: 0.0
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,312 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,312 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_14:
+2025-09-17 17:20:21,314 - thermo_agents_session_20250917_171958 - INFO -   row_14:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,314 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,314 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,314 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,314 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.617999576
+2025-09-17 17:20:21,314 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.617999576
+2025-09-17 17:20:21 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21,314 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21 - INFO -     Tmin: 100.0
+2025-09-17 17:20:21,314 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 100.0
+2025-09-17 17:20:21 - INFO -     f1: 19.65192888632
+2025-09-17 17:20:21,314 - thermo_agents_session_20250917_171958 - INFO -     f1: 19.65192888632
+2025-09-17 17:20:21 - INFO -     f2: 30.750400048
+2025-09-17 17:20:21,314 - thermo_agents_session_20250917_171958 - INFO -     f2: 30.750400048
+2025-09-17 17:20:21 - INFO -     f3: -0.626309202528
+2025-09-17 17:20:21,315 - thermo_agents_session_20250917_171958 - INFO -     f3: -0.626309202528
+2025-09-17 17:20:21 - INFO -     f4: -42.8777403656
+2025-09-17 17:20:21,315 - thermo_agents_session_20250917_171958 - INFO -     f4: -42.8777403656
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,315 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,315 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_15:
+2025-09-17 17:20:21,315 - thermo_agents_session_20250917_171958 - INFO -   row_15:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,315 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,315 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,315 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,315 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.61800376
+2025-09-17 17:20:21,315 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.61800376
+2025-09-17 17:20:21 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21,316 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21 - INFO -     Tmin: 100.0
+2025-09-17 17:20:21,316 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 100.0
+2025-09-17 17:20:21 - INFO -     f1: 19.65192888632
+2025-09-17 17:20:21,316 - thermo_agents_session_20250917_171958 - INFO -     f1: 19.65192888632
+2025-09-17 17:20:21 - INFO -     f2: 30.750404232
+2025-09-17 17:20:21,316 - thermo_agents_session_20250917_171958 - INFO -     f2: 30.750404232
+2025-09-17 17:20:21 - INFO -     f3: -0.626309202528
+2025-09-17 17:20:21,316 - thermo_agents_session_20250917_171958 - INFO -     f3: -0.626309202528
+2025-09-17 17:20:21 - INFO -     f4: -42.8777403656
+2025-09-17 17:20:21,316 - thermo_agents_session_20250917_171958 - INFO -     f4: -42.8777403656
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,316 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,316 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_16:
+2025-09-17 17:20:21,316 - thermo_agents_session_20250917_171958 - INFO -   row_16:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,316 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,317 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,317 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,317 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.61800376
+2025-09-17 17:20:21,317 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.61800376
+2025-09-17 17:20:21 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21,317 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21 - INFO -     Tmin: 100.0
+2025-09-17 17:20:21,317 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 100.0
+2025-09-17 17:20:21 - INFO -     f1: 19.65192888632
+2025-09-17 17:20:21,317 - thermo_agents_session_20250917_171958 - INFO -     f1: 19.65192888632
+2025-09-17 17:20:21 - INFO -     f2: 30.750404232
+2025-09-17 17:20:21,317 - thermo_agents_session_20250917_171958 - INFO -     f2: 30.750404232
+2025-09-17 17:20:21 - INFO -     f3: -0.626309202528
+2025-09-17 17:20:21,317 - thermo_agents_session_20250917_171958 - INFO -     f3: -0.626309202528
+2025-09-17 17:20:21 - INFO -     f4: -42.8777403656
+2025-09-17 17:20:21,317 - thermo_agents_session_20250917_171958 - INFO -     f4: -42.8777403656
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,317 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,317 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_17:
+2025-09-17 17:20:21,318 - thermo_agents_session_20250917_171958 - INFO -   row_17:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,318 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,318 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,318 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,318 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.6179657
+2025-09-17 17:20:21,318 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.6179657
+2025-09-17 17:20:21 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21,318 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21 - INFO -     Tmin: 100.0
+2025-09-17 17:20:21,318 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 100.0
+2025-09-17 17:20:21 - INFO -     f1: 19.651907
+2025-09-17 17:20:21,318 - thermo_agents_session_20250917_171958 - INFO -     f1: 19.651907
+2025-09-17 17:20:21 - INFO -     f2: 30.75037
+2025-09-17 17:20:21,319 - thermo_agents_session_20250917_171958 - INFO -     f2: 30.75037
+2025-09-17 17:20:21 - INFO -     f3: -0.6263085
+2025-09-17 17:20:21,319 - thermo_agents_session_20250917_171958 - INFO -     f3: -0.6263085
+2025-09-17 17:20:21 - INFO -     f4: -42.8776932
+2025-09-17 17:20:21,319 - thermo_agents_session_20250917_171958 - INFO -     f4: -42.8776932
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,319 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,319 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_18:
+2025-09-17 17:20:21,319 - thermo_agents_session_20250917_171958 - INFO -   row_18:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,319 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,319 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,319 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,319 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.617966104
+2025-09-17 17:20:21,319 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.617966104
+2025-09-17 17:20:21 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21,319 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21 - INFO -     Tmin: 100.0
+2025-09-17 17:20:21,319 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 100.0
+2025-09-17 17:20:21 - INFO -     f1: 19.65190696216
+2025-09-17 17:20:21,321 - thermo_agents_session_20250917_171958 - INFO -     f1: 19.65190696216
+2025-09-17 17:20:21 - INFO -     f2: 30.75037076
+2025-09-17 17:20:21,321 - thermo_agents_session_20250917_171958 - INFO -     f2: 30.75037076
+2025-09-17 17:20:21 - INFO -     f3: -0.626308516352
+2025-09-17 17:20:21,321 - thermo_agents_session_20250917_171958 - INFO -     f3: -0.626308516352
+2025-09-17 17:20:21 - INFO -     f4: -42.877692668
+2025-09-17 17:20:21,321 - thermo_agents_session_20250917_171958 - INFO -     f4: -42.877692668
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,321 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,321 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_19:
+2025-09-17 17:20:21,321 - thermo_agents_session_20250917_171958 - INFO -   row_19:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,321 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,321 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,321 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,322 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.6179657
+2025-09-17 17:20:21,322 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.6179657
+2025-09-17 17:20:21 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21,322 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21 - INFO -     Tmin: 100.0
+2025-09-17 17:20:21,322 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 100.0
+2025-09-17 17:20:21 - INFO -     f1: 19.651907
+2025-09-17 17:20:21,322 - thermo_agents_session_20250917_171958 - INFO -     f1: 19.651907
+2025-09-17 17:20:21 - INFO -     f2: 30.75037
+2025-09-17 17:20:21,322 - thermo_agents_session_20250917_171958 - INFO -     f2: 30.75037
+2025-09-17 17:20:21 - INFO -     f3: -0.6263085
+2025-09-17 17:20:21,322 - thermo_agents_session_20250917_171958 - INFO -     f3: -0.6263085
+2025-09-17 17:20:21 - INFO -     f4: -42.8776932
+2025-09-17 17:20:21,322 - thermo_agents_session_20250917_171958 - INFO -     f4: -42.8776932
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,322 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,322 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_2:
+2025-09-17 17:20:21,322 - thermo_agents_session_20250917_171958 - INFO -   row_2:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,323 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,323 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,323 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,323 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,323 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21,323 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21 - INFO -     Tmin: 180.0
+2025-09-17 17:20:21,323 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 180.0
+2025-09-17 17:20:21 - INFO -     f1: 24.88279079032
+2025-09-17 17:20:21,323 - thermo_agents_session_20250917_171958 - INFO -     f1: 24.88279079032
+2025-09-17 17:20:21 - INFO -     f2: 0.5922749064
+2025-09-17 17:20:21,323 - thermo_agents_session_20250917_171958 - INFO -     f2: 0.5922749064
+2025-09-17 17:20:21 - INFO -     f3: -1.1131812328
+2025-09-17 17:20:21,323 - thermo_agents_session_20250917_171958 - INFO -     f3: -1.1131812328
+2025-09-17 17:20:21 - INFO -     f4: 10.8655442416
+2025-09-17 17:20:21,324 - thermo_agents_session_20250917_171958 - INFO -     f4: 10.8655442416
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,324 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,324 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_20:
+2025-09-17 17:20:21,324 - thermo_agents_session_20250917_171958 - INFO -   row_20:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,324 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,324 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,324 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,324 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,324 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 450.0
+2025-09-17 17:20:21,324 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 450.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,325 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 19.297791026
+2025-09-17 17:20:21,325 - thermo_agents_session_20250917_171958 - INFO -     f1: 19.297791026
+2025-09-17 17:20:21 - INFO -     f2: 20.704109784
+2025-09-17 17:20:21,325 - thermo_agents_session_20250917_171958 - INFO -     f2: 20.704109784
+2025-09-17 17:20:21 - INFO -     f3: 0.385637188
+2025-09-17 17:20:21,325 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.385637188
+2025-09-17 17:20:21 - INFO -     f4: -18.079139312
+2025-09-17 17:20:21,325 - thermo_agents_session_20250917_171958 - INFO -     f4: -18.079139312
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,325 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,325 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_21:
+2025-09-17 17:20:21,325 - thermo_agents_session_20250917_171958 - INFO -   row_21:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,325 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,325 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,326 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,326 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,326 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 450.0
+2025-09-17 17:20:21,326 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 450.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,326 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 19.297791026
+2025-09-17 17:20:21,326 - thermo_agents_session_20250917_171958 - INFO -     f1: 19.297791026
+2025-09-17 17:20:21 - INFO -     f2: 20.7041116668
+2025-09-17 17:20:21,326 - thermo_agents_session_20250917_171958 - INFO -     f2: 20.7041116668
+2025-09-17 17:20:21 - INFO -     f3: 0.38563714616
+2025-09-17 17:20:21,326 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.38563714616
+2025-09-17 17:20:21 - INFO -     f4: -18.0791422408
+2025-09-17 17:20:21,326 - thermo_agents_session_20250917_171958 - INFO -     f4: -18.0791422408
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,326 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,326 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_22:
+2025-09-17 17:20:21,328 - thermo_agents_session_20250917_171958 - INFO -   row_22:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,328 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,328 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,328 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,328 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,328 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 450.0
+2025-09-17 17:20:21,328 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 450.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,328 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 19.297791026
+2025-09-17 17:20:21,328 - thermo_agents_session_20250917_171958 - INFO -     f1: 19.297791026
+2025-09-17 17:20:21 - INFO -     f2: 20.7041116668
+2025-09-17 17:20:21,328 - thermo_agents_session_20250917_171958 - INFO -     f2: 20.7041116668
+2025-09-17 17:20:21 - INFO -     f3: 0.38563714616
+2025-09-17 17:20:21,328 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.38563714616
+2025-09-17 17:20:21 - INFO -     f4: -18.0791422408
+2025-09-17 17:20:21,329 - thermo_agents_session_20250917_171958 - INFO -     f4: -18.0791422408
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,329 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,329 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_23:
+2025-09-17 17:20:21,329 - thermo_agents_session_20250917_171958 - INFO -   row_23:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,329 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,329 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,329 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,329 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,329 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 450.0
+2025-09-17 17:20:21,330 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 450.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,330 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 19.29777
+2025-09-17 17:20:21,330 - thermo_agents_session_20250917_171958 - INFO -     f1: 19.29777
+2025-09-17 17:20:21 - INFO -     f2: 20.7040882
+2025-09-17 17:20:21,330 - thermo_agents_session_20250917_171958 - INFO -     f2: 20.7040882
+2025-09-17 17:20:21 - INFO -     f3: 0.385636747
+2025-09-17 17:20:21,330 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.385636747
+2025-09-17 17:20:21 - INFO -     f4: -18.0791225
+2025-09-17 17:20:21,330 - thermo_agents_session_20250917_171958 - INFO -     f4: -18.0791225
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,330 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,330 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_24:
+2025-09-17 17:20:21,330 - thermo_agents_session_20250917_171958 - INFO -   row_24:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,331 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,331 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,331 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,331 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,331 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 450.0
+2025-09-17 17:20:21,331 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 450.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,331 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 19.29776910184
+2025-09-17 17:20:21,331 - thermo_agents_session_20250917_171958 - INFO -     f1: 19.29776910184
+2025-09-17 17:20:21 - INFO -     f2: 20.70408773432
+2025-09-17 17:20:21,331 - thermo_agents_session_20250917_171958 - INFO -     f2: 20.70408773432
+2025-09-17 17:20:21 - INFO -     f3: 0.3856367696
+2025-09-17 17:20:21,331 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.3856367696
+2025-09-17 17:20:21 - INFO -     f4: -18.079122576
+2025-09-17 17:20:21,331 - thermo_agents_session_20250917_171958 - INFO -     f4: -18.079122576
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,332 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,332 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_25:
+2025-09-17 17:20:21,332 - thermo_agents_session_20250917_171958 - INFO -   row_25:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,332 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,332 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,332 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,332 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,333 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 450.0
+2025-09-17 17:20:21,333 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 450.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,333 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 19.29777
+2025-09-17 17:20:21,333 - thermo_agents_session_20250917_171958 - INFO -     f1: 19.29777
+2025-09-17 17:20:21 - INFO -     f2: 20.7040882
+2025-09-17 17:20:21,333 - thermo_agents_session_20250917_171958 - INFO -     f2: 20.7040882
+2025-09-17 17:20:21 - INFO -     f3: 0.385636747
+2025-09-17 17:20:21,333 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.385636747
+2025-09-17 17:20:21 - INFO -     f4: -18.0791225
+2025-09-17 17:20:21,333 - thermo_agents_session_20250917_171958 - INFO -     f4: -18.0791225
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,333 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,333 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_26:
+2025-09-17 17:20:21,333 - thermo_agents_session_20250917_171958 - INFO -   row_26:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,333 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,334 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,334 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,334 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.66027
+2025-09-17 17:20:21,334 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.66027
+2025-09-17 17:20:21 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21,334 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,334 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 22.9115582
+2025-09-17 17:20:21,334 - thermo_agents_session_20250917_171958 - INFO -     f1: 22.9115582
+2025-09-17 17:20:21 - INFO -     f2: 4.68607473
+2025-09-17 17:20:21,334 - thermo_agents_session_20250917_171958 - INFO -     f2: 4.68607473
+2025-09-17 17:20:21 - INFO -     f3: 0.0
+2025-09-17 17:20:21,334 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.0
+2025-09-17 17:20:21 - INFO -     f4: 0.0
+2025-09-17 17:20:21,334 - thermo_agents_session_20250917_171958 - INFO -     f4: 0.0
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,335 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,335 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_27:
+2025-09-17 17:20:21,335 - thermo_agents_session_20250917_171958 - INFO -   row_27:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten, wolfram
+2025-09-17 17:20:21,335 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten, wolfram
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,335 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,335 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,335 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.66027
+2025-09-17 17:20:21,335 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.66027
+2025-09-17 17:20:21 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 22.9115582
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -     f1: 22.9115582
+2025-09-17 17:20:21 - INFO -     f2: 4.68607473
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -     f2: 4.68607473
+2025-09-17 17:20:21 - INFO -     f3: 0.0
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.0
+2025-09-17 17:20:21 - INFO -     f4: 0.0
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -     f4: 0.0
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_28:
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -   row_28:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,336 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21,337 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21 - INFO -     Tmin: 450.0
+2025-09-17 17:20:21,337 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 450.0
+2025-09-17 17:20:21 - INFO -     f1: 23.238818824
+2025-09-17 17:20:21,337 - thermo_agents_session_20250917_171958 - INFO -     f1: 23.238818824
+2025-09-17 17:20:21 - INFO -     f2: 4.137994828
+2025-09-17 17:20:21,337 - thermo_agents_session_20250917_171958 - INFO -     f2: 4.137994828
+2025-09-17 17:20:21 - INFO -     f3: 0.01126336984
+2025-09-17 17:20:21,337 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.01126336984
+2025-09-17 17:20:21 - INFO -     f4: 0.18462849768
+2025-09-17 17:20:21,337 - thermo_agents_session_20250917_171958 - INFO -     f4: 0.18462849768
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,337 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,337 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_29:
+2025-09-17 17:20:21,337 - thermo_agents_session_20250917_171958 - INFO -   row_29:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,337 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,337 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,338 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,338 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,338 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21,338 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21 - INFO -     Tmin: 450.0
+2025-09-17 17:20:21,338 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 450.0
+2025-09-17 17:20:21 - INFO -     f1: 23.23881740144
+2025-09-17 17:20:21,338 - thermo_agents_session_20250917_171958 - INFO -     f1: 23.23881740144
+2025-09-17 17:20:21 - INFO -     f2: 4.1379952464
+2025-09-17 17:20:21,338 - thermo_agents_session_20250917_171958 - INFO -     f2: 4.1379952464
+2025-09-17 17:20:21 - INFO -     f3: 0.01126337285248
+2025-09-17 17:20:21,338 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.01126337285248
+2025-09-17 17:20:21 - INFO -     f4: 0.18462853952
+2025-09-17 17:20:21,338 - thermo_agents_session_20250917_171958 - INFO -     f4: 0.18462853952
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,338 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,338 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_3:
+2025-09-17 17:20:21,338 - thermo_agents_session_20250917_171958 - INFO -   row_3:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21 - INFO -     Tmin: 180.0
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 180.0
+2025-09-17 17:20:21 - INFO -     f1: 24.8827629
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -     f1: 24.8827629
+2025-09-17 17:20:21 - INFO -     f2: 0.592274249
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -     f2: 0.592274249
+2025-09-17 17:20:21 - INFO -     f3: -1.11317992
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -     f3: -1.11317992
+2025-09-17 17:20:21 - INFO -     f4: 10.8655319
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -     f4: 10.8655319
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_30:
+2025-09-17 17:20:21,340 - thermo_agents_session_20250917_171958 - INFO -   row_30:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,341 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,341 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,341 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,341 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,341 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21,341 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21 - INFO -     Tmin: 450.0
+2025-09-17 17:20:21,341 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 450.0
+2025-09-17 17:20:21 - INFO -     f1: 23.23881740144
+2025-09-17 17:20:21,341 - thermo_agents_session_20250917_171958 - INFO -     f1: 23.23881740144
+2025-09-17 17:20:21 - INFO -     f2: 4.1379952464
+2025-09-17 17:20:21,341 - thermo_agents_session_20250917_171958 - INFO -     f2: 4.1379952464
+2025-09-17 17:20:21 - INFO -     f3: 0.01126337285248
+2025-09-17 17:20:21,341 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.01126337285248
+2025-09-17 17:20:21 - INFO -     f4: 0.18462853952
+2025-09-17 17:20:21,341 - thermo_agents_session_20250917_171958 - INFO -     f4: 0.18462853952
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,342 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,342 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_31:
+2025-09-17 17:20:21,342 - thermo_agents_session_20250917_171958 - INFO -   row_31:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,342 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,342 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,342 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,342 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,342 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21,342 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21 - INFO -     Tmin: 450.0
+2025-09-17 17:20:21,342 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 450.0
+2025-09-17 17:20:21 - INFO -     f1: 23.2387924
+2025-09-17 17:20:21,342 - thermo_agents_session_20250917_171958 - INFO -     f1: 23.2387924
+2025-09-17 17:20:21 - INFO -     f2: 4.137991
+2025-09-17 17:20:21,343 - thermo_agents_session_20250917_171958 - INFO -     f2: 4.137991
+2025-09-17 17:20:21 - INFO -     f3: 0.01126336
+2025-09-17 17:20:21,343 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.01126336
+2025-09-17 17:20:21 - INFO -     f4: 0.184628338
+2025-09-17 17:20:21,343 - thermo_agents_session_20250917_171958 - INFO -     f4: 0.184628338
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,343 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,343 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_32:
+2025-09-17 17:20:21,343 - thermo_agents_session_20250917_171958 - INFO -   row_32:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,343 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,343 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,343 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,344 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,344 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21,344 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21 - INFO -     Tmin: 450.0
+2025-09-17 17:20:21,344 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 450.0
+2025-09-17 17:20:21 - INFO -     f1: 23.23879146064
+2025-09-17 17:20:21,344 - thermo_agents_session_20250917_171958 - INFO -     f1: 23.23879146064
+2025-09-17 17:20:21 - INFO -     f2: 4.1379910624
+2025-09-17 17:20:21,344 - thermo_agents_session_20250917_171958 - INFO -     f2: 4.1379910624
+2025-09-17 17:20:21 - INFO -     f3: 0.01126336017496
+2025-09-17 17:20:21,344 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.01126336017496
+2025-09-17 17:20:21 - INFO -     f4: 0.1846283441272
+2025-09-17 17:20:21,344 - thermo_agents_session_20250917_171958 - INFO -     f4: 0.1846283441272
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,344 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,345 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_33:
+2025-09-17 17:20:21,345 - thermo_agents_session_20250917_171958 - INFO -   row_33:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21,345 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten
+2025-09-17 17:20:21 - INFO -     Formula: W
+2025-09-17 17:20:21,345 - thermo_agents_session_20250917_171958 - INFO -     Formula: W
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,345 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,345 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,345 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21,345 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21 - INFO -     Tmin: 450.0
+2025-09-17 17:20:21,345 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 450.0
+2025-09-17 17:20:21 - INFO -     f1: 23.2387924
+2025-09-17 17:20:21,345 - thermo_agents_session_20250917_171958 - INFO -     f1: 23.2387924
+2025-09-17 17:20:21 - INFO -     f2: 4.137991
+2025-09-17 17:20:21,345 - thermo_agents_session_20250917_171958 - INFO -     f2: 4.137991
+2025-09-17 17:20:21 - INFO -     f3: 0.01126336
+2025-09-17 17:20:21,345 - thermo_agents_session_20250917_171958 - INFO -     f3: 0.01126336
+2025-09-17 17:20:21 - INFO -     f4: 0.184628338
+2025-09-17 17:20:21,347 - thermo_agents_session_20250917_171958 - INFO -     f4: 0.184628338
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,347 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,347 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_34:
+2025-09-17 17:20:21,347 - thermo_agents_session_20250917_171958 - INFO -   row_34:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21,347 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21 - INFO -     Formula: WC
+2025-09-17 17:20:21,347 - thermo_agents_session_20250917_171958 - INFO -     Formula: WC
+2025-09-17 17:20:21 - INFO -     H298: -40.1664
+2025-09-17 17:20:21,347 - thermo_agents_session_20250917_171958 - INFO -     H298: -40.1664
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,347 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.38416
+2025-09-17 17:20:21,347 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.38416
+2025-09-17 17:20:21 - INFO -     Tmax: 3050.0
+2025-09-17 17:20:21,347 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 3050.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,347 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 44.500001012
+2025-09-17 17:20:21,347 - thermo_agents_session_20250917_171958 - INFO -     f1: 44.500001012
+2025-09-17 17:20:21 - INFO -     f2: 6.52000008528
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     f2: 6.52000008528
+2025-09-17 17:20:21 - INFO -     f3: -9.7200003964
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     f3: -9.7200003964
+2025-09-17 17:20:21 - INFO -     f4: 2.005086014856e-14
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     f4: 2.005086014856e-14
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_35:
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -   row_35:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21 - INFO -     Formula: WC
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     Formula: WC
+2025-09-17 17:20:21 - INFO -     H298: -40.1664
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     H298: -40.1664
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.38416
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.38416
+2025-09-17 17:20:21 - INFO -     Tmax: 3050.0
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 3050.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 44.500001012
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     f1: 44.500001012
+2025-09-17 17:20:21 - INFO -     f2: 6.52000008528
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     f2: 6.52000008528
+2025-09-17 17:20:21 - INFO -     f3: -9.7200003964
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     f3: -9.7200003964
+2025-09-17 17:20:21 - INFO -     f4: 2.005085768e-14
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     f4: 2.005085768e-14
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_36:
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -   row_36:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21,348 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21 - INFO -     Formula: WC
+2025-09-17 17:20:21,350 - thermo_agents_session_20250917_171958 - INFO -     Formula: WC
+2025-09-17 17:20:21 - INFO -     H298: -40.1664
+2025-09-17 17:20:21,350 - thermo_agents_session_20250917_171958 - INFO -     H298: -40.1664
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,350 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.38416
+2025-09-17 17:20:21,350 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.38416
+2025-09-17 17:20:21 - INFO -     Tmax: 3050.0
+2025-09-17 17:20:21,350 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 3050.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,350 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 44.500001012
+2025-09-17 17:20:21,350 - thermo_agents_session_20250917_171958 - INFO -     f1: 44.500001012
+2025-09-17 17:20:21 - INFO -     f2: 6.52000008528
+2025-09-17 17:20:21,350 - thermo_agents_session_20250917_171958 - INFO -     f2: 6.52000008528
+2025-09-17 17:20:21 - INFO -     f3: -9.7200003964
+2025-09-17 17:20:21,350 - thermo_agents_session_20250917_171958 - INFO -     f3: -9.7200003964
+2025-09-17 17:20:21 - INFO -     f4: 2.005085768e-14
+2025-09-17 17:20:21,350 - thermo_agents_session_20250917_171958 - INFO -     f4: 2.005085768e-14
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,350 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,350 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_37:
+2025-09-17 17:20:21,351 - thermo_agents_session_20250917_171958 - INFO -   row_37:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21,351 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21 - INFO -     Formula: WC
+2025-09-17 17:20:21,351 - thermo_agents_session_20250917_171958 - INFO -     Formula: WC
+2025-09-17 17:20:21 - INFO -     H298: -40.16636
+2025-09-17 17:20:21,351 - thermo_agents_session_20250917_171958 - INFO -     H298: -40.16636
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,351 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.3841248
+2025-09-17 17:20:21,351 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.3841248
+2025-09-17 17:20:21 - INFO -     Tmax: 3050.0
+2025-09-17 17:20:21,351 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 3050.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,351 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 44.49995
+2025-09-17 17:20:21,351 - thermo_agents_session_20250917_171958 - INFO -     f1: 44.49995
+2025-09-17 17:20:21 - INFO -     f2: 6.519993
+2025-09-17 17:20:21,351 - thermo_agents_session_20250917_171958 - INFO -     f2: 6.519993
+2025-09-17 17:20:21 - INFO -     f3: -9.71999
+2025-09-17 17:20:21,351 - thermo_agents_session_20250917_171958 - INFO -     f3: -9.71999
+2025-09-17 17:20:21 - INFO -     f4: 2.00508369e-14
+2025-09-17 17:20:21,351 - thermo_agents_session_20250917_171958 - INFO -     f4: 2.00508369e-14
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,352 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,352 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_38:
+2025-09-17 17:20:21,352 - thermo_agents_session_20250917_171958 - INFO -   row_38:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21,352 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21 - INFO -     Formula: WC
+2025-09-17 17:20:21,352 - thermo_agents_session_20250917_171958 - INFO -     Formula: WC
+2025-09-17 17:20:21 - INFO -     H298: -40.16635816
+2025-09-17 17:20:21,352 - thermo_agents_session_20250917_171958 - INFO -     H298: -40.16635816
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,352 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.38412510544
+2025-09-17 17:20:21,352 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.38412510544
+2025-09-17 17:20:21 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21,352 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,353 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 43.3754823944
+2025-09-17 17:20:21,353 - thermo_agents_session_20250917_171958 - INFO -     f1: 43.3754823944
+2025-09-17 17:20:21 - INFO -     f2: 8.63576558184
+2025-09-17 17:20:21,353 - thermo_agents_session_20250917_171958 - INFO -     f2: 8.63576558184
+2025-09-17 17:20:21 - INFO -     f3: -9.31775800024
+2025-09-17 17:20:21,353 - thermo_agents_session_20250917_171958 - INFO -     f3: -9.31775800024
+2025-09-17 17:20:21 - INFO -     f4: -1.02089489124
+2025-09-17 17:20:21,353 - thermo_agents_session_20250917_171958 - INFO -     f4: -1.02089489124
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,353 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,353 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_39:
+2025-09-17 17:20:21,353 - thermo_agents_session_20250917_171958 - INFO -   row_39:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21,353 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21 - INFO -     Formula: WC
+2025-09-17 17:20:21,353 - thermo_agents_session_20250917_171958 - INFO -     Formula: WC
+2025-09-17 17:20:21 - INFO -     H298: -40.16636
+2025-09-17 17:20:21,353 - thermo_agents_session_20250917_171958 - INFO -     H298: -40.16636
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,354 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.3841248
+2025-09-17 17:20:21,354 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.3841248
+2025-09-17 17:20:21 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21,354 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,354 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 43.37548
+2025-09-17 17:20:21,354 - thermo_agents_session_20250917_171958 - INFO -     f1: 43.37548
+2025-09-17 17:20:21 - INFO -     f2: 8.635766
+2025-09-17 17:20:21,354 - thermo_agents_session_20250917_171958 - INFO -     f2: 8.635766
+2025-09-17 17:20:21 - INFO -     f3: -9.317758
+2025-09-17 17:20:21,354 - thermo_agents_session_20250917_171958 - INFO -     f3: -9.317758
+2025-09-17 17:20:21 - INFO -     f4: -1.02089489
+2025-09-17 17:20:21,354 - thermo_agents_session_20250917_171958 - INFO -     f4: -1.02089489
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,354 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,354 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_4:
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -   row_4:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21 - INFO -     Tmin: 180.0
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 180.0
+2025-09-17 17:20:21 - INFO -     f1: 24.882762632
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -     f1: 24.882762632
+2025-09-17 17:20:21 - INFO -     f2: 0.592274270432
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -     f2: 0.592274270432
+2025-09-17 17:20:21 - INFO -     f3: -1.1131799776
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -     f3: -1.1131799776
+2025-09-17 17:20:21 - INFO -     f4: 10.86553227536
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -     f4: 10.86553227536
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,355 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_40:
+2025-09-17 17:20:21,357 - thermo_agents_session_20250917_171958 - INFO -   row_40:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21,357 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21 - INFO -     Formula: WC
+2025-09-17 17:20:21,357 - thermo_agents_session_20250917_171958 - INFO -     Formula: WC
+2025-09-17 17:20:21 - INFO -     H298: -40.16636
+2025-09-17 17:20:21,357 - thermo_agents_session_20250917_171958 - INFO -     H298: -40.16636
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,357 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.3841248
+2025-09-17 17:20:21,357 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.3841248
+2025-09-17 17:20:21 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21,357 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,357 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 43.37548
+2025-09-17 17:20:21,357 - thermo_agents_session_20250917_171958 - INFO -     f1: 43.37548
+2025-09-17 17:20:21 - INFO -     f2: 8.635766
+2025-09-17 17:20:21,357 - thermo_agents_session_20250917_171958 - INFO -     f2: 8.635766
+2025-09-17 17:20:21 - INFO -     f3: -9.317758
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     f3: -9.317758
+2025-09-17 17:20:21 - INFO -     f4: -1.02089489
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     f4: -1.02089489
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_41:
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -   row_41:
+2025-09-17 17:20:21 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Tungsten carbide
+2025-09-17 17:20:21 - INFO -     Formula: WC
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     Formula: WC
+2025-09-17 17:20:21 - INFO -     H298: -40.16636
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     H298: -40.16636
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 32.3841248
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     S298: 32.3841248
+2025-09-17 17:20:21 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 2500.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 43.37548
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     f1: 43.37548
+2025-09-17 17:20:21 - INFO -     f2: 8.635766
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     f2: 8.635766
+2025-09-17 17:20:21 - INFO -     f3: -9.317758
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     f3: -9.317758
+2025-09-17 17:20:21 - INFO -     f4: -1.02089489
+2025-09-17 17:20:21,358 - thermo_agents_session_20250917_171958 - INFO -     f4: -1.02089489
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,359 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,359 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_5:
+2025-09-17 17:20:21,359 - thermo_agents_session_20250917_171958 - INFO -   row_5:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,359 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,359 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,359 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,359 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,359 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21,359 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 298.15
+2025-09-17 17:20:21 - INFO -     Tmin: 180.0
+2025-09-17 17:20:21,359 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 180.0
+2025-09-17 17:20:21 - INFO -     f1: 24.8827629
+2025-09-17 17:20:21,359 - thermo_agents_session_20250917_171958 - INFO -     f1: 24.8827629
+2025-09-17 17:20:21 - INFO -     f2: 0.592274249
+2025-09-17 17:20:21,361 - thermo_agents_session_20250917_171958 - INFO -     f2: 0.592274249
+2025-09-17 17:20:21 - INFO -     f3: -1.11317992
+2025-09-17 17:20:21,361 - thermo_agents_session_20250917_171958 - INFO -     f3: -1.11317992
+2025-09-17 17:20:21 - INFO -     f4: 10.8655319
+2025-09-17 17:20:21,361 - thermo_agents_session_20250917_171958 - INFO -     f4: 10.8655319
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,361 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,361 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_6:
+2025-09-17 17:20:21,361 - thermo_agents_session_20250917_171958 - INFO -   row_6:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,361 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,361 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,361 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,361 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,361 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 923.0
+2025-09-17 17:20:21,361 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 923.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 28.454739664
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     f1: 28.454739664
+2025-09-17 17:20:21 - INFO -     f2: -6.44746923192
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     f2: -6.44746923192
+2025-09-17 17:20:21 - INFO -     f3: -2.4810149312
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     f3: -2.4810149312
+2025-09-17 17:20:21 - INFO -     f4: 11.93177045072
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     f4: 11.93177045072
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_7:
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -   row_7:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 923.0
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 923.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,362 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 28.454739664
+2025-09-17 17:20:21,363 - thermo_agents_session_20250917_171958 - INFO -     f1: 28.454739664
+2025-09-17 17:20:21 - INFO -     f2: -6.44746923192
+2025-09-17 17:20:21,363 - thermo_agents_session_20250917_171958 - INFO -     f2: -6.44746923192
+2025-09-17 17:20:21 - INFO -     f3: -2.481015215712
+2025-09-17 17:20:21,363 - thermo_agents_session_20250917_171958 - INFO -     f3: -2.481015215712
+2025-09-17 17:20:21 - INFO -     f4: 11.93176743824
+2025-09-17 17:20:21,363 - thermo_agents_session_20250917_171958 - INFO -     f4: 11.93176743824
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,363 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,363 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_8:
+2025-09-17 17:20:21,363 - thermo_agents_session_20250917_171958 - INFO -   row_8:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,363 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,363 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,363 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,363 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,363 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 923.0
+2025-09-17 17:20:21,364 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 923.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,364 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 28.454739664
+2025-09-17 17:20:21,364 - thermo_agents_session_20250917_171958 - INFO -     f1: 28.454739664
+2025-09-17 17:20:21 - INFO -     f2: -6.44746923192
+2025-09-17 17:20:21,364 - thermo_agents_session_20250917_171958 - INFO -     f2: -6.44746923192
+2025-09-17 17:20:21 - INFO -     f3: -2.481015215712
+2025-09-17 17:20:21,364 - thermo_agents_session_20250917_171958 - INFO -     f3: -2.481015215712
+2025-09-17 17:20:21 - INFO -     f4: 11.93176743824
+2025-09-17 17:20:21,364 - thermo_agents_session_20250917_171958 - INFO -     f4: 11.93176743824
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,364 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,364 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   row_9:
+2025-09-17 17:20:21,364 - thermo_agents_session_20250917_171958 - INFO -   row_9:
+2025-09-17 17:20:21 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21,364 - thermo_agents_session_20250917_171958 - INFO -     FirstName: Magnesium
+2025-09-17 17:20:21 - INFO -     Formula: Mg
+2025-09-17 17:20:21,364 - thermo_agents_session_20250917_171958 - INFO -     Formula: Mg
+2025-09-17 17:20:21 - INFO -     H298: 0.0
+2025-09-17 17:20:21,365 - thermo_agents_session_20250917_171958 - INFO -     H298: 0.0
+2025-09-17 17:20:21 - INFO -     Phase: s
+2025-09-17 17:20:21,365 - thermo_agents_session_20250917_171958 - INFO -     Phase: s
+2025-09-17 17:20:21 - INFO -     S298: 0.0
+2025-09-17 17:20:21,365 - thermo_agents_session_20250917_171958 - INFO -     S298: 0.0
+2025-09-17 17:20:21 - INFO -     Tmax: 923.0
+2025-09-17 17:20:21,365 - thermo_agents_session_20250917_171958 - INFO -     Tmax: 923.0
+2025-09-17 17:20:21 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21,365 - thermo_agents_session_20250917_171958 - INFO -     Tmin: 298.15
+2025-09-17 17:20:21 - INFO -     f1: 28.4547081
+2025-09-17 17:20:21,365 - thermo_agents_session_20250917_171958 - INFO -     f1: 28.4547081
+2025-09-17 17:20:21 - INFO -     f2: -6.447462
+2025-09-17 17:20:21,365 - thermo_agents_session_20250917_171958 - INFO -     f2: -6.447462
+2025-09-17 17:20:21 - INFO -     f3: -2.48101258
+2025-09-17 17:20:21,365 - thermo_agents_session_20250917_171958 - INFO -     f3: -2.48101258
+2025-09-17 17:20:21 - INFO -     f4: 11.9317541
+2025-09-17 17:20:21,365 - thermo_agents_session_20250917_171958 - INFO -     f4: 11.9317541
+2025-09-17 17:20:21 - INFO -     f5: 0.0
+2025-09-17 17:20:21,365 - thermo_agents_session_20250917_171958 - INFO -     f5: 0.0
+2025-09-17 17:20:21 - INFO -     f6: 0.0
+2025-09-17 17:20:21,365 - thermo_agents_session_20250917_171958 - INFO -     f6: 0.0
+2025-09-17 17:20:21 - INFO -   ... and 32 more rows
+2025-09-17 17:20:21,366 - thermo_agents_session_20250917_171958 - INFO -   ... and 32 more rows
+2025-09-17 17:20:21,970 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-17 17:20:24,683 - sql_agent - INFO - Generated SQL query: SELECT Formula, FirstName, Phase, H298, S298, f1, f2, f3, f4, f5, f6, Tmin, Tmax FROM compounds WHER...
+2025-09-17 17:20:24 - INFO - GENERATED SQL:
+2025-09-17 17:20:24,685 - thermo_agents_session_20250917_171958 - INFO - GENERATED SQL:
+2025-09-17 17:20:24 - INFO -   SQL Query: SELECT Formula, FirstName, Phase, H298, S298, f1, f2, f3, f4, f5, f6, Tmin, Tmax FROM compounds WHERE Phase = 's' AND ((Formula = 'WC') OR (Formula = 'Mg') OR (Formula = 'W') OR (Formula = 'Mg2C')) AND Tmin <= 2000 AND Tmax >= 200 ORDER BY Formula, Tmin LIMIT 100;
+2025-09-17 17:20:24,686 - thermo_agents_session_20250917_171958 - INFO -   SQL Query: SELECT Formula, FirstName, Phase, H298, S298, f1, f2, f3, f4, f5, f6, Tmin, Tmax FROM compounds WHERE Phase = 's' AND ((Formula = 'WC') OR (Formula = 'Mg') OR (Formula = 'W') OR (Formula = 'Mg2C')) AND Tmin <= 2000 AND Tmax >= 200 ORDER BY Formula, Tmin LIMIT 100;
+2025-09-17 17:20:24 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax']
+2025-09-17 17:20:24,687 - thermo_agents_session_20250917_171958 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax']
+2025-09-17 17:20:24 - INFO -   Explanation: This query selects the required thermodynamic data for the specified solid compounds within the given temperature range. It includes all relevant columns for reaction analysis, filters by phase and formula exactly, and ensures temperature overlap with 200-2000K. Ordering by formula and Tmin helps in identifying records for different temperature sub-ranges.
+2025-09-17 17:20:24,687 - thermo_agents_session_20250917_171958 - INFO -   Explanation: This query selects the required thermodynamic data for the specified solid compounds within the given temperature range. It includes all relevant columns for reaction analysis, filters by phase and formula exactly, and ensures temperature overlap with 200-2000K. Ordering by formula and Tmin helps in identifying records for different temperature sub-ranges.
+2025-09-17 17:22:30,136 - __main__ - ERROR - Interactive mode error: 
+Traceback (most recent call last):
+  File "c:\IDE\repository\agents_for_david\main.py", line 306, in interactive_mode
+    user_input = input("Query> ").strip()
+                 ^^^^^^^^^^^^^^^^
+EOFError
+2025-09-17 17:22:30,288 - __main__ - INFO - Stopping agents...
+2025-09-17 17:22:30,288 - thermo_agent - INFO - Agent 'thermo_agent' stopped
+2025-09-17 17:22:30,288 - sql_agent - INFO - Agent 'sql_agent' stopped
+2025-09-17 17:22:30,289 - orchestrator - INFO - Shutting down orchestrator

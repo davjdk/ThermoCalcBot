@@ -8,6 +8,8 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+import yaml
+
 
 class SessionLogger:
     """Логгер для сессий общения с агентом."""
@@ -156,23 +158,57 @@ class SessionLogger:
 
     def log_query_results_table(self, sql_query: str, columns: list, rows: list):
         """
-        Логирование результатов запроса в виде таблицы.
+        Логирование результатов запроса в YAML формате по ID строки.
+        Включает только выбранные столбцы: FirstName, Formula, Phase, Tmax, Tmin, MeltingPoint, BoilingPoint
 
         Args:
             sql_query: Выполненный SQL запрос
             columns: Список названий колонок
             rows: Список строк данных
         """
+        # Фильтруем только нужные столбцы
+        desired_columns = [
+            "FirstName",
+            "Formula",
+            "Phase",
+            "Tmax",
+            "Tmin",
+            "MeltingPoint",
+            "BoilingPoint",
+        ]
+        filtered_columns = []
+        column_indices = []
+
+        for i, col in enumerate(columns):
+            if col in desired_columns:
+                filtered_columns.append(col)
+                column_indices.append(i)
+
         row_count = len(rows)
-        formatted_table = self.format_table(columns, rows)
 
         self.logger.info(f"Executed query, found {row_count} rows")
         self.logger.info("QUERY RESULTS:")
         self.logger.info(f"  SQL: {sql_query}")
 
-        # Выводим таблицу построчно
-        for line in formatted_table.split("\n"):
-            self.logger.info(f"  {line}")
+        # Конвертируем данные в YAML формат по ID строки
+        if rows:
+            yaml_data = {}
+            for idx, row in enumerate(rows):
+                row_dict = {}
+                for filtered_col, col_idx in zip(filtered_columns, column_indices):
+                    row_dict[filtered_col] = (
+                        row[col_idx] if col_idx < len(row) else None
+                    )
+                yaml_data[f"row_{idx}"] = row_dict
+
+            # Выводим весь YAML блок как одну многострочную запись в логе
+            yaml_output = yaml.dump(
+                yaml_data, default_flow_style=False, allow_unicode=True, indent=2
+            )
+            # Используем многострочный формат в логере
+            self.logger.info("  YAML Results:\n" + yaml_output.rstrip())
+        else:
+            self.logger.info("  No data returned")
 
         if row_count > 10:
             self.logger.info(f"  ... and {row_count - 10} more rows")

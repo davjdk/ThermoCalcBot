@@ -1,0 +1,18 @@
+2025-09-17 17:19:00 - INFO - Executed query, found 3 rows
+2025-09-17 17:19:00 - INFO - QUERY RESULTS:
+2025-09-17 17:19:00 - INFO -   SQL: SELECT * FROM water_phases
+2025-09-17 17:19:00 - INFO -   row_0:
+2025-09-17 17:19:00 - INFO -     Compound: Water
+2025-09-17 17:19:00 - INFO -     Formula: H2O
+2025-09-17 17:19:00 - INFO -     Phase: l
+2025-09-17 17:19:00 - INFO -     Temperature: 298.15
+2025-09-17 17:19:00 - INFO -   row_1:
+2025-09-17 17:19:00 - INFO -     Compound: Ice
+2025-09-17 17:19:00 - INFO -     Formula: H2O
+2025-09-17 17:19:00 - INFO -     Phase: s
+2025-09-17 17:19:00 - INFO -     Temperature: 273.15
+2025-09-17 17:19:00 - INFO -   row_2:
+2025-09-17 17:19:00 - INFO -     Compound: Steam
+2025-09-17 17:19:00 - INFO -     Formula: H2O
+2025-09-17 17:19:00 - INFO -     Phase: g
+2025-09-17 17:19:00 - INFO -     Temperature: 373.15

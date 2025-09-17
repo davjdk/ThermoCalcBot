@@ -1,0 +1,44 @@
+2025-09-17 17:23:32 - INFO - Executed query, found 8 rows
+2025-09-17 17:23:32 - INFO - QUERY RESULTS:
+2025-09-17 17:23:32 - INFO -   SQL: SELECT * FROM test_table
+2025-09-17 17:23:32 - INFO -   YAML Results:
+row_0:
+  ID: 1
+  Name: Item A
+  Status: active
+  Value: 100.5
+row_1:
+  ID: 2
+  Name: Item B
+  Status: inactive
+  Value: 200.0
+row_2:
+  ID: 3
+  Name: Item C
+  Status: active
+  Value: 150.25
+row_3:
+  ID: 4
+  Name: Item D
+  Status: pending
+  Value: 75.0
+row_4:
+  ID: 5
+  Name: Item E
+  Status: active
+  Value: 300.75
+row_5:
+  ID: 6
+  Name: Item F
+  Status: inactive
+  Value: 50.0
+row_6:
+  ID: 7
+  Name: Item G
+  Status: active
+  Value: 125.5
+row_7:
+  ID: 8
+  Name: Item H
+  Status: pending
+  Value: 180.0

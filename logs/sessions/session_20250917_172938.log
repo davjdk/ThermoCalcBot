@@ -1,0 +1,16 @@
+2025-09-17 17:29:38 - INFO - Executed query, found 2 rows
+2025-09-17 17:29:38 - INFO - QUERY RESULTS:
+2025-09-17 17:29:38 - INFO -   SQL: SELECT Formula, FirstName, Phase, Tmin, Tmax FROM compounds WHERE Phase = "g"
+2025-09-17 17:29:38 - INFO -   YAML Results:
+row_0:
+  FirstName: Carbon dioxide
+  Formula: CO2
+  Phase: g
+  Tmax: 1000.0
+  Tmin: 200.0
+row_1:
+  FirstName: Methane
+  Formula: CH4
+  Phase: g
+  Tmax: 800.0
+  Tmin: 100.0

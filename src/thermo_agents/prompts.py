@@ -114,23 +114,23 @@ TASK: Convert user queries in Russian to SQL for the compounds table.
 
 CRITICAL REQUIREMENTS:
 1. ALWAYS include FirstName field in SELECT clause for compound identification
-2. Use descriptive column selection: Formula, FirstName, Phase, H298, S298, etc.
-3. NEVER use SELECT * unless specifically requested - always select meaningful columns
+2. ALWAYS SELECT ALL COLUMNS using SELECT * to ensure complete data availability
+3. Include all available thermodynamic data for comprehensive analysis
 4. FirstName contains English names like "Potassium chlorate", "Hydrogen oxide", "Sodium chloride"
 5. Include FirstName to help users identify substances by familiar names
 
 Return ONLY the SQL query, no explanations or formatting.
 
 Examples:
-- "Найди воду" → SELECT Formula, FirstName, Phase, H298, S298 FROM compounds WHERE Formula LIKE 'H2O%' OR FirstName LIKE '%water%' LIMIT 20;
-- "Найди газообразный хлор" → SELECT Formula, FirstName, Phase, H298, S298 FROM compounds WHERE Formula = 'Cl2(g)' OR Formula = 'Cl2' LIMIT 20;
-- "Найди кислород в газовой фазе" → SELECT Formula, FirstName, Phase, H298, S298 FROM compounds WHERE Formula = 'O2(g)' OR Formula = 'O2' LIMIT 20;
-- "Найди WOCl4 газ" → SELECT Formula, FirstName, Phase, H298, S298 FROM compounds WHERE Formula LIKE 'WOCl4(g)%' OR Formula = 'WOCl4(g)' LIMIT 20;
-- "Найди вольфрам при температуре 400K" → SELECT Formula, FirstName, Phase, H298, S298, Tmin, Tmax FROM compounds WHERE Formula = 'W' AND Phase = 's' AND Tmin <= 400 AND Tmax >= 400 LIMIT 20;
-- "Найди O2 для диапазона 300-700K" → SELECT Formula, FirstName, Phase, H298, S298 FROM compounds WHERE Formula = 'O2(g)' OR Formula = 'O2' AND Tmin <= 700 AND Tmax >= 300 LIMIT 20;
-- "TiO2, Cl2, TiCl4, O2 для реакции при 673K" → SELECT Formula, FirstName, Phase, H298, S298, f1, f2, f3, f4, f5, f6 FROM compounds WHERE ((Formula = 'TiO2' OR Formula = 'TiO2(s)') OR (Formula = 'Cl2' OR Formula = 'Cl2(g)') OR (Formula = 'TiCl4' OR Formula = 'TiCl4(g)') OR (Formula = 'O2' OR Formula = 'O2(g)')) AND Tmin <= 673 AND Tmax >= 673 LIMIT 100;
-- "Газообразные вещества" → SELECT Formula, FirstName, Phase, H298 FROM compounds WHERE Phase = 'g' ORDER BY Formula LIMIT 20;
-- "Вещества с высокой энтальпией" → SELECT Formula, FirstName, H298, Phase FROM compounds WHERE H298 > 100 ORDER BY H298 DESC LIMIT 20;
+- "Найди воду" → SELECT * FROM compounds WHERE Formula LIKE 'H2O%' OR FirstName LIKE '%water%' LIMIT 20;
+- "Найди газообразный хлор" → SELECT * FROM compounds WHERE Formula = 'Cl2(g)' OR Formula = 'Cl2' LIMIT 20;
+- "Найди кислород в газовой фазе" → SELECT * FROM compounds WHERE Formula = 'O2(g)' OR Formula = 'O2' LIMIT 20;
+- "Найди WOCl4 газ" → SELECT * FROM compounds WHERE Formula LIKE 'WOCl4(g)%' OR Formula = 'WOCl4(g)' LIMIT 20;
+- "Найди вольфрам при температуре 400K" → SELECT * FROM compounds WHERE Formula = 'W' AND Phase = 's' AND Tmin <= 400 AND Tmax >= 400 LIMIT 20;
+- "Найди O2 для диапазона 300-700K" → SELECT * FROM compounds WHERE Formula = 'O2(g)' OR Formula = 'O2' AND Tmin <= 700 AND Tmax >= 300 LIMIT 20;
+- "TiO2, Cl2, TiCl4, O2 для реакции при 673K" → SELECT * FROM compounds WHERE ((Formula = 'TiO2' OR Formula = 'TiO2(s)') OR (Formula = 'Cl2' OR Formula = 'Cl2(g)') OR (Formula = 'TiCl4' OR Formula = 'TiCl4(g)') OR (Formula = 'O2' OR Formula = 'O2(g)')) AND Tmin <= 673 AND Tmax >= 673 LIMIT 100;
+- "Газообразные вещества" → SELECT * FROM compounds WHERE Phase = 'g' ORDER BY Formula LIMIT 20;
+- "Вещества с высокой энтальпией" → SELECT * FROM compounds WHERE H298 > 100 ORDER BY H298 DESC LIMIT 20;
 """
 
 
