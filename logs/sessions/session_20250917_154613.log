@@ -1,0 +1,68 @@
+2025-09-17 15:46:13 - INFO - INFO: Сессия начата
+2025-09-17 15:46:22 - INFO - START PROCESSING: При какой температуре идет взаимодействие карбида вольфрама с магнием?
+2025-09-17 15:46:22 - INFO - USER: При какой температуре идет взаимодействие карбида вольфрама с магнием?
+2025-09-17 15:46:22 - INFO - INFO: Начало полной обработки
+2025-09-17 15:46:22 - INFO - USER: При какой температуре идет взаимодействие карбида вольфрама с магнием?
+2025-09-17 15:46:22 - INFO - INFO: Начало извлечения параметров
+2025-09-17 15:46:29 - INFO - AGENT: Intent: reaction, Compounds: ['WC', 'Mg'], Temp: 298.15K
+2025-09-17 15:46:29 - INFO - EXTRACTED PARAMETERS:
+2025-09-17 15:46:29 - INFO -   Intent: reaction
+2025-09-17 15:46:29 - INFO -   Compounds: ['WC', 'Mg']
+2025-09-17 15:46:29 - INFO -   Temperature: 298.15 K
+2025-09-17 15:46:29 - INFO -   Temperature Range: [200.0, 2000.0]
+2025-09-17 15:46:29 - INFO -   Phases: ['s', 's']
+2025-09-17 15:46:29 - INFO -   Properties: ['all']
+2025-09-17 15:46:29 - INFO -   SQL Hint: Find thermodynamic data for WC(s) and Mg(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis.
+2025-09-17 15:46:29 - INFO - INFO: Параметры успешно извлечены
+2025-09-17 15:46:29 - INFO - INFO: Начало генерации SQL запроса
+2025-09-17 15:46:32 - INFO - GENERATED SQL:
+2025-09-17 15:46:32 - INFO -   SQL Query: SELECT Formula, FirstName, Phase, H298, S298, f1, f2, f3, f4, f5, f6 FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') OR (Formula = 'Mg' OR Formula = 'Mg(s)')) AND Tmin <= 2000 AND Tmax >= 200 ORDER BY Formula LIMIT 20;
+2025-09-17 15:46:32 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6']
+2025-09-17 15:46:32 - INFO -   Explanation: Retrieve thermodynamic data for tungsten carbide (WC) and magnesium (Mg) in solid phase, ensuring the temperature validity range overlaps with 200‑2000 K. Include enthalpy, entropy, and heat capacity coefficients for reaction analysis.
+2025-09-17 15:46:32 - INFO - INFO: SQL запрос успешно сгенерирован
+2025-09-17 15:46:32 - INFO - INFO: Полная обработка завершена
+2025-09-17 15:46:32 - INFO - EXTRACTED PARAMETERS:
+2025-09-17 15:46:32 - INFO -   Intent: reaction
+2025-09-17 15:46:32 - INFO -   Compounds: ['WC', 'Mg']
+2025-09-17 15:46:32 - INFO -   Temperature: 298.15 K
+2025-09-17 15:46:32 - INFO -   Temperature Range: [200.0, 2000.0]
+2025-09-17 15:46:32 - INFO -   Phases: ['s', 's']
+2025-09-17 15:46:32 - INFO -   Properties: ['all']
+2025-09-17 15:46:32 - INFO -   SQL Hint: Find thermodynamic data for WC(s) and Mg(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis.
+2025-09-17 15:46:32 - INFO - GENERATED SQL:
+2025-09-17 15:46:32 - INFO -   SQL Query: SELECT Formula, FirstName, Phase, H298, S298, f1, f2, f3, f4, f5, f6 FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') OR (Formula = 'Mg' OR Formula = 'Mg(s)')) AND Tmin <= 2000 AND Tmax >= 200 ORDER BY Formula LIMIT 20;
+2025-09-17 15:46:32 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6']
+2025-09-17 15:46:32 - INFO -   Explanation: Retrieve thermodynamic data for tungsten carbide (WC) and magnesium (Mg) in solid phase, ensuring the temperature validity range overlaps with 200‑2000 K. Include enthalpy, entropy, and heat capacity coefficients for reaction analysis.
+2025-09-17 15:46:32 - INFO - INFO: Начало выполнения SQL запроса
+2025-09-17 15:46:32 - INFO - DATABASE QUERY RESULTS:
+2025-09-17 15:46:32 - INFO -   SQL Query: SELECT Formula, FirstName, Phase, H298, S298, f1, f2, f3, f4, f5, f6 FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') OR (Formula = 'Mg' OR Formula = 'Mg(s)')) AND Tmin <= 2000 AND Tmax >= 200 ORDER BY Formula LIMIT 20;
+2025-09-17 15:46:32 - INFO -   Row Count: 20
+2025-09-17 15:46:32 - INFO -   Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6']
+2025-09-17 15:46:32 - INFO -   Results Table:
+2025-09-17 15:46:32 - INFO -     +---------+-----------+-------+---------------+---------------+----------------+--------------------+---------------------+----------------------+-----+-----+
+2025-09-17 15:46:32 - INFO -     | Formula | FirstName | Phase | H298          | S298          | f1             | f2                 | f3                  | f4                   | f5  | f6  |
+2025-09-17 15:46:32 - INFO -     +---------+-----------+-------+---------------+---------------+----------------+--------------------+---------------------+----------------------+-----+-----+
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | s     | 0.0           | 0.0           | 24.882788782   | 0.5922749064       | -1.113181052888     | 10.86553926264       | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | s     | 0.0           | 0.0           | 28.454739664   | -6.44746923192     | -2.4810149312       | 11.93177045072       | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | l     | 8.476784      | 9.18400552    | 34.300001048   | -8.5108861104e-28  | -1.099593948024e-26 | 1.026827978968e-28   | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | s     | 0.0           | 0.0           | 24.88279079032 | 0.5922749064       | -1.1131812328       | 10.8655442416        | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | s     | 0.0           | 0.0           | 28.454739664   | -6.44746923192     | -2.481015215712     | 11.93176743824       | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | l     | 8.476784      | 9.18400552    | 34.300001048   | -8.5108861104e-28  | -1.099593784848e-26 | 1.02682760240799e-28 | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | s     | 0.0           | 0.0           | 24.88279079032 | 0.5922749064       | -1.1131812328       | 10.8655442416        | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | s     | 0.0           | 0.0           | 28.454739664   | -6.44746923192     | -2.481015215712     | 11.93176743824       | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | l     | 8.476784      | 9.18400552    | 34.300001048   | -8.5108861104e-28  | -1.099593784848e-26 | 1.02682760240799e-28 | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | s     | 0.0           | 0.0           | 24.8827629     | 0.592274249        | -1.11317992         | 10.8655319           | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | s     | 0.0           | 0.0           | 28.4547081     | -6.447462          | -2.48101258         | 11.9317541           | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | l     | 8.476775      | 9.183995      | 34.2999649     | -8.510877e-28      | -1.0995926e-26      | 1.02682652e-28       | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | s     | 0.0           | 0.0           | 24.882762632   | 0.592274270432     | -1.1131799776       | 10.86553227536       | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | s     | 0.0           | 0.0           | 28.45470815848 | -6.44746224464     | -2.4810124208       | 11.93175446784       | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | l     | 8.47677512992 | 9.18399543656 | 34.299963392   | -8.51087703112e-28 | -1.099592579856e-26 | 1.02682653130399e-28 | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | s     | 0.0           | 0.0           | 24.8827629     | 0.592274249        | -1.11317992         | 10.8655319           | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | s     | 0.0           | 0.0           | 28.4547081     | -6.447462          | -2.48101258         | 11.9317541           | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | l     | 8.476775      | 9.183995      | 34.2999649     | -8.510877e-28      | -1.0995926e-26      | 1.02682652e-28       | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | s     | 0.0           | 32.677002     | 21.3885841     | 11.7779474         | 0.0                 | 0.0                  | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     | Mg      | Magnesium | l     | 8.953751      | 9.711054      | 32.6351662     | 0.0                | 0.0                 | 0.0                  | 0.0 | 0.0 |
+2025-09-17 15:46:32 - INFO -     +---------+-----------+-------+---------------+---------------+----------------+--------------------+---------------------+----------------------+-----+-----+
+2025-09-17 15:46:32 - INFO - PROCESSING COMPLETED
+2025-09-17 15:46:36 - INFO - INFO: Сессия прервана пользователем
+2025-09-17 15:46:36 - INFO - SESSION ENDED

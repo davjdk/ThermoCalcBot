@@ -125,11 +125,11 @@ def initialize_sql_agent(deps: SQLAgentConfig) -> Agent:
         """
         try:
             # Выполняем запрос
-            result = execute_sql_query(ctx.db_path, sql_query, ctx.logger)
+            result = execute_sql_query(ctx.deps.db_path, sql_query, ctx.deps.logger)
 
             # Логируем результаты
-            if ctx.session_logger:
-                ctx.session_logger.log_database_query(
+            if ctx.deps.session_logger:
+                ctx.deps.session_logger.log_database_query(
                     sql_query, result.row_count, result.columns, result.formatted_table
                 )
 
@@ -147,10 +147,10 @@ def initialize_sql_agent(deps: SQLAgentConfig) -> Agent:
 
         except Exception as e:
             error_msg = f"Ошибка выполнения SQL запроса: {str(e)}"
-            ctx.logger.error(error_msg)
+            ctx.deps.logger.error(error_msg)
 
-            if ctx.session_logger:
-                ctx.session_logger.log_error(error_msg)
+            if ctx.deps.session_logger:
+                ctx.deps.session_logger.log_error(error_msg)
 
             # Возвращаем пустой результат в случае ошибки
             return DatabaseQueryResult(
@@ -169,6 +169,39 @@ def initialize_sql_agent(deps: SQLAgentConfig) -> Agent:
 # =============================================================================
 
 
+def validate_sql_hint(sql_hint: str) -> None:
+    """
+    Валидирует подсказку для генерации SQL запроса.
+
+    Args:
+        sql_hint: Подсказка для генерации SQL
+
+    Raises:
+        ValueError: Если подсказка недостаточно информативна
+    """
+    if not sql_hint or sql_hint.strip() == "":
+        raise ValueError("Подсказка для SQL запроса не может быть пустой")
+
+    # Проверяем, что подсказка содержит достаточно информации
+    hint_lower = sql_hint.lower()
+
+    # Если подсказка слишком общая или содержит только ошибки
+    if any(
+        phrase in hint_lower
+        for phrase in [
+            "запрос необходимо дополнительно конкретизировать",
+            "недостаточно информации",
+            "error occurred",
+            "базовый запрос",
+        ]
+    ):
+        raise ValueError(
+            "Недостаточно информации для генерации SQL запроса. "
+            "Пожалуйста, уточните ваш запрос, указав конкретные соединения, "
+            "температурный диапазон или свойства, которые вас интересуют."
+        )
+
+
 async def generate_sql_query(
     sql_hint: str,
     dependencies: Optional[SQLAgentConfig] = None,
@@ -184,7 +217,13 @@ async def generate_sql_query(
 
     Returns:
         Кортеж из SQLQueryResult и опционального DatabaseQueryResult
+
+    Raises:
+        ValueError: Если подсказка недостаточно информативна
     """
+    # Валидируем входные данные
+    validate_sql_hint(sql_hint)
+
     if dependencies is None:
         # Создаем базовые зависимости если не переданы
         dependencies = SQLAgentConfig(
@@ -208,8 +247,31 @@ async def generate_sql_query(
         # Создание агента с настройками из зависимостей
         agent = initialize_sql_agent(dependencies)
 
+        # Логируем параметры перед вызовом API
+        dependencies.logger.debug(
+            f"Вызов OpenAI API для SQL генерации с параметрами: sql_hint='{sql_hint}', model='{dependencies.llm_model}', base_url='{dependencies.llm_base_url}'"
+        )
+
         # Генерация SQL запроса
         result = await agent.run(sql_hint, deps=dependencies)
+
+        # Логируем успешный ответ
+        dependencies.logger.debug(
+            f"Ответ от OpenAI API для SQL: output='{result.output}'"
+        )
+        # Попытка логировать finish_reason
+        try:
+            messages = result.all_messages()
+            if messages:
+                last_msg = messages[-1]
+                if hasattr(last_msg, "parts") and last_msg.parts:
+                    part = last_msg.parts[-1]
+                    if hasattr(part, "finish_reason"):
+                        dependencies.logger.debug(
+                            f"finish_reason: {part.finish_reason}"
+                        )
+        except Exception as log_e:
+            dependencies.logger.debug(f"Не удалось получить finish_reason: {log_e}")
 
         dependencies.logger.info("SQL запрос успешно сгенерирован")
 
@@ -231,19 +293,21 @@ async def generate_sql_query(
         return result.output, db_result
 
     except Exception as e:
-        dependencies.logger.error(f"Ошибка генерации SQL запроса: {e}")
-
-        if dependencies.session_logger:
-            dependencies.session_logger.log_error(str(e))
-
-        # Возвращаем базовый результат в случае ошибки
-        fallback_result = SQLQueryResult(
-            sql_query="SELECT Formula, FirstName, Phase, H298, S298 FROM compounds LIMIT 10;",
-            explanation="Запрос необходимо дополнительно конкретизировать для точного определения требуемых данных",
-            expected_columns=["Formula", "FirstName", "Phase", "H298", "S298"],
+        error_msg = f"Ошибка генерации SQL запроса: {e}"
+        dependencies.logger.error(error_msg)
+        dependencies.logger.debug(
+            f"Детали ошибки: type={type(e).__name__}, args={e.args}, traceback={__import__('traceback').format_exc()}"
         )
 
-        return fallback_result, None
+        if dependencies.session_logger:
+            dependencies.session_logger.log_error(error_msg)
+
+        # Не создаем базовый запрос, а информируем о необходимости уточнения
+        raise ValueError(
+            "Недостаточно информации для генерации SQL запроса. "
+            "Пожалуйста, уточните ваш запрос, указав конкретные соединения, "
+            "температурный диапазон или свойства, которые вас интересуют."
+        )
 
 
 # =============================================================================

@@ -171,8 +171,29 @@ async def process_thermodynamic_query(
         # Создание агента с настройками из зависимостей
         agent = initialize_thermo_agent(dependencies)
 
+        # Логируем параметры перед вызовом API
+        dependencies.logger.debug(
+            f"Вызов OpenAI API с параметрами: user_query='{user_query}', model='{dependencies.llm_model}', base_url='{dependencies.llm_base_url}'"
+        )
+
         # Извлечение параметров из запроса
         result = await agent.run(user_query, deps=dependencies)
+
+        # Логируем успешный ответ
+        dependencies.logger.debug(f"Ответ от OpenAI API: output='{result.output}'")
+        # Попытка логировать finish_reason
+        try:
+            messages = result.all_messages()
+            if messages:
+                last_msg = messages[-1]
+                if hasattr(last_msg, "parts") and last_msg.parts:
+                    part = last_msg.parts[-1]
+                    if hasattr(part, "finish_reason"):
+                        dependencies.logger.debug(
+                            f"finish_reason: {part.finish_reason}"
+                        )
+        except Exception as log_e:
+            dependencies.logger.debug(f"Не удалось получить finish_reason: {log_e}")
 
         dependencies.logger.info(
             f"Параметры успешно извлечены: {len(result.output.compounds)} соединений"
@@ -187,7 +208,11 @@ async def process_thermodynamic_query(
         return result.output
 
     except Exception as e:
+        # Логируем детали ошибки для отладки
         dependencies.logger.error(f"Ошибка извлечения параметров: {e}")
+        dependencies.logger.debug(
+            f"Детали ошибки: type={type(e).__name__}, args={e.args}, traceback={__import__('traceback').format_exc()}"
+        )
 
         if dependencies.session_logger:
             dependencies.session_logger.log_error(str(e))
@@ -229,16 +254,11 @@ async def process_thermodynamic_query_with_sql(
 
         # Шаг 2: Генерация SQL запроса
         if dependencies.sql_agent_config:
-            sql_result = await generate_sql_query(
+            sql_result, _ = await generate_sql_query(
                 extracted_params.sql_query_hint, dependencies.sql_agent_config
             )
         else:
-            # Fallback если SQL агент не настроен
-            sql_result = SQLQueryResult(
-                sql_query="SELECT Formula, FirstName, Phase, H298, S298 FROM compounds LIMIT 10;",
-                explanation="Базовый запрос (SQL агент не настроен)",
-                expected_columns=["Formula", "FirstName", "Phase", "H298", "S298"],
-            )
+            raise ValueError("SQL агент не настроен. Проверьте конфигурацию системы.")
 
         dependencies.logger.info("SQL запрос успешно сгенерирован")
 
@@ -253,23 +273,11 @@ async def process_thermodynamic_query_with_sql(
         )
 
     except Exception as e:
-        dependencies.logger.error(f"Ошибка полной обработки: {e}")
+        error_msg = f"Ошибка полной обработки: {e}"
+        dependencies.logger.error(error_msg)
 
         if dependencies.session_logger:
-            dependencies.session_logger.log_error(str(e))
+            dependencies.session_logger.log_error(error_msg)
 
-        # Возвращаем базовый результат в случае ошибки
-        return ProcessingResult(
-            extracted_params=ExtractedParameters(
-                intent="unknown",
-                compounds=[],
-                temperature_k=298.15,
-                temperature_range_k=[200, 2000],
-                phases=[],
-                properties=["basic"],
-                sql_query_hint="Error occurred during processing",
-            ),
-            sql_query="SELECT Formula, FirstName, Phase, H298, S298 FROM compounds LIMIT 10;",
-            explanation="Базовый запрос в случае ошибки",
-            expected_columns=["Formula", "FirstName", "Phase", "H298", "S298"],
-        )
+        # Пробрасываем исключение наверх вместо возврата базового результата
+        raise
