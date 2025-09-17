@@ -134,24 +134,6 @@ Examples:
 """
 
 
-# Simplified prompt for basic queries
-BASIC_SQL_PROMPT = """You are a SQL generator for a chemical compounds database.
-
-Table: compounds
-Key columns: Formula, FirstName, Phase (s/l/g), H298, S298, MeltingPoint, BoilingPoint
-
-Generate SQL for the compounds table. Return only SQL query.
-Use LIMIT 20 for safety. Use LIKE '%keyword%' for name searches.
-
-Convert Russian chemical names to English before searching.
-"""
-
-
-def get_sql_prompt(use_detailed: bool = True) -> str:
-    """Вернуть подходящий системный промпт для генерации SQL."""
-    return SQL_GENERATION_PROMPT if use_detailed else BASIC_SQL_PROMPT
-
-
 EXTRACT_INPUTS_PROMPT = """You are an expert analyzer of queries for a thermodynamic database of chemical compounds.
 
 TASK: Extract all parameters from user query to find ALL reaction participants with complete information for SQL generation.
@@ -522,7 +504,6 @@ class PromptManager:
         self._prompts = {
             # Основные промпты агента
             "sql_generation": SQL_GENERATION_PROMPT,
-            "sql_basic": BASIC_SQL_PROMPT,
             "extract_inputs": EXTRACT_INPUTS_PROMPT,
             "validate": VALIDATE_OR_COMPLETE_PROMPT,
             "synthesize": SYNTHESIZE_ANSWER_PROMPT,
