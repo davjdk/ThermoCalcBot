@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(uv run:*)"
+      "Bash(uv run:*)",
+      "Bash(python:*)",
+      "Bash(del test_sql_agent_fix.py)",
+      "Bash(set -a)",
+      "Bash(source .env)",
+      "Bash(set +a)"
     ],
     "deny": [],
     "ask": []

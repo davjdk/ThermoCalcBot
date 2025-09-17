@@ -469,6 +469,68 @@ YAML_FILTER_SYSTEM_PROMPT = """Ты - эксперт по анализу тер�
 КРИТИЧНО: Возвращай ТОЛЬКО JSON без дополнительного текста или форматирования."""
 
 
+RESULT_FILTER_ENGLISH_PROMPT = """You are an expert in thermodynamics and physical chemistry. Your task is to filter search results from a thermodynamic database, selecting ONLY the most relevant records for each chemical compound.
+
+INPUT DATA:
+- Target compounds: {target_compounds}
+- Analysis temperature: {target_temperature_k} K ({celsius}°C)
+- Query type: {intent_type}
+- Reaction (if any): {reaction_equation}
+
+FOUND DATA (simplified format):
+{formatted_sql_results}
+
+SELECTION CRITERIA:
+
+1. PHASE STATE - determine the correct phase for each substance at the given temperature:
+    - s (solid): T < melting point (MeltingPoint)
+    - l (liquid): MeltingPoint < T < BoilingPoint
+    - g (gas): T > BoilingPoint
+    - aq (aqueous solution): for soluble substances in aqueous systems
+    - If transition data is missing (0 or null), use chemical intuition
+
+2. TEMPERATURE RANGE - select records where Tmin ≤ {target_temperature_k} ≤ Tmax:
+    - Prefer narrow ranges (higher accuracy)
+    - Prefer ranges centered close to the target temperature
+    - If no exact coverage, choose the nearest suitable range
+    - If temperature range spans melting/boiling points, select appropriate phase for each range
+
+3. ELIMINATE DUPLICATES - for each compound in a specific phase, select ONLY one best record:
+    - When multiple records exist for one phase, choose the one with better temperature coverage
+    - Prefer records with non-empty physical data (MeltingPoint, BoilingPoint)
+
+4. DATA COMPLETENESS - prefer records with more complete physical data
+
+SPECIAL RULES:
+- For high-temperature reactions (>800K), prefer gas phase
+- When in doubt about phase state, include a warning
+- If no suitable records exist for a compound, include it in missing_compounds
+- CRITICAL: use only record IDs from the provided data
+- When temperature range spans phase transitions, select the appropriate phase for each temperature subrange
+
+RESPONSE FORMAT (strict JSON):
+{{
+   "selected_entries": [
+      {{
+         "compound": "TiO2",
+         "selected_id": 0,
+         "reasoning": "Selected record ID=0: solid state at {target_temperature_k}K, temperature range {{tmin}}-{{tmax}}K covers target temperature"
+      }}
+   ],
+   "phase_determinations": {{
+      "TiO2": {{"phase": "s", "confidence": 0.95, "reasoning": "Melting point 2116K >> {target_temperature_k}K"}},
+      "Cl2": {{"phase": "g", "confidence": 0.98, "reasoning": "Boiling point 239K << {target_temperature_k}K"}}
+   }},
+   "missing_compounds": [],
+   "excluded_entries_count": 28,
+   "overall_confidence": 0.92,
+   "warnings": ["Some compounds lack transition temperature data"],
+   "filter_summary": "From {{total_entries}} found records, selected {{selected_count}}: one for each compound in appropriate phase at {target_temperature_k}K."
+}}
+
+WARNING: Return ONLY JSON without additional explanations or formatting."""
+
+
 # =============================================================================
 # ФУНКЦИИ ДЛЯ ДИНАМИЧЕСКИХ ПРОМПТОВ
 # =============================================================================
@@ -511,6 +573,7 @@ class PromptManager:
             "completeness_check": COMPLETENESS_CHECK_PROMPT,
             "tool_selection": TOOL_SELECTION_PROMPT,
             "result_filter": RESULT_FILTER_PROMPT,
+            "result_filter_english": RESULT_FILTER_ENGLISH_PROMPT,
             "yaml_filter": YAML_FILTER_SYSTEM_PROMPT,
         }
 

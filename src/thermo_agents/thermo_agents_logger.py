@@ -68,6 +68,14 @@ class SessionLogger:
         self.logger.info(f"  Properties: {params.properties}")
         self.logger.info(f"  SQL Hint: {params.sql_query_hint}")
 
+        try:
+            import json
+            json_output = json.dumps(params.model_dump(), ensure_ascii=False, indent=2)
+            self.logger.info("  JSON Output:")
+            self.logger.info(json_output)
+        except Exception as e:
+            self.logger.error(f"  Error serializing JSON: {e}")
+
     def log_sql_generation(
         self, sql_query: str, expected_columns: list, explanation: str
     ):
