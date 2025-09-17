@@ -83,6 +83,20 @@ class SessionLogger:
         """Логирование завершения обработки."""
         self.logger.info("PROCESSING COMPLETED")
 
+    def log_database_query(
+        self, sql_query: str, row_count: int, columns: list, formatted_table: str = ""
+    ):
+        """Логирование результатов запроса к базе данных."""
+        self.logger.info("DATABASE QUERY RESULTS:")
+        self.logger.info(f"  SQL Query: {sql_query}")
+        self.logger.info(f"  Row Count: {row_count}")
+        self.logger.info(f"  Columns: {columns}")
+        if formatted_table:
+            self.logger.info("  Results Table:")
+            # Разбиваем таблицу на строки для лучшего форматирования в логе
+            for line in formatted_table.split("\n"):
+                self.logger.info(f"    {line}")
+
     def close(self):
         """Закрытие сессии."""
         self.logger.info("SESSION ENDED")

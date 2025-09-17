@@ -8,7 +8,7 @@ from src.thermo_agents.main_thermo_agent import (
     ThermoAgentConfig,
     initialize_thermo_agent,
 )
-from src.thermo_agents.sql_agent import initialize_sql_agent
+from src.thermo_agents.sql_agent import execute_sql_query_direct, generate_sql_query
 from src.thermo_agents.thermo_agents_logger import create_session_logger
 
 
@@ -20,16 +20,17 @@ def main():
 
     # Инициализация конфигурации агента
     config = ThermoAgentConfig()
-    config.logger.info("Инициализация агента завершена")
 
     # Создание логгера сессии
     session_logger = create_session_logger()
     config.session_logger = session_logger
+    # Также обновляем session_logger в sql_agent_config
+    if config.sql_agent_config:
+        config.sql_agent_config.session_logger = session_logger
     session_logger.log_info("Сессия начата")
 
     # Инициализация агентов
     thermo_agent = initialize_thermo_agent(config)
-    sql_agent = initialize_sql_agent(config.sql_agent_config)
     config.logger.info("Агенты инициализированы")
 
     try:
@@ -69,29 +70,50 @@ def main():
                 if (
                     extracted.sql_query_hint
                     and extracted.sql_query_hint
-                    != "Error occurred during parameter extraction"
+                    != "Запрос необходимо дополнительно конкретизировать для извлечения параметров"
                 ):
                     print("🔄 Вызов SQL агента через A2A...")
-                    sql_result = asyncio.run(
-                        sql_agent.run(
-                            extracted.sql_query_hint,
-                            deps=config.sql_agent_config,
+                    try:
+                        # Используем generate_sql_query напрямую для большей надежности
+                        sql_output, _ = asyncio.run(
+                            generate_sql_query(
+                                extracted.sql_query_hint,
+                                dependencies=config.sql_agent_config,
+                                execute_query=False,  # Не выполняем автоматически, сделаем это ниже
+                            )
                         )
-                    )
-                    sql_output = sql_result.output
 
-                    # Логирование SQL генерации
-                    session_logger.log_sql_generation(
-                        sql_output.sql_query,
-                        sql_output.expected_columns,
-                        sql_output.explanation,
-                    )
+                        # Логирование SQL генерации
+                        session_logger.log_sql_generation(
+                            sql_output.sql_query,
+                            sql_output.expected_columns,
+                            sql_output.explanation,
+                        )
 
-                    print("✅ SQL запрос сгенерирован:")
-                    print(f"📝 SQL: {sql_output.sql_query}")
-                    print(f"📋 Ожидаемые колонки: {sql_output.expected_columns}")
-                    print(f"💡 Объяснение: {sql_output.explanation}")
-                    print()
+                        print("✅ SQL запрос сгенерирован:")
+                        print(f"📝 SQL: {sql_output.sql_query}")
+                        print(f"📋 Ожидаемые колонки: {sql_output.expected_columns}")
+                        print(f"💡 Объяснение: {sql_output.explanation}")
+                        print()
+
+                        # Выполняем SQL запрос и выводим результаты
+                        print("🔍 Выполнение SQL запроса...")
+                        try:
+                            asyncio.run(
+                                execute_sql_query_direct(
+                                    sql_output.sql_query, config.sql_agent_config
+                                )
+                            )
+                            print("✅ Запрос выполнен успешно!")
+                        except Exception as e:
+                            print(f"❌ Ошибка выполнения SQL запроса: {e}")
+                            session_logger.log_error(f"SQL execution error: {str(e)}")
+                            print()
+                    except Exception as e:
+                        print(f"❌ Ошибка генерации SQL: {e}")
+                        session_logger.log_error(str(e))
+                        print("ℹ️ Продолжение без SQL генерации")
+                        print()
                 else:
                     print("ℹ️ SQL генерация не требуется")
                     print()

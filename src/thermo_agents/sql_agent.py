@@ -130,7 +130,7 @@ def initialize_sql_agent(deps: SQLAgentConfig) -> Agent:
             # Логируем результаты
             if ctx.session_logger:
                 ctx.session_logger.log_database_query(
-                    sql_query, result.row_count, result.columns
+                    sql_query, result.row_count, result.columns, result.formatted_table
                 )
 
             # Выводим таблицу пользователю
@@ -221,18 +221,12 @@ async def generate_sql_query(
             )
             dependencies.session_logger.log_info("SQL запрос успешно сгенерирован")
 
-        # Выполняем запрос если запрошено
+        # Опциональное выполнение запроса
         db_result = None
         if execute_query:
-            dependencies.logger.info("Выполнение сгенерированного SQL запроса")
-            db_result = execute_sql_query(
-                dependencies.db_path, result.output.sql_query, dependencies.logger
+            db_result = await execute_sql_query_direct(
+                result.output.sql_query, dependencies
             )
-
-            if dependencies.session_logger:
-                dependencies.session_logger.log_database_query(
-                    result.output.sql_query, db_result.row_count, db_result.columns
-                )
 
         return result.output, db_result
 
@@ -243,13 +237,13 @@ async def generate_sql_query(
             dependencies.session_logger.log_error(str(e))
 
         # Возвращаем базовый результат в случае ошибки
-        base_result = SQLQueryResult(
+        fallback_result = SQLQueryResult(
             sql_query="SELECT Formula, FirstName, Phase, H298, S298 FROM compounds LIMIT 10;",
-            explanation="Базовый запрос в случае ошибки генерации",
+            explanation="Запрос необходимо дополнительно конкретизировать для точного определения требуемых данных",
             expected_columns=["Formula", "FirstName", "Phase", "H298", "S298"],
         )
 
-        return base_result, None
+        return fallback_result, None
 
 
 # =============================================================================
@@ -430,7 +424,7 @@ async def execute_sql_query_direct(
         # Логируем результаты
         if dependencies.session_logger:
             dependencies.session_logger.log_database_query(
-                sql_query, result.row_count, result.columns
+                sql_query, result.row_count, result.columns, result.formatted_table
             )
 
         # Выводим таблицу пользователю

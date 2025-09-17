@@ -200,7 +200,7 @@ async def process_thermodynamic_query(
             temperature_range_k=[200, 2000],
             phases=[],
             properties=["basic"],
-            sql_query_hint="Error occurred during parameter extraction",
+            sql_query_hint="Запрос необходимо дополнительно конкретизировать для извлечения параметров",
         )
 
 
