@@ -6,8 +6,9 @@ import asyncio
 
 from src.thermo_agents.main_thermo_agent import (
     ThermoAgentConfig,
-    process_thermodynamic_query,
+    initialize_thermo_agent,
 )
+from src.thermo_agents.sql_agent import initialize_sql_agent
 from src.thermo_agents.thermo_agents_logger import create_session_logger
 
 
@@ -26,6 +27,11 @@ def main():
     config.session_logger = session_logger
     session_logger.log_info("Сессия начата")
 
+    # Инициализация агентов
+    thermo_agent = initialize_thermo_agent(config)
+    sql_agent = initialize_sql_agent(config.sql_agent_config)
+    config.logger.info("Агенты инициализированы")
+
     try:
         while True:
             user_input = input("Ваш запрос: ").strip()
@@ -38,20 +44,59 @@ def main():
             if not user_input:
                 continue
 
-            # Обработка запроса
+            # Обработка запроса с использованием A2A
             try:
-                result = asyncio.run(process_thermodynamic_query(user_input, config))
+                # Шаг 1: Thermo агент извлекает параметры
+                session_logger.log_processing_start(user_input)
+                thermo_result = asyncio.run(thermo_agent.run(user_input, deps=config))
+                extracted = thermo_result.output
 
-                # Вывод результата
+                # Логирование извлеченных параметров
+                session_logger.log_extracted_parameters(extracted)
+
+                # Вывод извлеченных параметров
                 print("\n✅ Параметры извлечены:")
-                print(f"🎯 Intent: {result.intent}")
-                print(f"🧪 Соединения: {result.compounds}")
-                print(f"🌡️ Температура: {result.temperature_k} K")
-                print(f"📊 Диапазон: {result.temperature_range_k}")
-                print(f"🔬 Фазы: {result.phases}")
-                print(f"📋 Свойства: {result.properties}")
-                print(f"💡 SQL подсказка: {result.sql_query_hint}")
+                print(f"🎯 Intent: {extracted.intent}")
+                print(f"🧪 Соединения: {extracted.compounds}")
+                print(f"🌡️ Температура: {extracted.temperature_k} K")
+                print(f"📊 Диапазон: {extracted.temperature_range_k}")
+                print(f"🔬 Фазы: {extracted.phases}")
+                print(f"📋 Свойства: {extracted.properties}")
+                print(f"💡 SQL подсказка: {extracted.sql_query_hint}")
                 print()
+
+                # Шаг 2: Если есть SQL подсказка, Thermo агент вызывает SQL агент через A2A
+                if (
+                    extracted.sql_query_hint
+                    and extracted.sql_query_hint
+                    != "Error occurred during parameter extraction"
+                ):
+                    print("🔄 Вызов SQL агента через A2A...")
+                    sql_result = asyncio.run(
+                        sql_agent.run(
+                            extracted.sql_query_hint,
+                            deps=config.sql_agent_config,
+                        )
+                    )
+                    sql_output = sql_result.output
+
+                    # Логирование SQL генерации
+                    session_logger.log_sql_generation(
+                        sql_output.sql_query,
+                        sql_output.expected_columns,
+                        sql_output.explanation,
+                    )
+
+                    print("✅ SQL запрос сгенерирован:")
+                    print(f"📝 SQL: {sql_output.sql_query}")
+                    print(f"📋 Ожидаемые колонки: {sql_output.expected_columns}")
+                    print(f"💡 Объяснение: {sql_output.explanation}")
+                    print()
+                else:
+                    print("ℹ️ SQL генерация не требуется")
+                    print()
+
+                session_logger.log_processing_end()
 
             except Exception as e:
                 print(f"❌ Ошибка обработки запроса: {e}")

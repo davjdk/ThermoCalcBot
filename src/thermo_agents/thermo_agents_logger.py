@@ -55,6 +55,34 @@ class SessionLogger:
         """Логирование информационного сообщения."""
         self.logger.info(f"INFO: {message}")
 
+    def log_extracted_parameters(self, params):
+        """Логирование извлеченных параметров."""
+        self.logger.info("EXTRACTED PARAMETERS:")
+        self.logger.info(f"  Intent: {params.intent}")
+        self.logger.info(f"  Compounds: {params.compounds}")
+        self.logger.info(f"  Temperature: {params.temperature_k} K")
+        self.logger.info(f"  Temperature Range: {params.temperature_range_k}")
+        self.logger.info(f"  Phases: {params.phases}")
+        self.logger.info(f"  Properties: {params.properties}")
+        self.logger.info(f"  SQL Hint: {params.sql_query_hint}")
+
+    def log_sql_generation(
+        self, sql_query: str, expected_columns: list, explanation: str
+    ):
+        """Логирование сгенерированного SQL запроса."""
+        self.logger.info("GENERATED SQL:")
+        self.logger.info(f"  SQL Query: {sql_query}")
+        self.logger.info(f"  Expected Columns: {expected_columns}")
+        self.logger.info(f"  Explanation: {explanation}")
+
+    def log_processing_start(self, user_query: str):
+        """Логирование начала обработки запроса."""
+        self.logger.info(f"START PROCESSING: {user_query}")
+
+    def log_processing_end(self):
+        """Логирование завершения обработки."""
+        self.logger.info("PROCESSING COMPLETED")
+
     def close(self):
         """Закрытие сессии."""
         self.logger.info("SESSION ENDED")

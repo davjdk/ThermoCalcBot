@@ -1,0 +1,17 @@
+2025-09-17 14:05:10 - INFO - INFO: Сессия начата
+2025-09-17 14:05:30 - INFO - START PROCESSING: При какой температуре идет взаимодействие карбида вольфрама с магнием?
+2025-09-17 14:05:34 - INFO - EXTRACTED PARAMETERS:
+2025-09-17 14:05:34 - INFO -   Intent: reaction
+2025-09-17 14:05:34 - INFO -   Compounds: ['WC', 'Mg', 'W', 'Mg2C']
+2025-09-17 14:05:34 - INFO -   Temperature: 298.15 K
+2025-09-17 14:05:34 - INFO -   Temperature Range: [200.0, 2000.0]
+2025-09-17 14:05:34 - INFO -   Phases: ['s', 's', 's', 's']
+2025-09-17 14:05:34 - INFO -   Properties: ['all']
+2025-09-17 14:05:34 - INFO -   SQL Hint: Find thermodynamic data for WC(s), Mg(s), W(s), and Mg2C(s) across the temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for comprehensive reaction analysis.
+2025-09-17 14:05:49 - INFO - GENERATED SQL:
+2025-09-17 14:05:49 - INFO -   SQL Query: SELECT Formula, FirstName, Phase, H298, S298, f1, f2, f3, f4, f5, f6 FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') OR (Formula = 'Mg' OR Formula = 'Mg(s)') OR (Formula = 'W' OR Formula = 'W(s)') OR (Formula = 'Mg2C' OR Formula = 'Mg2C(s)')) AND Phase = 's' AND Tmin <= 200 AND Tmax >= 2000 LIMIT 100;
+2025-09-17 14:05:49 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6']
+2025-09-17 14:05:49 - INFO -   Explanation: Select solid-phase compounds WC, Mg, W, and Mg2C with thermodynamic data (H298, S298, heat capacity coefficients f1‑f6) that are valid over the temperature range 200‑2000 K. The query matches both exact formulas and those with an explicit (s) phase, ensures Phase = 's', and filters for records whose temperature validity range covers the requested interval.
+2025-09-17 14:05:49 - INFO - PROCESSING COMPLETED
+2025-09-17 14:06:23 - INFO - INFO: Сессия прервана пользователем
+2025-09-17 14:06:23 - INFO - SESSION ENDED

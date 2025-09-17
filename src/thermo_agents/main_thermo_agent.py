@@ -10,8 +10,15 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import List, Optional
+
+# Добавляем src в путь для корректных импортов
+src_path = Path(__file__).parent.parent
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -20,6 +27,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from thermo_agents.prompts import EXTRACT_INPUTS_PROMPT
+from thermo_agents.sql_agent import SQLAgentConfig, SQLQueryResult, generate_sql_query
 from thermo_agents.thermo_agents_logger import SessionLogger
 
 # Загрузка переменных окружения из .env файла
@@ -40,6 +48,15 @@ class ExtractedParameters(BaseModel):
     phases: List[str]  # Фазовые состояния ["s", "l", "g", "aq"]
     properties: List[str]  # Требуемые свойства ["basic", "all", "thermal"]
     sql_query_hint: str  # Подсказка для генерации SQL
+
+
+class ProcessingResult(BaseModel):
+    """Результат полной обработки запроса с SQL."""
+
+    extracted_params: ExtractedParameters  # Извлеченные параметры
+    sql_query: str  # Сгенерированный SQL запрос
+    explanation: str  # Объяснение SQL запроса
+    expected_columns: List[str]  # Ожидаемые колонки
 
 
 # =============================================================================
@@ -71,6 +88,9 @@ class ThermoAgentConfig:
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     session_logger: Optional[SessionLogger] = None
 
+    # SQL агент конфигурация
+    sql_agent_config: Optional[SQLAgentConfig] = None
+
     # Инициализация зависимостей
     def __post_init__(self):
         if not self.logger.handlers:
@@ -79,8 +99,20 @@ class ThermoAgentConfig:
                 "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
             )
             handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
             self.logger.setLevel(getattr(logging, self.log_level.upper(), logging.INFO))
+
+        # Инициализируем SQL агент конфигурацию если не задана
+        if self.sql_agent_config is None:
+            self.sql_agent_config = SQLAgentConfig(
+                llm_api_key=self.llm_api_key,
+                llm_base_url=self.llm_base_url,
+                llm_model=self.llm_model,
+                db_path=self.db_path,
+                log_level=self.log_level,
+                debug=self.debug,
+                logger=self.logger,
+                session_logger=self.session_logger,
+            )
 
 
 # =============================================================================
@@ -150,6 +182,7 @@ async def process_thermodynamic_query(
         if dependencies.session_logger:
             response_str = f"Intent: {result.output.intent}, Compounds: {result.output.compounds}, Temp: {result.output.temperature_k}K"
             dependencies.session_logger.log_agent_response(response_str)
+            dependencies.session_logger.log_extracted_parameters(result.output)
             dependencies.session_logger.log_info("Параметры успешно извлечены")
 
         return result.output
@@ -169,6 +202,77 @@ async def process_thermodynamic_query(
             phases=[],
             properties=["basic"],
             sql_query_hint="Error occurred during parameter extraction",
+        )
+
+
+async def process_thermodynamic_query_with_sql(
+    user_query: str, dependencies: Optional[ThermoAgentConfig] = None
+) -> ProcessingResult:
+    """
+    Полная обработка термодинамического запроса с генерацией SQL.
+
+    Выполняет два шага:
+    1. Извлечение параметров из запроса
+    2. Генерация SQL запроса на основе извлеченных параметров
+    """
+    if dependencies is None:
+        dependencies = ThermoAgentConfig()
+
+    dependencies.logger.info(f"Полная обработка запроса: {user_query[:100]}...")
+
+    if dependencies.session_logger:
+        dependencies.session_logger.log_user_input(user_query)
+        dependencies.session_logger.log_info("Начало полной обработки")
+
+    try:
+        # Шаг 1: Извлечение параметров
+        extracted_params = await process_thermodynamic_query(user_query, dependencies)
+
+        # Шаг 2: Генерация SQL запроса
+        if dependencies.sql_agent_config:
+            sql_result = await generate_sql_query(
+                extracted_params.sql_query_hint, dependencies.sql_agent_config
+            )
+        else:
+            # Fallback если SQL агент не настроен
+            sql_result = SQLQueryResult(
+                sql_query="SELECT Formula, FirstName, Phase, H298, S298 FROM compounds LIMIT 10;",
+                explanation="Базовый запрос (SQL агент не настроен)",
+                expected_columns=["Formula", "FirstName", "Phase", "H298", "S298"],
+            )
+
+        dependencies.logger.info("SQL запрос успешно сгенерирован")
+
+        if dependencies.session_logger:
+            dependencies.session_logger.log_info("Полная обработка завершена")
+
+        return ProcessingResult(
+            extracted_params=extracted_params,
+            sql_query=sql_result.sql_query,
+            explanation=sql_result.explanation,
+            expected_columns=sql_result.expected_columns,
+        )
+
+    except Exception as e:
+        dependencies.logger.error(f"Ошибка полной обработки: {e}")
+
+        if dependencies.session_logger:
+            dependencies.session_logger.log_error(str(e))
+
+        # Возвращаем базовый результат в случае ошибки
+        return ProcessingResult(
+            extracted_params=ExtractedParameters(
+                intent="unknown",
+                compounds=[],
+                temperature_k=298.15,
+                temperature_range_k=[200, 2000],
+                phases=[],
+                properties=["basic"],
+                sql_query_hint="Error occurred during processing",
+            ),
+            sql_query="SELECT Formula, FirstName, Phase, H298, S298 FROM compounds LIMIT 10;",
+            explanation="Базовый запрос в случае ошибки",
+            expected_columns=["Formula", "FirstName", "Phase", "H298", "S298"],
         )
 
 
@@ -193,17 +297,27 @@ async def main():
     )
 
     print(f"Запрос: {test_query}")
+    print()
 
-    result = await process_thermodynamic_query(test_query)
+    # Тестируем полную обработку с SQL генерацией
+    print("🔍 Выполняем полную обработку с генерацией SQL...")
+    result = await process_thermodynamic_query_with_sql(test_query, thermo_agent_config)
 
-    print("✅ Параметры извлечены:")
-    print(f"🎯 Intent: {result.intent}")
-    print(f"🧪 Соединения: {result.compounds}")
-    print(f"🌡️ Температура: {result.temperature_k} K")
-    print(f"📊 Диапазон: {result.temperature_range_k}")
-    print(f"🔬 Фазы: {result.phases}")
-    print(f"📋 Свойства: {result.properties}")
-    print(f"💡 SQL подсказка: {result.sql_query_hint}")
+    print("✅ Обработка завершена:")
+    print()
+    print("📋 Извлеченные параметры:")
+    print(f"🎯 Intent: {result.extracted_params.intent}")
+    print(f"🧪 Соединения: {result.extracted_params.compounds}")
+    print(f"🌡️ Температура: {result.extracted_params.temperature_k} K")
+    print(f"📊 Диапазон: {result.extracted_params.temperature_range_k}")
+    print(f"🔬 Фазы: {result.extracted_params.phases}")
+    print(f"📋 Свойства: {result.extracted_params.properties}")
+    print(f"💡 SQL подсказка: {result.extracted_params.sql_query_hint}")
+    print()
+    print("💾 Сгенерированный SQL:")
+    print(f"📝 SQL: {result.sql_query}")
+    print(f"📊 Ожидаемые колонки: {result.expected_columns}")
+    print(f"💡 Объяснение: {result.extracted_params.sql_query_hint}")
 
 
 if __name__ == "__main__":
