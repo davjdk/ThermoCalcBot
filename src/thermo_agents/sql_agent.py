@@ -8,10 +8,12 @@ SQL агент для генерации запросов к термодина�
 from __future__ import annotations
 
 import logging
+import sqlite3
 import sys
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 # Добавляем src в путь для корректных импортов
 src_path = Path(__file__).parent.parent
@@ -19,7 +21,7 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 from pydantic import BaseModel
-from pydantic_ai import Agent
+from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
@@ -37,6 +39,16 @@ class SQLQueryResult(BaseModel):
     sql_query: str  # Сгенерированный SQL запрос
     explanation: str  # Краткое объяснение запроса
     expected_columns: list[str]  # Ожидаемые колонки в результате
+
+
+class DatabaseQueryResult(BaseModel):
+    """Результат выполнения SQL запроса к базе данных."""
+
+    sql_query: str  # Выполненный SQL запрос
+    columns: list[str]  # Названия колонок
+    rows: list[list[Any]]  # Данные в виде списка списков
+    row_count: int  # Количество найденных записей
+    formatted_table: str  # Отформатированная таблица для вывода
 
 
 # =============================================================================
@@ -88,13 +100,68 @@ def initialize_sql_agent(deps: SQLAgentConfig) -> Agent:
     # Основная модель (OpenRouter via OpenAIChatModel)
     model = OpenAIChatModel(deps.llm_model, provider=provider)
 
-    return Agent(
+    agent = Agent(
         model,
         deps_type=SQLAgentConfig,
         output_type=SQLQueryResult,
         system_prompt=SQL_GENERATION_PROMPT,
         retries=2,
     )
+
+    # Добавляем инструмент для выполнения SQL запросов
+    @agent.tool
+    async def execute_database_query(
+        ctx: RunContext[SQLAgentConfig], sql_query: str
+    ) -> DatabaseQueryResult:
+        """
+        Выполняет SQL запрос к термодинамической базе данных и возвращает результаты.
+
+        Args:
+            ctx: Контекст с зависимостями SQL агента
+            sql_query: SQL запрос для выполнения
+
+        Returns:
+            DatabaseQueryResult с результатами запроса
+        """
+        try:
+            # Выполняем запрос
+            result = execute_sql_query(ctx.db_path, sql_query, ctx.logger)
+
+            # Логируем результаты
+            if ctx.session_logger:
+                ctx.session_logger.log_database_query(
+                    sql_query, result.row_count, result.columns
+                )
+
+            # Выводим таблицу пользователю
+            print("\n" + "=" * 80)
+            print("📊 РЕЗУЛЬТАТЫ ЗАПРОСА К БАЗЕ ДАННЫХ")
+            print("=" * 80)
+            print(f"📝 SQL запрос: {sql_query}")
+            print(f"📋 Найдено записей: {result.row_count}")
+            print(f"📊 Колонки: {', '.join(result.columns)}")
+            print("\n" + result.formatted_table)
+            print("=" * 80 + "\n")
+
+            return result
+
+        except Exception as e:
+            error_msg = f"Ошибка выполнения SQL запроса: {str(e)}"
+            ctx.logger.error(error_msg)
+
+            if ctx.session_logger:
+                ctx.session_logger.log_error(error_msg)
+
+            # Возвращаем пустой результат в случае ошибки
+            return DatabaseQueryResult(
+                sql_query=sql_query,
+                columns=[],
+                rows=[],
+                row_count=0,
+                formatted_table="Ошибка выполнения запроса",
+            )
+
+    return agent
 
 
 # =============================================================================
@@ -103,17 +170,20 @@ def initialize_sql_agent(deps: SQLAgentConfig) -> Agent:
 
 
 async def generate_sql_query(
-    sql_hint: str, dependencies: Optional[SQLAgentConfig] = None
-) -> SQLQueryResult:
+    sql_hint: str,
+    dependencies: Optional[SQLAgentConfig] = None,
+    execute_query: bool = False,
+) -> tuple[SQLQueryResult, Optional[DatabaseQueryResult]]:
     """
-    Генерация SQL запроса на основе подсказки.
+    Генерация SQL запроса на основе подсказки и опциональное выполнение.
 
     Args:
         sql_hint: Подсказка для генерации SQL из основного агента
         dependencies: Зависимости SQL агента
+        execute_query: Флаг выполнения сгенерированного запроса
 
     Returns:
-        SQLQueryResult с сгенерированным запросом
+        Кортеж из SQLQueryResult и опционального DatabaseQueryResult
     """
     if dependencies is None:
         # Создаем базовые зависимости если не переданы
@@ -151,7 +221,20 @@ async def generate_sql_query(
             )
             dependencies.session_logger.log_info("SQL запрос успешно сгенерирован")
 
-        return result.output
+        # Выполняем запрос если запрошено
+        db_result = None
+        if execute_query:
+            dependencies.logger.info("Выполнение сгенерированного SQL запроса")
+            db_result = execute_sql_query(
+                dependencies.db_path, result.output.sql_query, dependencies.logger
+            )
+
+            if dependencies.session_logger:
+                dependencies.session_logger.log_database_query(
+                    result.output.sql_query, db_result.row_count, db_result.columns
+                )
+
+        return result.output, db_result
 
     except Exception as e:
         dependencies.logger.error(f"Ошибка генерации SQL запроса: {e}")
@@ -160,11 +243,149 @@ async def generate_sql_query(
             dependencies.session_logger.log_error(str(e))
 
         # Возвращаем базовый результат в случае ошибки
-        return SQLQueryResult(
+        base_result = SQLQueryResult(
             sql_query="SELECT Formula, FirstName, Phase, H298, S298 FROM compounds LIMIT 10;",
             explanation="Базовый запрос в случае ошибки генерации",
             expected_columns=["Formula", "FirstName", "Phase", "H298", "S298"],
         )
+
+        return base_result, None
+
+
+# =============================================================================
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# =============================================================================
+
+
+def format_table_results(columns: list[str], rows: list[list[Any]]) -> str:
+    """
+    Форматирует результаты запроса в виде таблицы для вывода.
+
+    Args:
+        columns: Названия колонок
+        rows: Данные в виде списка списков
+
+    Returns:
+        Отформатированная строка с таблицей
+    """
+    if not rows:
+        return "Нет данных для отображения"
+
+    # Вычисляем максимальную ширину для каждой колонки
+    col_widths = []
+    for i, col in enumerate(columns):
+        # Ширина колонки = max(длина названия колонки, максимальная длина значения в этой колонке)
+        max_value_width = (
+            max(len(str(row[i]) if i < len(row) else "") for row in rows) if rows else 0
+        )
+        col_widths.append(max(len(col), max_value_width))
+
+    # Создаем разделитель
+    separator = "+" + "+".join("-" * (width + 2) for width in col_widths) + "+"
+
+    # Создаем заголовок
+    header = (
+        "|"
+        + "|".join(f" {col:<{col_widths[i]}} " for i, col in enumerate(columns))
+        + "|"
+    )
+
+    # Создаем строки данных
+    data_rows = []
+    for row in rows:
+        formatted_row = "|"
+        for i, value in enumerate(row):
+            if i < len(columns):
+                formatted_row += f" {str(value):<{col_widths[i]}} |"
+        data_rows.append(formatted_row)
+
+    # Собираем таблицу
+    table_lines = [separator, header, separator]
+    table_lines.extend(data_rows)
+    table_lines.append(separator)
+
+    return "\n".join(table_lines)
+
+
+@contextmanager
+def get_db_connection(db_path: str):
+    """
+    Контекстный менеджер для соединения с SQLite базой данных.
+
+    Args:
+        db_path: Путь к файлу базы данных
+
+    Yields:
+        sqlite3.Connection: Соединение с базой данных
+    """
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row  # Для доступа к колонкам по имени
+        yield conn
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise e
+    finally:
+        if conn:
+            conn.close()
+
+
+def execute_sql_query(
+    db_path: str, sql_query: str, logger: logging.Logger
+) -> DatabaseQueryResult:
+    """
+    Выполняет SQL запрос к базе данных и возвращает результаты.
+
+    Args:
+        db_path: Путь к файлу базы данных
+        sql_query: SQL запрос для выполнения
+        logger: Логгер для записи информации
+
+    Returns:
+        DatabaseQueryResult с результатами запроса
+
+    Raises:
+        Exception: При ошибке выполнения запроса
+    """
+    logger.info(f"Выполнение SQL запроса: {sql_query[:100]}...")
+
+    try:
+        with get_db_connection(db_path) as conn:
+            cursor = conn.cursor()
+
+            # Выполняем запрос
+            cursor.execute(sql_query)
+
+            # Получаем названия колонок
+            columns = (
+                [desc[0] for desc in cursor.description] if cursor.description else []
+            )
+
+            # Получаем все строки
+            rows = cursor.fetchall()
+
+            # Конвертируем строки в списки (из sqlite3.Row в list)
+            data_rows = [list(row) for row in rows] if rows else []
+
+            # Форматируем таблицу
+            formatted_table = format_table_results(columns, data_rows)
+
+            result = DatabaseQueryResult(
+                sql_query=sql_query,
+                columns=columns,
+                rows=data_rows,
+                row_count=len(data_rows),
+                formatted_table=formatted_table,
+            )
+
+            logger.info(f"Запрос выполнен успешно. Найдено записей: {len(data_rows)}")
+            return result
+
+    except Exception as e:
+        logger.error(f"Ошибка выполнения SQL запроса: {e}")
+        raise Exception(f"Ошибка выполнения запроса: {str(e)}")
 
 
 # =============================================================================
@@ -172,44 +393,69 @@ async def generate_sql_query(
 # =============================================================================
 
 
-async def main():
-    """Точка входа для тестирования SQL агента."""
-    logging.basicConfig(level=logging.INFO)
+async def execute_sql_query_direct(
+    sql_query: str, dependencies: Optional[SQLAgentConfig] = None
+) -> DatabaseQueryResult:
+    """
+    Прямое выполнение SQL запроса без генерации через LLM.
 
-    # Создаем базовые зависимости для тестирования
-    sql_agent_config = SQLAgentConfig(
-        llm_api_key="",  # В реальном использовании брать из .env
-        llm_base_url="",
-        llm_model="openai:gpt-4o",
-        db_path="data/thermo_data.db",
-        log_level="INFO",
-        debug=False,
-        logger=logging.getLogger(__name__),
-    )
+    Args:
+        sql_query: SQL запрос для выполнения
+        dependencies: Зависимости SQL агента
 
-    print("🚀 Запуск SQL агента")
-    print(f"📋 Модель LLM: {sql_agent_config.llm_model}")
-    print(f"🗄️ Путь к БД: {sql_agent_config.db_path}")
-    print()
+    Returns:
+        DatabaseQueryResult с результатами запроса
+    """
+    if dependencies is None:
+        # Создаем базовые зависимости если не переданы
+        dependencies = SQLAgentConfig(
+            llm_api_key="",
+            llm_base_url="",
+            llm_model="openai:gpt-4o",
+            db_path="data/thermo_data.db",
+            log_level="INFO",
+            debug=False,
+            logger=logging.getLogger(__name__),
+        )
 
-    # Пример подсказки для генерации SQL
-    test_hint = (
-        "Find thermodynamic data for TiO2(s), Cl2(g), TiCl4(g), and O2(g) "
-        "in temperature range 573-873K. Include H298, S298, and heat capacity "
-        "coefficients f1-f6 for reaction analysis."
-    )
+    dependencies.logger.info(f"Прямое выполнение SQL запроса: {sql_query[:100]}...")
 
-    print(f"Подсказка: {test_hint}")
+    if dependencies.session_logger:
+        dependencies.session_logger.log_info("Начало выполнения SQL запроса")
 
-    result = await generate_sql_query(test_hint, sql_agent_config)
+    try:
+        # Выполняем запрос
+        result = execute_sql_query(dependencies.db_path, sql_query, dependencies.logger)
 
-    print("✅ SQL запрос сгенерирован:")
-    print(f"📝 SQL: {result.sql_query}")
-    print(f"📋 Ожидаемые колонки: {result.expected_columns}")
-    print(f"💡 Объяснение: {result.explanation}")
+        # Логируем результаты
+        if dependencies.session_logger:
+            dependencies.session_logger.log_database_query(
+                sql_query, result.row_count, result.columns
+            )
 
+        # Выводим таблицу пользователю
+        print("\n" + "=" * 80)
+        print("📊 РЕЗУЛЬТАТЫ ЗАПРОСА К БАЗЕ ДАННЫХ")
+        print("=" * 80)
+        print(f"📝 SQL запрос: {sql_query}")
+        print(f"📋 Найдено записей: {result.row_count}")
+        print(f"📊 Колонки: {', '.join(result.columns)}")
+        print("\n" + result.formatted_table)
+        print("=" * 80 + "\n")
 
-if __name__ == "__main__":
-    import asyncio
+        return result
 
-    asyncio.run(main())
+    except Exception as e:
+        dependencies.logger.error(f"Ошибка выполнения SQL запроса: {e}")
+
+        if dependencies.session_logger:
+            dependencies.session_logger.log_error(str(e))
+
+        # Возвращаем пустой результат в случае ошибки
+        return DatabaseQueryResult(
+            sql_query=sql_query,
+            columns=[],
+            rows=[],
+            row_count=0,
+            formatted_table="Ошибка выполнения запроса",
+        )
