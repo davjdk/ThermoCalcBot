@@ -49,7 +49,7 @@ class OrchestratorConfig:
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     session_logger: Optional[SessionLogger] = None
     max_retries: int = 2
-    timeout_seconds: int = 10
+    timeout_seconds: int = 60
 
 
 class ThermoOrchestrator:
