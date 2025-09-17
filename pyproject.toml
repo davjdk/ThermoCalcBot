@@ -12,6 +12,9 @@ dependencies = [
 	"anthropic>=0.40.0",
 ]
 
+[project.scripts]
+agents-for-david = "main:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 

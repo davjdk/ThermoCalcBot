@@ -4,11 +4,11 @@ AI Agents Project - Главный модуль с интерактивным р
 
 import asyncio
 
-from thermo_agents.main_thermo_agent import (
+from src.thermo_agents.main_thermo_agent import (
     ThermoAgentConfig,
     process_thermodynamic_query,
 )
-from thermo_agents.thermo_agents_logger import create_session_logger
+from src.thermo_agents.thermo_agents_logger import create_session_logger
 
 
 def main():
