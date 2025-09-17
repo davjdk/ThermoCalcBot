@@ -48,7 +48,6 @@ class SQLAgentConfig:
     session_logger: Optional[SessionLogger] = None
     poll_interval: float = 1.0  # Интервал проверки новых сообщений (секунды)
     max_retries: int = 2
-    auto_execute: bool = False  # Автоматически выполнять SQL запросы
 
 
 class SQLGenerationAgent:
@@ -108,195 +107,7 @@ class SQLGenerationAgent:
             retries=self.config.max_retries,
         )
 
-        # Добавляем инструменты
-        @agent.tool
-        async def execute_query(
-            ctx: RunContext[SQLAgentConfig], sql_query: str
-        ) -> Dict[str, Any]:
-            """
-            Выполнить SQL запрос к базе данных.
-
-            Args:
-                ctx: Контекст выполнения
-                sql_query: SQL запрос
-
-            Returns:
-                Результаты запроса
-            """
-            try:
-                conn = sqlite3.connect(ctx.deps.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-
-                # Очистка SQL запроса от HTML entities и множественных statements
-                cleaned_query = SQLGenerationAgent._clean_sql_query_static(sql_query)
-
-                cursor.execute(cleaned_query)
-                columns = (
-                    [desc[0] for desc in cursor.description]
-                    if cursor.description
-                    else []
-                )
-                rows = cursor.fetchall()
-
-                # Конвертируем в списки
-                data_rows = [list(row) for row in rows] if rows else []
-
-                conn.close()
-
-                # Логируем результаты в виде таблицы через session_logger
-                if ctx.deps.session_logger:
-                    ctx.deps.session_logger.log_query_results_table(
-                        sql_query=sql_query, columns=columns, rows=data_rows
-                    )
-                else:
-                    ctx.deps.logger.info(f"Executed query, found {len(data_rows)} rows")
-
-                return {
-                    "success": True,
-                    "columns": columns,
-                    "rows": data_rows,
-                    "row_count": len(data_rows),
-                }
-
-            except Exception as e:
-                ctx.deps.logger.error(f"Query execution error: {e}")
-                return {
-                    "success": False,
-                    "error": str(e),
-                    "columns": [],
-                    "rows": [],
-                    "row_count": 0,
-                }
-
-        @agent.tool
-        async def get_table_schema(
-            ctx: RunContext[SQLAgentConfig], table_name: str = "compounds"
-        ) -> Dict[str, Any]:
-            """
-            Получить схему таблицы.
-
-            Args:
-                ctx: Контекст выполнения
-                table_name: Имя таблицы
-
-            Returns:
-                Информация о схеме таблицы
-            """
-            try:
-                conn = sqlite3.connect(ctx.deps.db_path)
-                cursor = conn.cursor()
-
-                # Получаем информацию о колонках
-                cursor.execute(f"PRAGMA table_info({table_name})")
-                columns = cursor.fetchall()
-
-                # Получаем количество записей
-                cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-                count = cursor.fetchone()[0]
-
-                conn.close()
-
-                return {
-                    "table_name": table_name,
-                    "columns": [
-                        {
-                            "name": col[1],
-                            "type": col[2],
-                            "nullable": not col[3],
-                            "primary_key": bool(col[5]),
-                        }
-                        for col in columns
-                    ],
-                    "row_count": count,
-                }
-
-            except Exception as e:
-                ctx.deps.logger.error(f"Schema query error: {e}")
-                return {"error": str(e)}
-
-        @agent.tool
-        async def save_query_result(
-            ctx: RunContext[SQLAgentConfig], key: str, result: Dict[str, Any]
-        ) -> bool:
-            """Сохранить результат запроса в хранилище."""
-            ctx.deps.storage.set(key, result, ttl_seconds=600)
-            return True
-
-        @agent.tool
-        async def filter_by_temperature_range(
-            ctx: RunContext[SQLAgentConfig],
-            query_results: Dict[str, Any],
-            target_temperature_k: float
-        ) -> Dict[str, Any]:
-            """
-            Автоматическая постфильтрация результатов по температурному диапазону.
-
-            Args:
-                ctx: Контекст выполнения
-                query_results: Результаты SQL запроса
-                target_temperature_k: Целевая температура в Кельвинах
-
-            Returns:
-                Отфильтрованные результаты
-            """
-            if not query_results.get("success", False):
-                return query_results
-
-            columns = query_results.get("columns", [])
-            rows = query_results.get("rows", [])
-
-            # Найдем индексы колонок Tmin и Tmax
-            tmin_idx = None
-            tmax_idx = None
-
-            for i, col in enumerate(columns):
-                if col.lower() == 'tmin':
-                    tmin_idx = i
-                elif col.lower() == 'tmax':
-                    tmax_idx = i
-
-            if tmin_idx is None or tmax_idx is None:
-                ctx.deps.logger.warning("Temperature range columns (Tmin/Tmax) not found, skipping temperature filtering")
-                return query_results
-
-            # Фильтруем строки по температурному диапазону
-            filtered_rows = []
-            excluded_count = 0
-
-            for row in rows:
-                try:
-                    tmin = float(row[tmin_idx]) if row[tmin_idx] is not None else 0
-                    tmax = float(row[tmax_idx]) if row[tmax_idx] is not None else 9999
-
-                    # Проверяем, входит ли целевая температура в диапазон
-                    if tmin <= target_temperature_k <= tmax:
-                        filtered_rows.append(row)
-                    else:
-                        excluded_count += 1
-
-                except (ValueError, TypeError, IndexError):
-                    # Если не удается конвертировать температуры, оставляем строку
-                    filtered_rows.append(row)
-
-            # Логируем результаты фильтрации
-            ctx.deps.logger.info(f"Temperature filtering at {target_temperature_k}K: {len(filtered_rows)} records match, {excluded_count} excluded")
-
-            if ctx.deps.session_logger:
-                ctx.deps.session_logger.log_info(
-                    f"TEMPERATURE FILTER: Target={target_temperature_k}K, "
-                    f"Matched={len(filtered_rows)}, Excluded={excluded_count}"
-                )
-
-            return {
-                "success": True,
-                "columns": columns,
-                "rows": filtered_rows,
-                "row_count": len(filtered_rows),
-                "temperature_filter_applied": True,
-                "target_temperature_k": target_temperature_k,
-                "excluded_by_temperature": excluded_count
-            }
+        # NO TOOLS - Agent should only generate SQL queries without database access
 
         return agent
 
@@ -425,35 +236,53 @@ class SQLGenerationAgent:
 
             self.logger.info(f"Prepared result data with key: {result_key}")
 
-            # Если включено автоматическое выполнение, выполняем запрос
-            if self.config.auto_execute:
-                self.logger.info("Starting SQL execution...")
-                execution_result = await self._execute_query(sql_result.sql_query)
+            # Отправляем SQL запрос агенту базы данных для выполнения
+            self.logger.info("Sending SQL query to database agent for execution...")
+            db_message_id = self.storage.send_message(
+                source_agent=self.agent_id,
+                target_agent="database_agent",
+                message_type="execute_sql",
+                payload={
+                    "sql_query": sql_result.sql_query,
+                    "extracted_params": extracted_params,
+                },
+            )
+            self.logger.info(f"SQL query sent to database_agent: {db_message_id}")
 
-                # Дополнительная проверка на ошибки выполнения
-                if not execution_result.get("success", False):
-                    self.logger.error(f"SQL execution failed: {execution_result.get('error', 'Unknown error')}")
-                    if self.config.session_logger:
-                        self.config.session_logger.log_error(
-                            f"SQL EXECUTION ERROR: {execution_result.get('error', 'Unknown error')}"
-                        )
-                else:
-                    self.logger.info(f"SQL execution successful, {execution_result.get('row_count', 0)} rows returned")
+            # Ждем результат от агента базы данных
+            db_result = None
+            db_start_time = asyncio.get_event_loop().time()
+            timeout = 30  # 30 секунд на выполнение SQL
 
-                    # Применяем автоматическую фильтрацию по температуре, если указана температура
-                    target_temperature = extracted_params.get("temperature_k")
-                    self.logger.info(f"Temperature filtering check: target_temp={target_temperature}, success={execution_result.get('success', False)}")
+            while (asyncio.get_event_loop().time() - db_start_time) < timeout:
+                # Получаем сообщения от агента базы данных
+                db_messages = self.storage.receive_messages(
+                    self.agent_id, message_type="sql_executed"
+                )
 
-                    if target_temperature and execution_result.get("success", False):
-                        self.logger.info(f"Applying automatic temperature filtering at {target_temperature}K...")
-                        execution_result = await self._filter_by_temperature_range(
-                            execution_result, target_temperature
-                        )
-                        self.logger.info(f"Temperature filtering completed: {execution_result.get('row_count', 0)} records match temperature range")
-                    else:
-                        self.logger.warning(f"Temperature filtering skipped: target_temp={target_temperature}, success={execution_result.get('success')}")
+                for db_msg in db_messages:
+                    if db_msg.correlation_id == db_message_id and db_msg.source_agent == "database_agent":
+                        self.logger.info(f"Received database result: {db_msg.payload.get('status')}")
+                        if db_msg.payload.get("status") == "success":
+                            db_result = db_msg.payload.get("execution_result")
+                            break
 
-                result_data["execution_result"] = execution_result
+                if db_result:
+                    break
+                await asyncio.sleep(0.1)
+
+            # Добавляем результат выполнения к данным
+            if db_result:
+                result_data["execution_result"] = db_result
+                self.logger.info(f"Database execution successful: {db_result.get('row_count', 0)} rows")
+            else:
+                self.logger.warning("Database agent did not respond in time")
+                result_data["execution_result"] = {
+                    "success": False,
+                    "error": "Database agent timeout",
+                    "rows": [],
+                    "row_count": 0,
+                }
 
             self.logger.info(f"Storing result with key: {result_key}")
             self.storage.set(result_key, result_data, ttl_seconds=600)
@@ -540,116 +369,7 @@ class SQLGenerationAgent:
             if self.config.session_logger:
                 self.config.session_logger.log_error(str(e))
 
-    async def _execute_query(self, sql_query: str) -> Dict[str, Any]:
-        """
-        Выполнить SQL запрос к базе данных.
-
-        Args:
-            sql_query: SQL запрос
-
-        Returns:
-            Результаты выполнения
-        """
-        try:
-            # Очистка SQL запроса от HTML entities и множественных statements
-            cleaned_query = self._clean_sql_query(sql_query)
-
-            conn = sqlite3.connect(self.config.db_path)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-
-            cursor.execute(cleaned_query)
-            columns = (
-                [desc[0] for desc in cursor.description] if cursor.description else []
-            )
-            rows = cursor.fetchall()
-
-            # Конвертируем в списки
-            data_rows = [list(row) for row in rows] if rows else []
-
-            conn.close()
-
-            return {
-                "success": True,
-                "columns": columns,
-                "rows": data_rows,
-                "row_count": len(data_rows),
-            }
-
-        except Exception as e:
-            self.logger.error(f"Query execution error: {e}")
-            return {"success": False, "error": str(e)}
-
-    async def _filter_by_temperature_range(
-        self, query_results: Dict[str, Any], target_temperature_k: float
-    ) -> Dict[str, Any]:
-        """
-        Автоматическая постфильтрация результатов по температурному диапазону.
-
-        Args:
-            query_results: Результаты SQL запроса
-            target_temperature_k: Целевая температура в Кельвинах
-
-        Returns:
-            Отфильтрованные результаты
-        """
-        if not query_results.get("success", False):
-            return query_results
-
-        columns = query_results.get("columns", [])
-        rows = query_results.get("rows", [])
-
-        # Найдем индексы колонок Tmin и Tmax
-        tmin_idx = None
-        tmax_idx = None
-
-        for i, col in enumerate(columns):
-            if col.lower() == 'tmin':
-                tmin_idx = i
-            elif col.lower() == 'tmax':
-                tmax_idx = i
-
-        if tmin_idx is None or tmax_idx is None:
-            self.logger.warning("Temperature range columns (Tmin/Tmax) not found, skipping temperature filtering")
-            return query_results
-
-        # Фильтруем строки по температурному диапазону
-        filtered_rows = []
-        excluded_count = 0
-
-        for row in rows:
-            try:
-                tmin = float(row[tmin_idx]) if row[tmin_idx] is not None else 0
-                tmax = float(row[tmax_idx]) if row[tmax_idx] is not None else 9999
-
-                # Проверяем, входит ли целевая температура в диапазон
-                if tmin <= target_temperature_k <= tmax:
-                    filtered_rows.append(row)
-                else:
-                    excluded_count += 1
-
-            except (ValueError, TypeError, IndexError):
-                # Если не удается конвертировать температуры, оставляем строку
-                filtered_rows.append(row)
-
-        # Логируем результаты фильтрации
-        self.logger.info(f"Temperature filtering at {target_temperature_k}K: {len(filtered_rows)} records match, {excluded_count} excluded")
-
-        if self.config.session_logger:
-            self.config.session_logger.log_info(
-                f"TEMPERATURE FILTER: Target={target_temperature_k}K, "
-                f"Matched={len(filtered_rows)}, Excluded={excluded_count}"
-            )
-
-        return {
-            "success": True,
-            "columns": columns,
-            "rows": filtered_rows,
-            "row_count": len(filtered_rows),
-            "temperature_filter_applied": True,
-            "target_temperature_k": target_temperature_k,
-            "excluded_by_temperature": excluded_count
-        }
+    # SQL execution and filtering methods removed - agent only generates queries
 
     # SQL validation and refinement methods removed - no longer needed
 
@@ -697,7 +417,6 @@ def create_sql_agent(
     db_path: str = "data/thermo_data.db",
     storage: Optional[AgentStorage] = None,
     logger: Optional[logging.Logger] = None,
-    auto_execute: bool = False,
 ) -> SQLGenerationAgent:
     """
     Создать SQL агента.
@@ -709,7 +428,6 @@ def create_sql_agent(
         db_path: Путь к базе данных
         storage: Хранилище (или будет использовано глобальное)
         logger: Логгер
-        auto_execute: Автоматически выполнять SQL запросы
 
     Returns:
         Настроенный SQL агент
@@ -721,7 +439,6 @@ def create_sql_agent(
         db_path=db_path,
         storage=storage or get_storage(),
         logger=logger or logging.getLogger(__name__),
-        auto_execute=auto_execute,
     )
 
     return SQLGenerationAgent(config)

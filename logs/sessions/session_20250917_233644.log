@@ -1,0 +1,2266 @@
+2025-09-17 23:36:44,613 - __main__ - INFO - ThermoSystem initialized
+2025-09-17 23:36:44,613 - __main__ - INFO - Initializing agents...
+2025-09-17 23:36:44,883 - thermo_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-09-17 23:36:44,883 - sql_agent - INFO - SQLGenerationAgent 'sql_agent' initialized
+2025-09-17 23:36:44,884 - database_agent - INFO - DatabaseAgent 'database_agent' initialized
+2025-09-17 23:36:44,889 - __main__ - INFO - All agents initialized successfully
+2025-09-17 23:36:44,889 - __main__ - INFO - Starting agents...
+2025-09-17 23:36:44,889 - thermo_agent - INFO - Agent 'thermo_agent' started listening for messages
+2025-09-17 23:36:44,893 - sql_agent - INFO - Agent 'sql_agent' started listening for messages
+2025-09-17 23:36:44,893 - database_agent - INFO - Agent 'database_agent' started listening for messages
+2025-09-17 23:36:45,895 - __main__ - INFO - All agents started
+2025-09-17 23:37:03,769 - orchestrator - INFO - Processing request: Возможна ли реакция оксида церия с соляной кислотой при 200 градусах?...
+2025-09-17 23:37:03,769 - thermo_agent - INFO - Processing message: ccb9059c-7f53-473a-a7c0-c88b418d7f98 from orchestrator
+2025-09-17 23:37:05,029 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-17 23:37:12,355 - thermo_agent - INFO - Successfully extracted parameters: reaction
+2025-09-17 23:37:12 - INFO - EXTRACTED PARAMETERS:
+2025-09-17 23:37:12,356 - thermo_agents_session_20250917_233644 - INFO - EXTRACTED PARAMETERS:
+2025-09-17 23:37:12 - INFO -   Intent: reaction
+2025-09-17 23:37:12,356 - thermo_agents_session_20250917_233644 - INFO -   Intent: reaction
+2025-09-17 23:37:12 - INFO -   Compounds: ['CeO2', 'HCl', 'CeCl3', 'H2O']
+2025-09-17 23:37:12,358 - thermo_agents_session_20250917_233644 - INFO -   Compounds: ['CeO2', 'HCl', 'CeCl3', 'H2O']
+2025-09-17 23:37:12 - INFO -   Temperature: 473.15 K
+2025-09-17 23:37:12,358 - thermo_agents_session_20250917_233644 - INFO -   Temperature: 473.15 K
+2025-09-17 23:37:12 - INFO -   Temperature Range: [373.15, 673.15]
+2025-09-17 23:37:12,359 - thermo_agents_session_20250917_233644 - INFO -   Temperature Range: [373.15, 673.15]
+2025-09-17 23:37:12 - INFO -   Phases: ['s', 'aq', 'aq', 'l']
+2025-09-17 23:37:12,359 - thermo_agents_session_20250917_233644 - INFO -   Phases: ['s', 'aq', 'aq', 'l']
+2025-09-17 23:37:12 - INFO -   Properties: ['all']
+2025-09-17 23:37:12,359 - thermo_agents_session_20250917_233644 - INFO -   Properties: ['all']
+2025-09-17 23:37:12 - INFO -   SQL Hint: Find thermodynamic data for CeO2(s), HCl(aq), CeCl3(aq), and H2O(l) in temperature range 373-673K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis. Consider alternative phases like HCl(g) if aqueous data is limited at high temperatures.
+2025-09-17 23:37:12,359 - thermo_agents_session_20250917_233644 - INFO -   SQL Hint: Find thermodynamic data for CeO2(s), HCl(aq), CeCl3(aq), and H2O(l) in temperature range 373-673K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis. Consider alternative phases like HCl(g) if aqueous data is limited at high temperatures.
+2025-09-17 23:37:12 - INFO -   JSON Output:
+2025-09-17 23:37:12,361 - thermo_agents_session_20250917_233644 - INFO -   JSON Output:
+2025-09-17 23:37:12 - INFO - {
+  "intent": "reaction",
+  "compounds": [
+    "CeO2",
+    "HCl",
+    "CeCl3",
+    "H2O"
+  ],
+  "temperature_k": 473.15,
+  "temperature_range_k": [
+    373.15,
+    673.15
+  ],
+  "phases": [
+    "s",
+    "aq",
+    "aq",
+    "l"
+  ],
+  "properties": [
+    "all"
+  ],
+  "sql_query_hint": "Find thermodynamic data for CeO2(s), HCl(aq), CeCl3(aq), and H2O(l) in temperature range 373-673K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis. Consider alternative phases like HCl(g) if aqueous data is limited at high temperatures."
+}
+2025-09-17 23:37:12,361 - thermo_agents_session_20250917_233644 - INFO - {
+  "intent": "reaction",
+  "compounds": [
+    "CeO2",
+    "HCl",
+    "CeCl3",
+    "H2O"
+  ],
+  "temperature_k": 473.15,
+  "temperature_range_k": [
+    373.15,
+    673.15
+  ],
+  "phases": [
+    "s",
+    "aq",
+    "aq",
+    "l"
+  ],
+  "properties": [
+    "all"
+  ],
+  "sql_query_hint": "Find thermodynamic data for CeO2(s), HCl(aq), CeCl3(aq), and H2O(l) in temperature range 373-673K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis. Consider alternative phases like HCl(g) if aqueous data is limited at high temperatures."
+}
+2025-09-17 23:37:12,362 - thermo_agent - INFO - Forwarded to SQL agent: 5f9c86ff-fb8a-4307-9d83-b5f563acbd1d
+2025-09-17 23:37:12,424 - sql_agent - INFO - Processing message: 5f9c86ff-fb8a-4307-9d83-b5f563acbd1d from thermo_agent
+2025-09-17 23:37:12,424 - sql_agent - INFO - Processing SQL hint: Find thermodynamic data for CeO2(s), HCl(aq), CeCl3(aq), and H2O(l) in temperature range 373-673K. I...
+2025-09-17 23:37:12 - INFO - INFO: SQL GENERATION START: Processing message 5f9c86ff-fb8a-4307-9d83-b5f563acbd1d
+2025-09-17 23:37:12,425 - thermo_agents_session_20250917_233644 - INFO - INFO: SQL GENERATION START: Processing message 5f9c86ff-fb8a-4307-9d83-b5f563acbd1d
+2025-09-17 23:37:12,425 - sql_agent - INFO - Starting SQL query generation...
+2025-09-17 23:37:12,428 - orchestrator - INFO - Received response from thermo_agent: {'status': 'success', 'result_key': 'thermo_result_ccb9059c-7f53-473a-a7c0-c88b418d7f98', 'extracted_params': {'intent': 'reaction', 'compounds': ['CeO2', 'HCl', 'CeCl3', 'H2O'], 'temperature_k': 473.15, 'temperature_range_k': [373.15, 673.15], 'phases': ['s', 'aq', 'aq', 'l'], 'properties': ['all'], 'sql_query_hint': 'Find thermodynamic data for CeO2(s), HCl(aq), CeCl3(aq), and H2O(l) in temperature range 373-673K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis. Consider alternative phases like HCl(g) if aqueous data is limited at high temperatures.'}}
+2025-09-17 23:37:13,036 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-17 23:37:20,143 - sql_agent - INFO - Generated SQL query: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Form...
+2025-09-17 23:37:20 - INFO - INFO: SQL GENERATION COMPLETE: Query length 241
+2025-09-17 23:37:20,144 - thermo_agents_session_20250917_233644 - INFO - INFO: SQL GENERATION COMPLETE: Query length 241
+2025-09-17 23:37:20,144 - sql_agent - INFO - SQL query cleaned
+2025-09-17 23:37:20,145 - sql_agent - INFO - Prepared result data with key: sql_result_5f9c86ff-fb8a-4307-9d83-b5f563acbd1d
+2025-09-17 23:37:20,145 - sql_agent - INFO - Sending SQL query to database agent for execution...
+2025-09-17 23:37:20,145 - sql_agent - INFO - SQL query sent to database_agent: 5b67a424-02bd-4ea9-a059-992ab797b7c3
+2025-09-17 23:37:20,527 - database_agent - INFO - Processing SQL execution request: 5b67a424-02bd-4ea9-a059-992ab797b7c3 from sql_agent
+2025-09-17 23:37:20,527 - database_agent - INFO - Executing SQL query: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Form...
+2025-09-17 23:37:20 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Form...
+2025-09-17 23:37:20,528 - thermo_agents_session_20250917_233644 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Form...
+2025-09-17 23:37:20,529 - database_agent - INFO - SQL executed successfully: 100 rows found
+2025-09-17 23:37:20,530 - database_agent - INFO - Applying temperature filtering at 473.15K...
+2025-09-17 23:37:20,530 - database_agent - INFO - Temperature filtering: 30 of 100 rows remain
+2025-09-17 23:37:20 - INFO - INFO: TEMPERATURE FILTER: Target=473.15K, Matched=30, Excluded=70
+2025-09-17 23:37:20,531 - thermo_agents_session_20250917_233644 - INFO - INFO: TEMPERATURE FILTER: Target=473.15K, Matched=30, Excluded=70
+2025-09-17 23:37:20 - INFO - Executed query, found 30 rows
+2025-09-17 23:37:20,531 - thermo_agents_session_20250917_233644 - INFO - Executed query, found 30 rows
+2025-09-17 23:37:20 - INFO - QUERY RESULTS:
+2025-09-17 23:37:20,532 - thermo_agents_session_20250917_233644 - INFO - QUERY RESULTS:
+2025-09-17 23:37:20 - INFO -   SQL: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Formula = 'HCl(aq)' OR Formula = 'HCl(g)') OR (Formula = 'CeCl3' OR Formula = 'CeCl3(aq)') OR (Formula = 'H2O' OR Formula = 'H2O(l)')) LIMIT 100
+2025-09-17 23:37:20,532 - thermo_agents_session_20250917_233644 - INFO -   SQL: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Formula = 'HCl(aq)' OR Formula = 'HCl(g)') OR (Formula = 'CeCl3' OR Formula = 'CeCl3(aq)') OR (Formula = 'H2O' OR Formula = 'H2O(l)')) LIMIT 100
+2025-09-17 23:37:20 - INFO -   YAML Results:
+row_0:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_1:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_10:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_11:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_12:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_13:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_14:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2000.0
+  Tmin: 298.15
+row_15:
+  BoilingPoint: 0.0
+  FirstName: Cerium (iv) dioxide, ceria
+  Formula: CeO2
+  MeltingPoint: 2670.0
+  Phase: s
+  Tmax: 2000.0
+  Tmin: 298.15
+row_16:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.1499
+row_17:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_18:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_19:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_2:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_20:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_21:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_22:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 500.0
+  Tmin: 372.78
+row_23:
+  BoilingPoint: 373.0
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 0.0
+  Phase: l
+  Tmax: 500.0
+  Tmin: 372.78
+row_24:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_25:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_26:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_27:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_28:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_29:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_3:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_4:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_5:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_6:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_7:
+  BoilingPoint: 2000.0
+  FirstName: Cerium trichloride
+  Formula: CeCl3
+  MeltingPoint: 1075.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_8:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_9:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+2025-09-17 23:37:20,538 - thermo_agents_session_20250917_233644 - INFO -   YAML Results:
+row_0:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_1:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_10:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_11:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_12:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_13:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_14:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2000.0
+  Tmin: 298.15
+row_15:
+  BoilingPoint: 0.0
+  FirstName: Cerium (iv) dioxide, ceria
+  Formula: CeO2
+  MeltingPoint: 2670.0
+  Phase: s
+  Tmax: 2000.0
+  Tmin: 298.15
+row_16:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.1499
+row_17:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_18:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_19:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_2:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_20:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_21:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_22:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 500.0
+  Tmin: 372.78
+row_23:
+  BoilingPoint: 373.0
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 0.0
+  Phase: l
+  Tmax: 500.0
+  Tmin: 372.78
+row_24:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_25:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_26:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_27:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_28:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_29:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_3:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_4:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_5:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_6:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_7:
+  BoilingPoint: 2000.0
+  FirstName: Cerium trichloride
+  Formula: CeCl3
+  MeltingPoint: 1075.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_8:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_9:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+2025-09-17 23:37:20 - INFO -   ... and 20 more rows
+2025-09-17 23:37:20,540 - thermo_agents_session_20250917_233644 - INFO -   ... and 20 more rows
+2025-09-17 23:37:20,540 - database_agent - INFO - Database result stored with key: db_result_5b67a424-02bd-4ea9-a059-992ab797b7c3
+2025-09-17 23:37:20,540 - database_agent - INFO - Response sent to sql_agent
+2025-09-17 23:37:20,559 - sql_agent - INFO - Received database result: success
+2025-09-17 23:37:20,559 - sql_agent - INFO - Database execution successful: 30 rows
+2025-09-17 23:37:20,559 - sql_agent - INFO - Storing result with key: sql_result_5f9c86ff-fb8a-4307-9d83-b5f563acbd1d
+2025-09-17 23:37:20,560 - sql_agent - INFO - Result stored successfully
+2025-09-17 23:37:20,560 - sql_agent - INFO - Sending response to thermo_agent
+2025-09-17 23:37:20 - INFO - INFO: SENDING RESPONSE: To thermo_agent, key=sql_result_5f9c86ff-fb8a-4307-9d83-b5f563acbd1d
+2025-09-17 23:37:20,561 - thermo_agents_session_20250917_233644 - INFO - INFO: SENDING RESPONSE: To thermo_agent, key=sql_result_5f9c86ff-fb8a-4307-9d83-b5f563acbd1d
+2025-09-17 23:37:20,561 - sql_agent - INFO - Response sent successfully to thermo_agent
+2025-09-17 23:37:20 - INFO - GENERATED SQL:
+2025-09-17 23:37:20,561 - thermo_agents_session_20250917_233644 - INFO - GENERATED SQL:
+2025-09-17 23:37:20 - INFO -   SQL Query: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Formula = 'HCl(aq)' OR Formula = 'HCl(g)') OR (Formula = 'CeCl3' OR Formula = 'CeCl3(aq)') OR (Formula = 'H2O' OR Formula = 'H2O(l)')) LIMIT 100
+2025-09-17 23:37:20,561 - thermo_agents_session_20250917_233644 - INFO -   SQL Query: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Formula = 'HCl(aq)' OR Formula = 'HCl(g)') OR (Formula = 'CeCl3' OR Formula = 'CeCl3(aq)') OR (Formula = 'H2O' OR Formula = 'H2O(l)')) LIMIT 100
+2025-09-17 23:37:20 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax']
+2025-09-17 23:37:20,561 - thermo_agents_session_20250917_233644 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax']
+2025-09-17 23:37:20 - INFO -   Explanation: The query selects all columns for the specified compounds, including their phase variations as per the request. CeO2(s) includes solid phase, HCl includes aqueous and gas phases for alternatives, CeCl3 includes aqueous, and H2O includes liquid phase. No temperature filtering is applied in the SQL as per rules.
+2025-09-17 23:37:20,563 - thermo_agents_session_20250917_233644 - INFO -   Explanation: The query selects all columns for the specified compounds, including their phase variations as per the request. CeO2(s) includes solid phase, HCl includes aqueous and gas phases for alternatives, CeCl3 includes aqueous, and H2O includes liquid phase. No temperature filtering is applied in the SQL as per rules.
+2025-09-17 23:37:20,563 - sql_agent - INFO - Sending notification to orchestrator
+2025-09-17 23:37:20 - INFO - INFO: NOTIFYING ORCHESTRATOR: correlation_id=ccb9059c-7f53-473a-a7c0-c88b418d7f98
+2025-09-17 23:37:20,563 - thermo_agents_session_20250917_233644 - INFO - INFO: NOTIFYING ORCHESTRATOR: correlation_id=ccb9059c-7f53-473a-a7c0-c88b418d7f98
+2025-09-17 23:37:20,564 - sql_agent - INFO - Orchestrator notification sent successfully
+2025-09-17 23:37:20,564 - sql_agent - INFO - Message processing completed successfully
+2025-09-17 23:37:21,069 - sql_agent - INFO - Processing message: de73c3e2-e84c-4c38-ba48-cc5f7c3677e6 from orchestrator
+2025-09-17 23:37:21,069 - sql_agent - INFO - Processing SQL hint: Find thermodynamic data for CeO2(s), HCl(aq), CeCl3(aq), and H2O(l) in temperature range 373-673K. I...
+2025-09-17 23:37:21 - INFO - INFO: SQL GENERATION START: Processing message de73c3e2-e84c-4c38-ba48-cc5f7c3677e6
+2025-09-17 23:37:21,070 - thermo_agents_session_20250917_233644 - INFO - INFO: SQL GENERATION START: Processing message de73c3e2-e84c-4c38-ba48-cc5f7c3677e6
+2025-09-17 23:37:21,072 - sql_agent - INFO - Starting SQL query generation...
+2025-09-17 23:37:21,508 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-17 23:37:24,947 - sql_agent - INFO - Generated SQL query: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Form...
+2025-09-17 23:37:24 - INFO - INFO: SQL GENERATION COMPLETE: Query length 241
+2025-09-17 23:37:24,947 - thermo_agents_session_20250917_233644 - INFO - INFO: SQL GENERATION COMPLETE: Query length 241
+2025-09-17 23:37:24,947 - sql_agent - INFO - SQL query cleaned
+2025-09-17 23:37:24,947 - sql_agent - INFO - Prepared result data with key: sql_result_de73c3e2-e84c-4c38-ba48-cc5f7c3677e6
+2025-09-17 23:37:24,947 - sql_agent - INFO - Sending SQL query to database agent for execution...
+2025-09-17 23:37:24,947 - sql_agent - INFO - SQL query sent to database_agent: 2e9b93ad-75d5-4c54-a062-6023ff9864db
+2025-09-17 23:37:25,123 - database_agent - INFO - Processing SQL execution request: 2e9b93ad-75d5-4c54-a062-6023ff9864db from sql_agent
+2025-09-17 23:37:25,123 - database_agent - INFO - Executing SQL query: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Form...
+2025-09-17 23:37:25 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Form...
+2025-09-17 23:37:25,125 - thermo_agents_session_20250917_233644 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Form...
+2025-09-17 23:37:25,130 - database_agent - INFO - SQL executed successfully: 100 rows found
+2025-09-17 23:37:25 - INFO - Executed query, found 100 rows
+2025-09-17 23:37:25,131 - thermo_agents_session_20250917_233644 - INFO - Executed query, found 100 rows
+2025-09-17 23:37:25 - INFO - QUERY RESULTS:
+2025-09-17 23:37:25,131 - thermo_agents_session_20250917_233644 - INFO - QUERY RESULTS:
+2025-09-17 23:37:25 - INFO -   SQL: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Formula = 'HCl(aq)' OR Formula = 'HCl(g)') OR (Formula = 'CeCl3' OR Formula = 'CeCl3(aq)') OR (Formula = 'H2O' OR Formula = 'H2O(l)')) LIMIT 100
+2025-09-17 23:37:25,133 - thermo_agents_session_20250917_233644 - INFO -   SQL: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Formula = 'HCl(aq)' OR Formula = 'HCl(g)') OR (Formula = 'CeCl3' OR Formula = 'CeCl3(aq)') OR (Formula = 'H2O' OR Formula = 'H2O(l)')) LIMIT 100
+2025-09-17 23:37:25 - INFO -   YAML Results:
+row_0:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_1:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1500.0
+  Tmin: 1080.0
+row_10:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_11:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1500.0
+  Tmin: 1080.0
+row_12:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_13:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1300.0
+  Tmin: 1080.0
+row_14:
+  BoilingPoint: 2000.0
+  FirstName: Cerium trichloride
+  Formula: CeCl3
+  MeltingPoint: 1075.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_15:
+  BoilingPoint: 2000.0
+  FirstName: Cerium trichloride
+  Formula: CeCl3
+  MeltingPoint: 1075.0
+  Phase: l
+  Tmax: 1300.0
+  Tmin: 1080.0
+row_16:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_17:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: l
+  Tmax: 5000.0
+  Tmin: 2753.0
+row_18:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_19:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: l
+  Tmax: 5000.0
+  Tmin: 2753.0
+row_2:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_20:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_21:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: l
+  Tmax: 5000.0
+  Tmin: 2753.0
+row_22:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_23:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: l
+  Tmax: 5000.0
+  Tmin: 2753.0
+row_24:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_25:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: l
+  Tmax: 5000.0
+  Tmin: 2753.0
+row_26:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_27:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: l
+  Tmax: 5000.0
+  Tmin: 2753.0
+row_28:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2000.0
+  Tmin: 298.15
+row_29:
+  BoilingPoint: 0.0
+  FirstName: Cerium (iv) dioxide, ceria
+  Formula: CeO2
+  MeltingPoint: 2670.0
+  Phase: s
+  Tmax: 2000.0
+  Tmin: 298.15
+row_3:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1500.0
+  Tmin: 1080.0
+row_30:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: s
+  Tmax: 273.1499
+  Tmin: 3.0000062
+row_31:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.1499
+row_32:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_33:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_34:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_35:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_36:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: s
+  Tmax: 273.151
+  Tmin: 3.0
+row_37:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_38:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_39:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_4:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_40:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_41:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_42:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: s
+  Tmax: 273.151
+  Tmin: 3.0
+row_43:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_44:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_45:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_46:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_47:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_48:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: s
+  Tmax: 273.151
+  Tmin: 3.0
+row_49:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_5:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1500.0
+  Tmin: 1080.0
+row_50:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_51:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_52:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_53:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_54:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: s
+  Tmax: 273.151
+  Tmin: 3.0
+row_55:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_56:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_57:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_58:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_59:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_6:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_60:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: s
+  Tmax: 273.151
+  Tmin: 3.0
+row_61:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_62:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_63:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_64:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_65:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_66:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 372.78
+  Tmin: 298.15
+row_67:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 500.0
+  Tmin: 372.78
+row_68:
+  BoilingPoint: 373.0
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 0.0
+  Phase: l
+  Tmax: 372.78
+  Tmin: 298.15
+row_69:
+  BoilingPoint: 373.0
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 0.0
+  Phase: l
+  Tmax: 500.0
+  Tmin: 372.78
+row_7:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1500.0
+  Tmin: 1080.0
+row_70:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_71:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_72:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_73:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_74:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_75:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_76:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_77:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_78:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_79:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_8:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_80:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_81:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_82:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_83:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_84:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_85:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_86:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_87:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_88:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_89:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_9:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1500.0
+  Tmin: 1080.0
+row_90:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_91:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_92:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_93:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_94:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_95:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_96:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_97:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_98:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_99:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+2025-09-17 23:37:25,154 - thermo_agents_session_20250917_233644 - INFO -   YAML Results:
+row_0:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_1:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1500.0
+  Tmin: 1080.0
+row_10:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_11:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1500.0
+  Tmin: 1080.0
+row_12:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_13:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1300.0
+  Tmin: 1080.0
+row_14:
+  BoilingPoint: 2000.0
+  FirstName: Cerium trichloride
+  Formula: CeCl3
+  MeltingPoint: 1075.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_15:
+  BoilingPoint: 2000.0
+  FirstName: Cerium trichloride
+  Formula: CeCl3
+  MeltingPoint: 1075.0
+  Phase: l
+  Tmax: 1300.0
+  Tmin: 1080.0
+row_16:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_17:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: l
+  Tmax: 5000.0
+  Tmin: 2753.0
+row_18:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_19:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: l
+  Tmax: 5000.0
+  Tmin: 2753.0
+row_2:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_20:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_21:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: l
+  Tmax: 5000.0
+  Tmin: 2753.0
+row_22:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_23:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: l
+  Tmax: 5000.0
+  Tmin: 2753.0
+row_24:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_25:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: l
+  Tmax: 5000.0
+  Tmin: 2753.0
+row_26:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2753.0
+  Tmin: 298.15
+row_27:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: l
+  Tmax: 5000.0
+  Tmin: 2753.0
+row_28:
+  BoilingPoint: 0.0
+  FirstName: Cerium(IV) oxide
+  Formula: CeO2
+  MeltingPoint: 2673.0
+  Phase: s
+  Tmax: 2000.0
+  Tmin: 298.15
+row_29:
+  BoilingPoint: 0.0
+  FirstName: Cerium (iv) dioxide, ceria
+  Formula: CeO2
+  MeltingPoint: 2670.0
+  Phase: s
+  Tmax: 2000.0
+  Tmin: 298.15
+row_3:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1500.0
+  Tmin: 1080.0
+row_30:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: s
+  Tmax: 273.1499
+  Tmin: 3.0000062
+row_31:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.1499
+row_32:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_33:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_34:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_35:
+  BoilingPoint: 373.149
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 267.047
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_36:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: s
+  Tmax: 273.151
+  Tmin: 3.0
+row_37:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_38:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_39:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_4:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_40:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_41:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_42:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: s
+  Tmax: 273.151
+  Tmin: 3.0
+row_43:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_44:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_45:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_46:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_47:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_48:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: s
+  Tmax: 273.151
+  Tmin: 3.0
+row_49:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_5:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1500.0
+  Tmin: 1080.0
+row_50:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_51:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_52:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_53:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_54:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: s
+  Tmax: 273.151
+  Tmin: 3.0
+row_55:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_56:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_57:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_58:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_59:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_6:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_60:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: s
+  Tmax: 273.151
+  Tmin: 3.0
+row_61:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_62:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_63:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_64:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_65:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_66:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 372.78
+  Tmin: 298.15
+row_67:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 500.0
+  Tmin: 372.78
+row_68:
+  BoilingPoint: 373.0
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 0.0
+  Phase: l
+  Tmax: 372.78
+  Tmin: 298.15
+row_69:
+  BoilingPoint: 373.0
+  FirstName: Hydrogen oxide
+  Formula: H2O
+  MeltingPoint: 0.0
+  Phase: l
+  Tmax: 500.0
+  Tmin: 372.78
+row_7:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1500.0
+  Tmin: 1080.0
+row_70:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_71:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_72:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_73:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_74:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_75:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_76:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_77:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_78:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_79:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_8:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: s
+  Tmax: 1080.0
+  Tmin: 298.15
+row_80:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_81:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_82:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_83:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_84:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_85:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_86:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_87:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_88:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_89:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_9:
+  BoilingPoint: 2000.0
+  FirstName: Cerium(III) chloride
+  Formula: CeCl3
+  MeltingPoint: 1090.0
+  Phase: l
+  Tmax: 1500.0
+  Tmin: 1080.0
+row_90:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_91:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_92:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_93:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_94:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+row_95:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 495.0
+  Tmin: 273.151
+row_96:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 515.0
+  Tmin: 495.0
+row_97:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 540.0
+  Tmin: 515.0
+row_98:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 600.0
+  Tmin: 540.0
+row_99:
+  BoilingPoint: 373.15
+  FirstName: Hydrogen oxide
+  Formula: H2O(l)
+  MeltingPoint: 273.15
+  Phase: l
+  Tmax: 610.0
+  Tmin: 600.0
+2025-09-17 23:37:25 - INFO -   ... and 90 more rows
+2025-09-17 23:37:25,159 - thermo_agents_session_20250917_233644 - INFO -   ... and 90 more rows
+2025-09-17 23:37:25,159 - database_agent - INFO - Database result stored with key: db_result_2e9b93ad-75d5-4c54-a062-6023ff9864db
+2025-09-17 23:37:25,160 - database_agent - INFO - Response sent to sql_agent
+2025-09-17 23:37:25,171 - sql_agent - INFO - Received database result: success
+2025-09-17 23:37:25,171 - sql_agent - INFO - Database execution successful: 100 rows
+2025-09-17 23:37:25,171 - sql_agent - INFO - Storing result with key: sql_result_de73c3e2-e84c-4c38-ba48-cc5f7c3677e6
+2025-09-17 23:37:25,172 - sql_agent - INFO - Result stored successfully
+2025-09-17 23:37:25,172 - sql_agent - INFO - Sending response to orchestrator
+2025-09-17 23:37:25 - INFO - INFO: SENDING RESPONSE: To orchestrator, key=sql_result_de73c3e2-e84c-4c38-ba48-cc5f7c3677e6
+2025-09-17 23:37:25,172 - thermo_agents_session_20250917_233644 - INFO - INFO: SENDING RESPONSE: To orchestrator, key=sql_result_de73c3e2-e84c-4c38-ba48-cc5f7c3677e6
+2025-09-17 23:37:25,173 - sql_agent - INFO - Response sent successfully to orchestrator
+2025-09-17 23:37:25 - INFO - GENERATED SQL:
+2025-09-17 23:37:25,173 - thermo_agents_session_20250917_233644 - INFO - GENERATED SQL:
+2025-09-17 23:37:25 - INFO -   SQL Query: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Formula = 'HCl(aq)' OR Formula = 'HCl(g)') OR (Formula = 'CeCl3' OR Formula = 'CeCl3(aq)') OR (Formula = 'H2O' OR Formula = 'H2O(l)')) LIMIT 100
+2025-09-17 23:37:25,173 - thermo_agents_session_20250917_233644 - INFO -   SQL Query: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Formula = 'HCl(aq)' OR Formula = 'HCl(g)') OR (Formula = 'CeCl3' OR Formula = 'CeCl3(aq)') OR (Formula = 'H2O' OR Formula = 'H2O(l)')) LIMIT 100
+2025-09-17 23:37:25 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax']
+2025-09-17 23:37:25,173 - thermo_agents_session_20250917_233644 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax']
+2025-09-17 23:37:25 - INFO -   Explanation: The query selects all columns for the specified compounds and their phase variants, including the alternative gas phase for HCl as suggested. Temperature range is not filtered in SQL as per rules; it will be handled post-processing. LIMIT 100 applied.
+2025-09-17 23:37:25,173 - thermo_agents_session_20250917_233644 - INFO -   Explanation: The query selects all columns for the specified compounds and their phase variants, including the alternative gas phase for HCl as suggested. Temperature range is not filtered in SQL as per rules; it will be handled post-processing. LIMIT 100 applied.
+2025-09-17 23:37:25,173 - sql_agent - INFO - Message processing completed successfully
+2025-09-17 23:37:25,202 - orchestrator - INFO - Received response from sql_agent: {'status': 'success', 'result_key': 'sql_result_de73c3e2-e84c-4c38-ba48-cc5f7c3677e6', 'sql_result': {'sql_query': "SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Formula = 'HCl(aq)' OR Formula = 'HCl(g)') OR (Formula = 'CeCl3' OR Formula = 'CeCl3(aq)') OR (Formula = 'H2O' OR Formula = 'H2O(l)')) LIMIT 100", 'explanation': 'The query selects all columns for the specified compounds and their phase variants, including the alternative gas phase for HCl as suggested. Temperature range is not filtered in SQL as per rules; it will be handled post-processing. LIMIT 100 applied.', 'expected_columns': ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax'], 'extracted_params': {}, 'execution_result': {'success': True, 'columns': ['Formula', 'Structure', 'FirstName', 'SecondName', 'Phase', 'CAS', 'MeltingPoint', 'BoilingPoint', 'Density', 'Solubility', 'Color', 'H298', 'S298', 'Tmin', 'Tmax', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'ReliabilityClass', 'Reference'], 'rows': [['CeCl3', None, 'Cerium(III) chloride', None, 's', '7790-86-5', 1090.0, 2000.0, 3.97, 0.0, 7, -1059.699955712, 150.9586957328, 298.15, 1080.0, 149.77209576, -74.6256662632, -39.528540832, 54.1024291256, 0.0, 0.0, 1, 'Knacke 91; Cordfunke 01; THDA 93; La'], ['CeCl3', None, 'Cerium(III) chloride', None, 'l', '7790-86-5', 1090.0, 2000.0, 0.0, 0.0, 0, 53.1368, 49.1996631128, 1080.0, 1500.0, 159.8300003896, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 'Barin 93; THDA 93; Landolt 99'], ['CeCl3', None, 'Cerium(III) chloride', None, 's', '7790-86-5', 1090.0, 2000.0, 3.97, 0.0, 7, -1059.700022656, 150.95872, 298.15, 1080.0, 149.7720660536, -74.62565664, -39.528540832, 54.1024291256, 0.0, 0.0, 1, 'Knacke 91, Cordfunke 01, THDA 93, La'], ['CeCl3', None, 'Cerium(III) chloride', None, 'l', '7790-86-5', 1090.0, 2000.0, 0.0, 0.0, 0, 53.1368, 49.1996593472, 1080.0, 1500.0, 159.8300003896, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 'Barin 93, THDA 93, Landolt 99'], ['CeCl3', None, 'Cerium(III) chloride', None, 's', '7790-86-5', 1090.0, 2000.0, 3.97, 0.0, 7, -1059.700022656, 150.95872, 298.15, 1080.0, 149.7720660536, -74.62565664, -39.528540832, 54.1024291256, 0.0, 0.0, 1, 'Knacke 91, Cordfunke 01, THDA 93, La'], ['CeCl3', None, 'Cerium(III) chloride', None, 'l', '7790-86-5', 1090.0, 2000.0, 0.0, 0.0, 0, 53.1368, 49.1996593472, 1080.0, 1500.0, 159.8300003896, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 'Barin 93, THDA 93, Landolt 99'], ['CeCl3', None, 'Cerium(III) chloride', None, 's', '7790-86-5', 1090.0, 2000.0, 3.97, 0.0, 7, -1053.53, 150.958557, 298.15, 1080.0, 149.7719, -74.62558, -39.5285, 54.10237, 0.0, 0.0, 1, 'Knacke 91, THDA 93, Landolt 99'], ['CeCl3', None, 'Cerium(III) chloride', None, 'l', '7790-86-5', 1090.0, 2000.0, 0.0, 0.0, 0, 53.13674, 49.199604, 1080.0, 1500.0, 159.829819, -5.214586e-25, -1.34640392999999e-24, 1.51827436e-25, 0.0, 0.0, 1, 'Barin 93, THDA 93, Landolt 99'], ['CeCl3', None, 'Cerium(III) chloride', None, 's', '7790-86-5', 1090.0, 2000.0, 3.97, 0.0, 7, -1053.529999192, 150.95855264, 298.15, 1080.0, 149.77188656, -74.6255783992, -39.528498992, 54.1023692944, 0.0, 0.0, 1, 'Knacke 91, THDA 93, Landolt 99'], ['CeCl3', None, 'Cerium(III) chloride', None, 'l', '7790-86-5', 1090.0, 2000.0, 0.0, 0.0, 0, 53.136743516, 49.1996032816, 1080.0, 1500.0, 159.8298246616, -5.21458580927999e-25, -1.34640389473599e-24, 1.5182744392e-25, 0.0, 0.0, 1, 'Barin 93, THDA 93, Landolt 99'], ['CeCl3', None, 'Cerium(III) chloride', None, 's', '7790-86-5', 1090.0, 2000.0, 3.97, 0.0, 7, -1053.53, 150.958557, 298.15, 1080.0, 149.7719, -74.62558, -39.5285, 54.10237, 0.0, 0.0, 1, 'Knacke 91, THDA 93, Landolt 99'], ['CeCl3', None, 'Cerium(III) chloride', None, 'l', '7790-86-5', 1090.0, 2000.0, 0.0, 0.0, 0, 53.13674, 49.199604, 1080.0, 1500.0, 159.829819, -5.214586e-25, -1.34640392999999e-24, 1.51827436e-25, 0.0, 0.0, 1, 'Barin 93, THDA 93, Landolt 99'], ['CeCl3', None, 'Cerium(III) chloride', None, 's', '7790-86-5', 1090.0, 2000.0, 3.97, 0.0, 7, -1053.53, 150.958557, 298.15, 1080.0, 149.787033, -74.6634, -39.5345726, 54.1241646, 0.0, 0.0, 1, 'Knacke 91'], ['CeCl3', None, 'Cerium(III) chloride', None, 'l', '7790-86-5', 1090.0, 2000.0, 0.0, 0.0, 0, 53.13674, 49.1996, 1080.0, 1300.0, 159.828629, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 'Barin 93'], ['CeCl3', None, 'Cerium trichloride', None, 's', None, 1075.0, 2000.0, 3.9, 0.0, 0, -1053.53, 150.958557, 298.15, 1080.0, 149.787033, -74.6634, -39.5345726, 54.1241646, 0.0, 0.0, 1, 'Knacke 91'], ['CeCl3', None, 'Cerium trichloride', None, 'l', None, 1075.0, 2000.0, 0.0, 0.0, 0, 53.13674, 49.1996, 1080.0, 1300.0, 159.828629, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 'Barin 93'], ['CeO2', None, 'Cerium(IV) oxide', 'Ceria', 's', '1306-38-3', 2673.0, 0.0, 7.65, 0.0, 14, -1090.399967848, 62.3000009984, 298.15, 2753.0, 70.4962356648, 9.484004596, -10.3955806256, -0.0002743164108088, 0.0, 0.0, 1, 'Barin 89; Glushko 94; Landolt 99'], ['CeO2', None, 'Cerium(IV) oxide', 'Ceria', 'l', '1306-38-3', 2673.0, 0.0, 0.0, 0.0, 0, 79.9999987824, 29.05899997312, 2753.0, 5000.0, 120.0000023576, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 'Glushko 94; Landolt 99'], ['CeO2', None, 'Cerium(IV) oxide', 'Ceria', 's', '1306-38-3', 2673.0, 0.0, 7.65, 0.0, 14, -1090.399967848, 62.3000009984, 298.15, 2753.0, 70.4962356648, 9.484004596, -10.39557564664, -0.00027431638696, 0.0, 0.0, 1, 'Barin 89, Glushko 94, Landolt 99'], ['CeO2', None, 'Cerium(IV) oxide', 'Ceria', 'l', '1306-38-3', 2673.0, 0.0, 0.0, 0.0, 0, 79.9999987824, 29.05899997312, 2753.0, 5000.0, 120.0000023576, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 'Glushko 94, Landolt 99'], ['CeO2', None, 'Cerium(IV) oxide', 'Ceria', 's', '1306-38-3', 2673.0, 0.0, 7.65, 0.0, 14, -1090.399967848, 62.3000009984, 298.15, 2753.0, 70.4962356648, 9.484004596, -10.39557564664, -0.00027431638696, 0.0, 0.0, 1, 'Barin 89, Glushko 94, Landolt 99'], ['CeO2', None, 'Cerium(IV) oxide', 'Ceria', 'l', '1306-38-3', 2673.0, 0.0, 0.0, 0.0, 0, 79.9999987824, 29.05899997312, 2753.0, 5000.0, 120.0000023576, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 'Glushko 94, Landolt 99'], ['CeO2', None, 'Cerium(IV) oxide', 'Ceria', 's', '1306-38-3', 2673.0, 0.0, 7.65, 0.0, 14, -1090.3988, 62.29993, 298.15, 2753.0, 70.4961548, 9.48399448, -10.3955641, -0.0002743161, 0.0, 0.0, 1, 'Barin 89, Glushko 94, Landolt 99'], ['CeO2', None, 'Cerium(IV) oxide', 'Ceria', 'l', '1306-38-3', 2673.0, 0.0, 0.0, 0.0, 0, 79.99991, 29.0589676, 2753.0, 5000.0, 119.99987, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 'Glushko 94, Landolt 99'], ['CeO2', None, 'Cerium(IV) oxide', 'Ceria', 's', '1306-38-3', 2673.0, 0.0, 7.65, 0.0, 14, -1090.398817248, 62.29992736, 298.15, 2753.0, 70.4961561688, 9.483994136, -10.3955636804, -0.0002743160756704, 0.0, 0.0, 1, 'Barin 89, Glushko 94, Landolt 99'], ['CeO2', None, 'Cerium(IV) oxide', 'Ceria', 'l', '1306-38-3', 2673.0, 0.0, 0.0, 0.0, 0, 79.9999109184, 29.05896784, 2753.0, 5000.0, 119.9998663776, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 'Glushko 94, Landolt 99'], ['CeO2', None, 'Cerium(IV) oxide', 'Ceria', 's', '1306-38-3', 2673.0, 0.0, 7.65, 0.0, 14, -1090.3988, 62.29993, 298.15, 2753.0, 70.4961548, 9.48399448, -10.3955641, -0.0002743161, 0.0, 0.0, 1, 'Barin 89, Glushko 94, Landolt 99'], ['CeO2', None, 'Cerium(IV) oxide', 'Ceria', 'l', '1306-38-3', 2673.0, 0.0, 0.0, 0.0, 0, 79.99991, 29.0589676, 2753.0, 5000.0, 119.99987, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 'Glushko 94, Landolt 99'], ['CeO2', None, 'Cerium(IV) oxide', 'Ceria', 's', '1306-38-3', 2673.0, 0.0, 7.65, 0.0, 14, -1088.67566, 62.2996941, 298.15, 2000.0, 70.1279449, 9.271734, -10.0081167, 0.0, 0.0, 0.0, 1, 'Barin 89'], ['CeO2', None, 'Cerium (iv) dioxide, ceria', None, 's', None, 2670.0, 0.0, 7.132, 0.0, 0, -1088.67566, 62.2996941, 298.15, 2000.0, 70.1279449, 9.271734, -10.0081167, 0.0, 0.0, 0.0, 1, 'Barin 89'], ['H2O', None, 'Hydrogen oxide', 'Water', 's', '7732-18-5', 267.047, 373.149, 0.917, 0.0, 16, -285.83000184, 69.9499948, 3.0000062, 273.1499, -0.2623367828456, 140.5184073936, 0.0, 0.0, 0.0, 0.0, 1, 'JANAF 85; ESDU 68008'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 267.047, 373.149, 0.997, 0.0, 16, 6.0069688, 21.991518216, 273.1499, 495.0, 186.8842054664, -464.24699588, -19.56496976, 548.631184, 0.0, 0.0, 1, 'JANAF 85; Glushko 94; Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 267.047, 373.149, 0.0, 0.0, 0, 0.0, 0.0, 495.0, 515.0, 14930.7694772, -39493.269712, -6258.06017952, 29613.19976824, 0.0, 0.0, 1, 'Glushko 94; Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 267.047, 373.149, 0.0, 0.0, 0, 0.0, 0.0, 515.0, 540.0, -902.288064232, 2043.884, 557.455306944, -1033.56393864, 0.0, 0.0, 1, 'Glushko 94; Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 267.047, 373.149, 0.0, 0.0, 0, 0.0, 0.0, 540.0, 600.0, 22605.051608, -54991.0718144, -11271.82064136, 37883.513368, 0.0, 0.0, 1, 'Glushko 94; Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 267.047, 373.149, 0.0, 0.0, 0, 0.0, 0.0, 600.0, 610.0, 117.4059026928, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 'ORC 02'], ['H2O', None, 'Hydrogen oxide', 'Water', 's', '7732-18-5', 273.15, 373.15, 0.917, 0.0, 16, -285.83000184, 69.9499948, 3.0, 273.151, -0.2623368, 140.5183848, 0.0, 0.0, 0.0, 0.0, 1, 'JANAF 85, ESDU 68008'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.997, 0.0, 16, 6.0069688, 21.9915224, 273.151, 495.0, 186.8842176, -464.2470168, -19.56496976, 548.631184, 0.0, 0.0, 1, 'JANAF 85, Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 495.0, 515.0, 14930.77136, -39493.273896, -6258.06017952, 29613.2014, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 515.0, 540.0, -902.288131176, 2043.884, 557.455306944, -1033.56393864, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 540.0, 600.0, 22605.047424, -54991.0718144, -11271.82469984, 37883.513368, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 600.0, 610.0, 117.40588512, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 'ORC 02'], ['H2O', None, 'Hydrogen oxide', 'Water', 's', '7732-18-5', 273.15, 373.15, 0.917, 0.0, 16, -285.83000184, 69.9499948, 3.0, 273.151, -0.2623368, 140.5183848, 0.0, 0.0, 0.0, 0.0, 1, 'JANAF 85, ESDU 68008'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.997, 0.0, 16, 6.0069688, 21.9915224, 273.151, 495.0, 186.8842176, -464.2470168, -19.56496976, 548.631184, 0.0, 0.0, 1, 'JANAF 85, Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 495.0, 515.0, 14930.77136, -39493.273896, -6258.06017952, 29613.2014, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 515.0, 540.0, -902.288131176, 2043.884, 557.455306944, -1033.56393864, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 540.0, 600.0, 22605.047424, -54991.0718144, -11271.82469984, 37883.513368, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 600.0, 610.0, 117.40588512, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 'ORC 02'], ['H2O', None, 'Hydrogen oxide', 'Water', 's', '7732-18-5', 273.15, 373.15, 0.917, 0.0, 16, -285.829681, 69.94992, 3.0, 273.151, -0.262336522, 140.518234, 0.0, 0.0, 0.0, 0.0, 1, 'JANAF 85, ESDU 68008'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.997, 0.0, 16, 6.0069623, 21.9914989, 273.151, 495.0, 186.884018, -464.246521, -19.5649471, 548.6306, 0.0, 0.0, 1, 'JANAF 85, Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 495.0, 515.0, 14930.7549, -39493.23, -6258.053, 29613.17, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 515.0, 540.0, -902.2871, 2043.88171, 557.4547, -1033.56274, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 540.0, 600.0, 22605.0215, -54991.01, -11271.8125, 37883.4727, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 600.0, 610.0, 117.405754, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 'ORC 02'], ['H2O', None, 'Hydrogen oxide', 'Water', 's', '7732-18-5', 273.15, 373.15, 0.917, 0.0, 16, -285.82966712, 69.949917396, 3.0, 273.151, -0.26233654896, 140.5182316656, 0.0, 0.0, 0.0, 0.0, 1, 'JANAF 85, ESDU 68008'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.997, 0.0, 16, 6.00696206376, 21.99149922064, 273.151, 495.0, 186.8840084, -464.246518904, -19.56494712456, 548.63064008, 0.0, 0.0, 1, 'JANAF 85, Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 495.0, 515.0, 14930.75516792, -39493.227872, -6258.05302488, 29613.16914136, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 515.0, 540.0, -902.2871312, 2043.881702984, 557.454733736, -1033.56272528, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 540.0, 600.0, 22605.02232, -54991.010728, -11271.81244072, 37883.471528, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 600.0, 610.0, 117.405751232, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 'ORC 02'], ['H2O', None, 'Hydrogen oxide', 'Water', 's', '7732-18-5', 273.15, 373.15, 0.917, 0.0, 16, -285.829681, 69.94992, 3.0, 273.151, -0.262336522, 140.518234, 0.0, 0.0, 0.0, 0.0, 1, 'JANAF 85, ESDU 68008'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.997, 0.0, 16, 6.0069623, 21.9914989, 273.151, 495.0, 186.884018, -464.246521, -19.5649471, 548.6306, 0.0, 0.0, 1, 'JANAF 85, Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 495.0, 515.0, 14930.7549, -39493.23, -6258.053, 29613.17, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 515.0, 540.0, -902.2871, 2043.88171, 557.4547, -1033.56274, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 540.0, 600.0, 22605.0215, -54991.01, -11271.8125, 37883.4727, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 600.0, 610.0, 117.405754, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 'ORC 02'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.997, 0.0, 16, -285.829651, 69.94804, 298.15, 372.78, 59.6888771, 23.0119743, 5.87014532, 24.7608852, 0.0, 0.0, 1, 'JANAF 85'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 16, 0.0, 0.0, 372.78, 500.0, 16.7485332, 62.11978, 32.79834, 90.39104, 0.0, 0.0, 1, 'JANAF 85'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', None, 0.0, 373.0, 1.0, 0.0, 0, -285.829651, 69.94804, 298.15, 372.78, 59.6888771, 23.0119743, 5.87014532, 24.7608852, 0.0, 0.0, 1, 'JANAF 85'], ['H2O', None, 'Hydrogen oxide', 'Water', 'l', None, 0.0, 373.0, 0.0, 0.0, 0, 0.0, 0.0, 372.78, 500.0, 16.7485332, 62.11978, 32.79834, 90.39104, 0.0, 0.0, 1, 'JANAF 85'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.997, 0.0, 16, -285.83000184, 69.9499948, 273.151, 495.0, 186.8842054664, -464.24699588, -19.56496976, 548.631184, 0.0, 0.0, 1, 'JANAF 85; Glushko 94; Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 495.0, 515.0, 14930.7694772, -39493.269712, -6258.06017952, 29613.19976824, 0.0, 0.0, 1, 'Glushko 94; Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 515.0, 540.0, -902.288064232, 2043.884, 557.455306944, -1033.56393864, 0.0, 0.0, 1, 'Glushko 94; Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 540.0, 600.0, 22605.051608, -54991.0718144, -11271.82064136, 37883.513368, 0.0, 0.0, 1, 'Glushko 94; Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 600.0, 610.0, 117.4059026928, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 'ORC 02'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.997, 0.0, 16, -285.83000184, 69.9499948, 273.151, 495.0, 186.8842176, -464.2470168, -19.56496976, 548.631184, 0.0, 0.0, 1, 'JANAF 85, Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 495.0, 515.0, 14930.77136, -39493.273896, -6258.06017952, 29613.2014, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 515.0, 540.0, -902.288131176, 2043.884, 557.455306944, -1033.56393864, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 540.0, 600.0, 22605.047424, -54991.0718144, -11271.82469984, 37883.513368, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 600.0, 610.0, 117.40588512, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 'ORC 02'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.997, 0.0, 16, -285.83000184, 69.9499948, 273.151, 495.0, 186.8842176, -464.2470168, -19.56496976, 548.631184, 0.0, 0.0, 1, 'JANAF 85, Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 495.0, 515.0, 14930.77136, -39493.273896, -6258.06017952, 29613.2014, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 515.0, 540.0, -902.288131176, 2043.884, 557.455306944, -1033.56393864, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 540.0, 600.0, 22605.047424, -54991.0718144, -11271.82469984, 37883.513368, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 600.0, 610.0, 117.40588512, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 'ORC 02'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.997, 0.0, 16, -285.829681, 69.94992, 273.151, 495.0, 186.884018, -464.246521, -19.5649471, 548.6306, 0.0, 0.0, 1, 'JANAF 85, Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 495.0, 515.0, 14930.7549, -39493.23, -6258.053, 29613.17, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 515.0, 540.0, -902.2871, 2043.88171, 557.4547, -1033.56274, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 540.0, 600.0, 22605.0215, -54991.01, -11271.8125, 37883.4727, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 600.0, 610.0, 117.405754, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 'ORC 02'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.997, 0.0, 16, -285.82966712, 69.949917396, 273.151, 495.0, 186.8840084, -464.246518904, -19.56494712456, 548.63064008, 0.0, 0.0, 1, 'JANAF 85, Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 495.0, 515.0, 14930.75516792, -39493.227872, -6258.05302488, 29613.16914136, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 515.0, 540.0, -902.2871312, 2043.881702984, 557.454733736, -1033.56272528, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 540.0, 600.0, 22605.02232, -54991.010728, -11271.81244072, 37883.471528, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 600.0, 610.0, 117.405751232, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 'ORC 02'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.997, 0.0, 16, -285.829681, 69.94992, 273.151, 495.0, 186.884018, -464.246521, -19.5649471, 548.6306, 0.0, 0.0, 1, 'JANAF 85, Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 495.0, 515.0, 14930.7549, -39493.23, -6258.053, 29613.17, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 515.0, 540.0, -902.2871, 2043.88171, 557.4547, -1033.56274, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 540.0, 600.0, 22605.0215, -54991.01, -11271.8125, 37883.4727, 0.0, 0.0, 1, 'Glushko 94, Landolt 01'], ['H2O(l)', None, 'Hydrogen oxide', 'Water', 'l', '7732-18-5', 273.15, 373.15, 0.0, 0.0, 0, 0.0, 0.0, 600.0, 610.0, 117.405754, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 'ORC 02']], 'row_count': 100, 'original_row_count': 100, 'temperature_filtered': False, 'target_temperature_k': None}}}

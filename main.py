@@ -26,6 +26,7 @@ from thermo_agents.orchestrator import (
     OrchestratorRequest,
     ThermoOrchestrator,
 )
+from thermo_agents.database_agent import DatabaseAgentConfig, DatabaseAgent
 from thermo_agents.sql_generation_agent import SQLAgentConfig, SQLGenerationAgent
 from thermo_agents.thermo_agents_logger import create_session_logger
 from thermo_agents.thermodynamic_agent import ThermoAgentConfig, ThermodynamicAgent
@@ -135,9 +136,19 @@ class ThermoSystem:
             logger=logging.getLogger("sql_agent"),
             session_logger=self.session_logger,
             poll_interval=0.5,
-            auto_execute=True,  # Автоматически выполнять запросы
         )
         self.sql_agent = SQLGenerationAgent(sql_config)
+
+        # Агент базы данных
+        database_config = DatabaseAgentConfig(
+            agent_id="database_agent",
+            db_path=self.config["db_path"],
+            storage=self.storage,
+            logger=logging.getLogger("database_agent"),
+            session_logger=self.session_logger,
+            poll_interval=0.5,
+        )
+        self.database_agent = DatabaseAgent(database_config)
 
         # Оркестратор
         orchestrator_config = OrchestratorConfig(
@@ -160,6 +171,7 @@ class ThermoSystem:
         self.agent_tasks = [
             asyncio.create_task(self.thermo_agent.start(), name="thermo_agent_task"),
             asyncio.create_task(self.sql_agent.start(), name="sql_agent_task"),
+            asyncio.create_task(self.database_agent.start(), name="database_agent_task"),
         ]
 
         # Даем агентам время на инициализацию
@@ -177,6 +189,8 @@ class ThermoSystem:
             await self.thermo_agent.stop()
         if self.sql_agent:
             await self.sql_agent.stop()
+        if self.database_agent:
+            await self.database_agent.stop()
         if self.orchestrator:
             await self.orchestrator.shutdown()
 
@@ -192,18 +206,18 @@ class ThermoSystem:
     def print_system_status(self):
         """Вывод статуса системы."""
         print("\n" + "=" * 80)
-        print("🚀 THERMO AGENTS SYSTEM v2.0 - STATUS")
+        print("THERMO AGENTS SYSTEM v2.0 - STATUS")
         print("=" * 80)
 
         # Статус хранилища
         stats = self.storage.get_stats()
         print(
-            f"📦 Storage: {stats['storage_entries']} entries, "
+            f"Storage: {stats['storage_entries']} entries, "
             f"{stats['message_queue_size']} messages in queue"
         )
 
         # Статус агентов
-        print(f"🤖 Active Agents: {', '.join(stats['agents'])}")
+        print(f"Active Agents: {', '.join(stats['agents'])}")
 
         # Статус компонентов
         if self.thermo_agent:

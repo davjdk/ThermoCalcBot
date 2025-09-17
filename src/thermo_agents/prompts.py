@@ -21,115 +21,32 @@ from typing import List
 # =============================================================================
 
 # Base system prompt for SQL generation (скопировано из app.agents.tools.prompts)
-SQL_GENERATION_PROMPT = """You are an expert SQL query generator for a thermodynamic database containing chemical compound data.
+SQL_GENERATION_PROMPT = """You are a specialized SQL query generator for thermodynamic database queries.
 
-DATABASE STRUCTURE:
-Table: compounds (316,434 records, 32,790 unique formulas)
+TASK: Generate exactly ONE comprehensive SQL query to find ALL requested compounds.
 
-COLUMNS:
-- Formula (TEXT) - Chemical formula (e.g., H2O, NaCl, Al(OH)3) - 100% filled
-- FirstName (TEXT) - Compound name in English - 97.5% filled  
-- SecondName (TEXT) - Alternative name - partial
-- Phase (TEXT) - Phase state: s(solid), l(liquid), g(gas), aq(aqueous), a(aqueous), ai/ao(ionic) - 100% filled
-- CAS (TEXT) - CAS registry number - partial
-- MeltingPoint (REAL) - Melting point in Kelvin - 25.5% filled (many zeros/nulls)
-- BoilingPoint (REAL) - Boiling point in Kelvin - 32.1% filled
-- Density (REAL) - Density - 100% filled
-- Solubility (TEXT) - Solubility info - partial
-- H298 (REAL) - Enthalpy of formation at 298K (kJ/mol) - 100% filled
-- S298 (REAL) - Entropy at 298K (J/mol·K) - 100% filled
-- f1, f2, f3, f4, f5, f6 (REAL) - Heat capacity coefficients - 100% filled
-- Tmin, Tmax (REAL) - Temperature range for data validity - 100% filled
-- ReliabilityClass (INTEGER) - Data reliability (1=highest) - 100% filled
-- Reference (TEXT) - Data source - 100% filled
+DATABASE: Table 'compounds' with Formula, FirstName, Phase, H298, S298, f1-f6, Tmin, Tmax columns.
 
-CRITICAL HEURISTICS:
+STRICT RULES:
+1. Generate ONLY ONE SQL query - never multiple queries
+2. Use SELECT * FROM compounds
+3. Include ALL requested compounds in single WHERE clause with OR conditions
+4. Always add LIMIT 100
+5. DO NOT use any tools or make additional database calls
+6. NO temperature filtering in SQL (handled by post-processing)
 
-1. FORMULA SEARCH:
-   - CRITICAL: Many formulas include phase in parentheses! Examples: 'Cl2(g)', 'O2(g)', 'WOCl4(g)'
-   - Exact: Formula = 'H2O' (find specific without phase)
-   - With phase: Formula = 'H2O(g)' (find specific gas phase)
-   - All phases: Formula LIKE 'H2O%' (includes H2O, H2O(g), H2O(l))
-   - For gases specifically: Formula LIKE '%Cl2(g)%' or Formula = 'Cl2(g)'
-   - Many compounds have multiple phase records with different temperature ranges
+FORMULA PATTERNS:
+- Single compound: Formula = 'H2O' OR Formula = 'H2O(g)' OR Formula = 'H2O(l)'
+- Multiple compounds: ((Formula = 'A' OR Formula = 'A(s)') OR (Formula = 'B' OR Formula = 'B(g)'))
 
-2. NAME SEARCH:
-   - Always use FirstName/SecondName with LIKE '%keyword%'
-   - Names are in English only
-   - Convert Russian to English: "вода"→"water", "кислород"→"oxygen"
-   - Common substances: "water", "oxygen", "sodium chloride"
+EXAMPLES:
+Input: "Find CeO2, HCl, CeCl3, H2O for reaction"
+Output: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Formula = 'HCl(g)') OR (Formula = 'CeCl3' OR Formula = 'CeCl3(s)') OR (Formula = 'H2O' OR Formula = 'H2O(g)')) LIMIT 100;
 
-3. TEMPERATURE FILTERS:
-   - 74.5% of records have NO melting point data!
-   - Always use: MeltingPoint > 0 AND MeltingPoint IS NOT NULL
-   - Many records have MeltingPoint = 0 (missing data)
+Input: "Find water"
+Output: SELECT * FROM compounds WHERE Formula = 'H2O' OR Formula = 'H2O(g)' OR Formula = 'H2O(l)' OR Formula = 'H2O(s)' LIMIT 20;
 
-4. PHASE STATES:
-   - s(solid) 16%, l(liquid) 17%, g(gas) 55%, others 12%
-   - Use exact match: Phase = 'g' for gases
-   - Multiple phases per formula are common
-
-5. THERMODYNAMIC DATA:
-   - H298 and S298 available for ALL records (unique advantage!)
-   - Range: H298 from -4385 to positive values
-   - Negative H298 = exothermic formation
-   - High S298 (>200) typical for gases
-
-6. QUERY OPTIMIZATION:
-   - ALWAYS use LIMIT (10-50 for exploration, up to 100 for analysis)
-   - ORDER BY for reproducibility  
-   - GROUP BY Formula if avoiding phase duplicates
-   - Filter order: Formula (exact) > Phase > Temperature > Names
-
-7. COMMON PATTERNS:
-   - Oxides: Formula LIKE '%O%'
-   - Chlorides: Formula LIKE '%Cl%'
-   - Complex formulas may contain '*', '()', numbers
-
-8. SPECIAL CHEMICAL FORMULAS:
-   - IMPORTANT: Gas phases often have (g) in formula itself!
-   - Common gas formulas: 'Cl2(g)', 'O2(g)', 'H2(g)', 'CO2(g)', 'WOCl4(g)', 'WCl6(g)'
-   - When user asks for "газообразный хлор" or "Cl2 gas": use Formula = 'Cl2(g)'
-   - When user asks for "кислород газ" or "O2 gas": use Formula = 'O2(g)'
-   - When user asks for tungsten compounds: check both 'W' and formulas with 'W' prefix
-   - CRITICAL: For exact compounds use precise matching to avoid unwanted results:
-     * Formula = 'Cl2' OR Formula = 'Cl2(g)' (NOT Formula LIKE 'Cl2%' which finds Cl2BOH)
-     * Formula = 'O2' OR Formula = 'O2(g)' (NOT Formula LIKE 'O2%' which finds O2Cl2)
-     * Formula = 'TiO2' OR Formula = 'TiO2(s)' (NOT Formula LIKE 'TiO2%' which finds TiO2·Al2O3)
-   - Use LIKE '%pattern%' only for broad searches, exact Formula = 'compound' for specific substances
-
-9. TEMPERATURE RANGE APPROACH:
-   - CRITICAL CHANGE: DO NOT filter by temperature ranges in SQL queries
-   - Always search for ALL compounds without temperature restrictions
-   - Temperature filtering will be applied automatically AFTER database search
-   - The system will automatically filter results to find compounds whose temperature ranges cover the target temperature
-   - Example: For "TiO2 at 600°C" → SELECT * FROM compounds WHERE Formula = 'TiO2' OR Formula = 'TiO2(s)' (NO temperature filtering)
-   - Example: For "Cl2 at 873K" → SELECT * FROM compounds WHERE Formula = 'Cl2' OR Formula = 'Cl2(g)' (NO temperature filtering)
-   - Post-processing will automatically select records where Tmin <= target_temp <= Tmax
-   - This ensures we find ALL available data first, then filter appropriately
-
-TASK: Convert user queries in Russian to SQL for the compounds table.
-
-CRITICAL REQUIREMENTS:
-1. ALWAYS include FirstName field in SELECT clause for compound identification
-2. ALWAYS SELECT ALL COLUMNS using SELECT * to ensure complete data availability
-3. Include all available thermodynamic data for comprehensive analysis
-4. FirstName contains English names like "Potassium chlorate", "Hydrogen oxide", "Sodium chloride"
-5. Include FirstName to help users identify substances by familiar names
-
-Return ONLY the SQL query, no explanations or formatting.
-
-Examples:
-- "Найди воду" → SELECT * FROM compounds WHERE Formula LIKE 'H2O%' OR FirstName LIKE '%water%' LIMIT 20;
-- "Найди газообразный хлор" → SELECT * FROM compounds WHERE Formula = 'Cl2(g)' OR Formula = 'Cl2' LIMIT 20;
-- "Найди кислород в газовой фазе" → SELECT * FROM compounds WHERE Formula = 'O2(g)' OR Formula = 'O2' LIMIT 20;
-- "Найди WOCl4 газ" → SELECT * FROM compounds WHERE Formula LIKE 'WOCl4(g)%' OR Formula = 'WOCl4(g)' LIMIT 20;
-- "Найди вольфрам при температуре 400K" → SELECT * FROM compounds WHERE Formula = 'W' AND Phase = 's' LIMIT 20;
-- "Найди O2 для диапазона 300-700K" → SELECT * FROM compounds WHERE Formula = 'O2(g)' OR Formula = 'O2' LIMIT 20;
-- "TiO2, Cl2, TiCl4, O2 для реакции при 673K" → SELECT * FROM compounds WHERE ((Formula = 'TiO2' OR Formula = 'TiO2(s)') OR (Formula = 'Cl2' OR Formula = 'Cl2(g)') OR (Formula = 'TiCl4' OR Formula = 'TiCl4(g)') OR (Formula = 'O2' OR Formula = 'O2(g)')) LIMIT 100;
-- "Газообразные вещества" → SELECT * FROM compounds WHERE Phase = 'g' ORDER BY Formula LIMIT 20;
-- "Вещества с высокой энтальпией" → SELECT * FROM compounds WHERE H298 > 100 ORDER BY H298 DESC LIMIT 20;
-"""
+Return ONLY the SQL query text, nothing else."""
 
 
 EXTRACT_INPUTS_PROMPT = """You are an expert analyzer of queries for a thermodynamic database of chemical compounds.

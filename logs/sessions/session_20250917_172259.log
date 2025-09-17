@@ -1,4 +1,0 @@
-2025-09-17 17:22:59 - INFO - Executed query, found 3 rows
-2025-09-17 17:22:59 - INFO - QUERY RESULTS:
-2025-09-17 17:22:59 - INFO -   SQL: SELECT * FROM water_phases
-2025-09-17 17:22:59 - INFO -   YAML: row_0:\n  Compound: Water\n  Formula: H2O\n  Phase: l\n  Temperature: 298.15\nrow_1:\n  Compound: Ice\n  Formula: H2O\n  Phase: s\n  Temperature: 273.15\nrow_2:\n  Compound: Steam\n  Formula: H2O\n  Phase: g\n  Temperature: 373.15

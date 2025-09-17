@@ -302,20 +302,11 @@ class ThermoOrchestrator:
             if extracted_params:
                 trace.append("Received parameters from thermo_agent")
 
-                # Шаг 2: Отправляем параметры sql_agent
+                # Шаг 2: Ждем результат от SQL агента (thermo_agent уже отправил ему сообщение)
                 if extracted_params.get("sql_query_hint"):
-                    sql_message_id = self.storage.send_message(
-                        source_agent=self.agent_id,
-                        target_agent="sql_agent",
-                        message_type="generate_query",
-                        payload={
-                            "sql_hint": extracted_params["sql_query_hint"],
-                            "parameters": extracted_params,
-                        },
-                    )
-                    trace.append(f"Sent message to sql_agent: {sql_message_id}")
+                    trace.append("Waiting for SQL agent result (triggered by thermo_agent)")
 
-                    # Ждем ответа от sql_agent через сообщения
+                    # Ждем сообщения "sql_ready" от SQL агента
                     sql_result = None
                     sql_start_time = asyncio.get_event_loop().time()
                     while (
@@ -323,15 +314,17 @@ class ThermoOrchestrator:
                     ) < self.config.timeout_seconds:
                         # Получаем сообщения от SQL агента
                         messages = self.storage.receive_messages(
-                            self.agent_id, message_type="response"
+                            self.agent_id, message_type="sql_ready"
                         )
 
-                        # Ищем ответ на наше сообщение
+                        # Ищем результат с правильным correlation_id
                         for msg in messages:
-                            if msg.correlation_id == sql_message_id and msg.source_agent == "sql_agent":
-                                self.logger.info(f"Received response from sql_agent: {msg.payload}")
-                                if msg.payload.get("status") == "success":
-                                    sql_result = msg.payload.get("sql_result")
+                            if msg.correlation_id == thermo_message_id and msg.source_agent == "sql_agent":
+                                self.logger.info(f"Received sql_ready from sql_agent: {msg.payload}")
+                                result_key = msg.payload.get("result_key")
+                                if result_key:
+                                    # Получаем полный результат из хранилища
+                                    sql_result = self.storage.get(result_key)
                                     break
 
                         if sql_result:
@@ -339,7 +332,7 @@ class ThermoOrchestrator:
                         await asyncio.sleep(0.1)
 
                     if sql_result:
-                        trace.append("Received SQL query from sql_agent")
+                        trace.append("Received SQL query and execution result from sql_agent")
 
                         # Собираем полный результат
                         return OrchestratorResponse(
@@ -349,20 +342,21 @@ class ThermoOrchestrator:
                                 "sql_query": sql_result.get("sql_query"),
                                 "explanation": sql_result.get("explanation"),
                                 "expected_columns": sql_result.get("expected_columns"),
+                                "execution_result": sql_result.get("execution_result"),
                             },
                             trace=trace,
                         )
                     else:
-                        trace.append("SQL agent response not ready")
+                        trace.append("SQL agent result not ready")
                         # Логируем в сессионный лог
                         if self.config.session_logger:
                             self.config.session_logger.log_error(
-                                "SQL agent did not respond to orchestrator"
+                                "SQL agent did not complete processing in time"
                             )
                         return OrchestratorResponse(
                             success=False,
                             result={},
-                            errors=["SQL agent did not respond"],
+                            errors=["SQL agent did not complete processing in time"],
                             trace=trace,
                         )
                 else:
@@ -390,6 +384,7 @@ class ThermoOrchestrator:
             return OrchestratorResponse(
                 success=False, result={}, errors=[str(e)], trace=trace
             )
+
 
     async def shutdown(self):
         """Завершить работу оркестратора."""
