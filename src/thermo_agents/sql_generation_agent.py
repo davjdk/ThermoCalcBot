@@ -31,6 +31,9 @@ class SQLQueryResult(BaseModel):
     expected_columns: list[str]  # Ожидаемые колонки в результате
 
 
+# SQLValidationResult class removed - validation no longer needed
+
+
 @dataclass
 class SQLAgentConfig:
     """Конфигурация SQL агента."""
@@ -125,7 +128,10 @@ class SQLGenerationAgent:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
 
-                cursor.execute(sql_query)
+                # Очистка SQL запроса от HTML entities и множественных statements
+                cleaned_query = SQLGenerationAgent._clean_sql_query_static(sql_query)
+
+                cursor.execute(cleaned_query)
                 columns = (
                     [desc[0] for desc in cursor.description]
                     if cursor.description
@@ -217,7 +223,122 @@ class SQLGenerationAgent:
             ctx.deps.storage.set(key, result, ttl_seconds=600)
             return True
 
+        @agent.tool
+        async def filter_by_temperature_range(
+            ctx: RunContext[SQLAgentConfig],
+            query_results: Dict[str, Any],
+            target_temperature_k: float
+        ) -> Dict[str, Any]:
+            """
+            Автоматическая постфильтрация результатов по температурному диапазону.
+
+            Args:
+                ctx: Контекст выполнения
+                query_results: Результаты SQL запроса
+                target_temperature_k: Целевая температура в Кельвинах
+
+            Returns:
+                Отфильтрованные результаты
+            """
+            if not query_results.get("success", False):
+                return query_results
+
+            columns = query_results.get("columns", [])
+            rows = query_results.get("rows", [])
+
+            # Найдем индексы колонок Tmin и Tmax
+            tmin_idx = None
+            tmax_idx = None
+
+            for i, col in enumerate(columns):
+                if col.lower() == 'tmin':
+                    tmin_idx = i
+                elif col.lower() == 'tmax':
+                    tmax_idx = i
+
+            if tmin_idx is None or tmax_idx is None:
+                ctx.deps.logger.warning("Temperature range columns (Tmin/Tmax) not found, skipping temperature filtering")
+                return query_results
+
+            # Фильтруем строки по температурному диапазону
+            filtered_rows = []
+            excluded_count = 0
+
+            for row in rows:
+                try:
+                    tmin = float(row[tmin_idx]) if row[tmin_idx] is not None else 0
+                    tmax = float(row[tmax_idx]) if row[tmax_idx] is not None else 9999
+
+                    # Проверяем, входит ли целевая температура в диапазон
+                    if tmin <= target_temperature_k <= tmax:
+                        filtered_rows.append(row)
+                    else:
+                        excluded_count += 1
+
+                except (ValueError, TypeError, IndexError):
+                    # Если не удается конвертировать температуры, оставляем строку
+                    filtered_rows.append(row)
+
+            # Логируем результаты фильтрации
+            ctx.deps.logger.info(f"Temperature filtering at {target_temperature_k}K: {len(filtered_rows)} records match, {excluded_count} excluded")
+
+            if ctx.deps.session_logger:
+                ctx.deps.session_logger.log_info(
+                    f"TEMPERATURE FILTER: Target={target_temperature_k}K, "
+                    f"Matched={len(filtered_rows)}, Excluded={excluded_count}"
+                )
+
+            return {
+                "success": True,
+                "columns": columns,
+                "rows": filtered_rows,
+                "row_count": len(filtered_rows),
+                "temperature_filter_applied": True,
+                "target_temperature_k": target_temperature_k,
+                "excluded_by_temperature": excluded_count
+            }
+
         return agent
+
+    @staticmethod
+    def _clean_sql_query_static(sql_query: str) -> str:
+        """
+        Очистка SQL запроса от HTML entities и разделение на отдельные statements.
+
+        Args:
+            sql_query: Исходный SQL запрос
+
+        Returns:
+            Очищенный SQL запрос (только первый statement)
+        """
+        import html
+        import re
+
+        # Декодируем HTML entities
+        cleaned = html.unescape(sql_query)
+
+        # Удаляем лишние пробелы и переносы строк
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+
+        # Разделяем на statements по точке с запятой
+        statements = [stmt.strip() for stmt in cleaned.split(';') if stmt.strip()]
+
+        # Возвращаем только первый statement
+        if statements:
+            first_statement = statements[0]
+            # Убеждаемся, что нет HTML entities в операторах сравнения
+            first_statement = first_statement.replace('&lt;=', '<=').replace('&gt;=', '>=')
+            first_statement = first_statement.replace('&lt;', '<').replace('&gt;', '>')
+            first_statement = first_statement.replace('&amp;', '&')
+            return first_statement
+
+        return cleaned
+
+    def _clean_sql_query(self, sql_query: str) -> str:
+        """Wrapper для статического метода очистки SQL запросов."""
+        return self._clean_sql_query_static(sql_query)
+
+    # Validation and refinement agent methods removed - no longer needed
 
     async def start(self):
         """
@@ -270,14 +391,28 @@ class SQLGenerationAgent:
             sql_hint = message.payload.get("sql_hint")
             extracted_params = message.payload.get("extracted_params", {})
 
+            self.logger.info(f"Processing SQL hint: {sql_hint[:100] if sql_hint else 'None'}...")
+            if self.config.session_logger:
+                self.config.session_logger.log_info(f"SQL GENERATION START: Processing message {message.id}")
+
             if not sql_hint:
                 raise ValueError("No sql_hint in message payload")
 
-            # Генерируем SQL запрос используя PydanticAI агента
-            result = await self.agent.run(sql_hint, deps=self.config)
+            # Генерируем SQL запрос используя PydanticAI агента с тайм-аутом
+            self.logger.info("Starting SQL query generation...")
+            result = await asyncio.wait_for(
+                self.agent.run(sql_hint, deps=self.config),
+                timeout=60.0  # 60 секунд тайм-аут для генерации
+            )
             sql_result = result.output
 
             self.logger.info(f"Generated SQL query: {sql_result.sql_query[:100]}...")
+            if self.config.session_logger:
+                self.config.session_logger.log_info(f"SQL GENERATION COMPLETE: Query length {len(sql_result.sql_query)}")
+
+            # Дополнительная очистка запроса перед выполнением
+            sql_result.sql_query = self._clean_sql_query(sql_result.sql_query)
+            self.logger.info("SQL query cleaned")
 
             # Сохраняем результат в хранилище
             result_key = f"sql_result_{message.id}"
@@ -288,25 +423,62 @@ class SQLGenerationAgent:
                 "extracted_params": extracted_params,
             }
 
+            self.logger.info(f"Prepared result data with key: {result_key}")
+
             # Если включено автоматическое выполнение, выполняем запрос
             if self.config.auto_execute:
+                self.logger.info("Starting SQL execution...")
                 execution_result = await self._execute_query(sql_result.sql_query)
+
+                # Дополнительная проверка на ошибки выполнения
+                if not execution_result.get("success", False):
+                    self.logger.error(f"SQL execution failed: {execution_result.get('error', 'Unknown error')}")
+                    if self.config.session_logger:
+                        self.config.session_logger.log_error(
+                            f"SQL EXECUTION ERROR: {execution_result.get('error', 'Unknown error')}"
+                        )
+                else:
+                    self.logger.info(f"SQL execution successful, {execution_result.get('row_count', 0)} rows returned")
+
+                    # Применяем автоматическую фильтрацию по температуре, если указана температура
+                    target_temperature = extracted_params.get("temperature_k")
+                    self.logger.info(f"Temperature filtering check: target_temp={target_temperature}, success={execution_result.get('success', False)}")
+
+                    if target_temperature and execution_result.get("success", False):
+                        self.logger.info(f"Applying automatic temperature filtering at {target_temperature}K...")
+                        execution_result = await self._filter_by_temperature_range(
+                            execution_result, target_temperature
+                        )
+                        self.logger.info(f"Temperature filtering completed: {execution_result.get('row_count', 0)} records match temperature range")
+                    else:
+                        self.logger.warning(f"Temperature filtering skipped: target_temp={target_temperature}, success={execution_result.get('success')}")
+
                 result_data["execution_result"] = execution_result
 
+            self.logger.info(f"Storing result with key: {result_key}")
             self.storage.set(result_key, result_data, ttl_seconds=600)
+            self.logger.info("Result stored successfully")
 
             # Отправляем ответное сообщение
-            self.storage.send_message(
-                source_agent=self.agent_id,
-                target_agent=message.source_agent,
-                message_type="response",
-                correlation_id=message.id,
-                payload={
-                    "status": "success",
-                    "result_key": result_key,
-                    "sql_result": result_data,
-                },
-            )
+            self.logger.info(f"Sending response to {message.source_agent}")
+            if self.config.session_logger:
+                self.config.session_logger.log_info(f"SENDING RESPONSE: To {message.source_agent}, key={result_key}")
+
+            try:
+                self.storage.send_message(
+                    source_agent=self.agent_id,
+                    target_agent=message.source_agent,
+                    message_type="response",
+                    correlation_id=message.id,
+                    payload={
+                        "status": "success",
+                        "result_key": result_key,
+                        "sql_result": result_data,
+                    },
+                )
+                self.logger.info(f"Response sent successfully to {message.source_agent}")
+            except Exception as e:
+                self.logger.error(f"Error sending response: {e}")
 
             # Логирование для сессии
             if self.config.session_logger:
@@ -318,21 +490,34 @@ class SQLGenerationAgent:
 
             # Если есть оркестратор в цепочке, уведомляем его
             if message.source_agent == "thermo_agent":
-                self.storage.send_message(
-                    source_agent=self.agent_id,
-                    target_agent="orchestrator",
-                    message_type="sql_ready",
-                    correlation_id=message.correlation_id,
-                    payload={
-                        "result_key": result_key,
-                        "sql_query": sql_result.sql_query,
-                    },
-                )
+                self.logger.info("Sending notification to orchestrator")
+                if self.config.session_logger:
+                    self.config.session_logger.log_info(f"NOTIFYING ORCHESTRATOR: correlation_id={message.correlation_id}")
+
+                try:
+                    self.storage.send_message(
+                        source_agent=self.agent_id,
+                        target_agent="orchestrator",
+                        message_type="sql_ready",
+                        correlation_id=message.correlation_id,
+                        payload={
+                            "result_key": result_key,
+                            "sql_query": sql_result.sql_query,
+                        },
+                    )
+                    self.logger.info("Orchestrator notification sent successfully")
+                except Exception as e:
+                    self.logger.error(f"Error sending orchestrator notification: {e}")
+
+            self.logger.info("Message processing completed successfully")
 
         except Exception as e:
             self.logger.error(f"Error processing message {message.id}: {e}")
+            if self.config.session_logger:
+                self.config.session_logger.log_error(f"SQL AGENT ERROR: {str(e)}")
 
             # Отправляем сообщение об ошибке
+            self.logger.info(f"Sending error response to {message.source_agent}")
             self.storage.send_message(
                 source_agent=self.agent_id,
                 target_agent=message.source_agent,
@@ -340,6 +525,17 @@ class SQLGenerationAgent:
                 correlation_id=message.id,
                 payload={"status": "error", "error": str(e)},
             )
+
+            # Уведомляем оркестратор об ошибке, если нужно
+            if message.source_agent == "thermo_agent":
+                self.logger.info("Sending error notification to orchestrator")
+                self.storage.send_message(
+                    source_agent=self.agent_id,
+                    target_agent="orchestrator",
+                    message_type="sql_error",
+                    correlation_id=message.correlation_id,
+                    payload={"status": "error", "error": str(e)},
+                )
 
             if self.config.session_logger:
                 self.config.session_logger.log_error(str(e))
@@ -355,11 +551,14 @@ class SQLGenerationAgent:
             Результаты выполнения
         """
         try:
+            # Очистка SQL запроса от HTML entities и множественных statements
+            cleaned_query = self._clean_sql_query(sql_query)
+
             conn = sqlite3.connect(self.config.db_path)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            cursor.execute(sql_query)
+            cursor.execute(cleaned_query)
             columns = (
                 [desc[0] for desc in cursor.description] if cursor.description else []
             )
@@ -380,6 +579,79 @@ class SQLGenerationAgent:
         except Exception as e:
             self.logger.error(f"Query execution error: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _filter_by_temperature_range(
+        self, query_results: Dict[str, Any], target_temperature_k: float
+    ) -> Dict[str, Any]:
+        """
+        Автоматическая постфильтрация результатов по температурному диапазону.
+
+        Args:
+            query_results: Результаты SQL запроса
+            target_temperature_k: Целевая температура в Кельвинах
+
+        Returns:
+            Отфильтрованные результаты
+        """
+        if not query_results.get("success", False):
+            return query_results
+
+        columns = query_results.get("columns", [])
+        rows = query_results.get("rows", [])
+
+        # Найдем индексы колонок Tmin и Tmax
+        tmin_idx = None
+        tmax_idx = None
+
+        for i, col in enumerate(columns):
+            if col.lower() == 'tmin':
+                tmin_idx = i
+            elif col.lower() == 'tmax':
+                tmax_idx = i
+
+        if tmin_idx is None or tmax_idx is None:
+            self.logger.warning("Temperature range columns (Tmin/Tmax) not found, skipping temperature filtering")
+            return query_results
+
+        # Фильтруем строки по температурному диапазону
+        filtered_rows = []
+        excluded_count = 0
+
+        for row in rows:
+            try:
+                tmin = float(row[tmin_idx]) if row[tmin_idx] is not None else 0
+                tmax = float(row[tmax_idx]) if row[tmax_idx] is not None else 9999
+
+                # Проверяем, входит ли целевая температура в диапазон
+                if tmin <= target_temperature_k <= tmax:
+                    filtered_rows.append(row)
+                else:
+                    excluded_count += 1
+
+            except (ValueError, TypeError, IndexError):
+                # Если не удается конвертировать температуры, оставляем строку
+                filtered_rows.append(row)
+
+        # Логируем результаты фильтрации
+        self.logger.info(f"Temperature filtering at {target_temperature_k}K: {len(filtered_rows)} records match, {excluded_count} excluded")
+
+        if self.config.session_logger:
+            self.config.session_logger.log_info(
+                f"TEMPERATURE FILTER: Target={target_temperature_k}K, "
+                f"Matched={len(filtered_rows)}, Excluded={excluded_count}"
+            )
+
+        return {
+            "success": True,
+            "columns": columns,
+            "rows": filtered_rows,
+            "row_count": len(filtered_rows),
+            "temperature_filter_applied": True,
+            "target_temperature_k": target_temperature_k,
+            "excluded_by_temperature": excluded_count
+        }
+
+    # SQL validation and refinement methods removed - no longer needed
 
     async def process_single_query(self, sql_hint: str) -> SQLQueryResult:
         """

@@ -276,17 +276,25 @@ class ThermoOrchestrator:
             )
             trace.append(f"Sent message to thermo_agent: {thermo_message_id}")
 
-            # Ждем ответа от thermo_agent (в реальной системе это было бы асинхронно)
-            # Здесь мы эмулируем получение ответа через хранилище
-            extracted_params_key = f"thermo_result_{thermo_message_id}"
-
-            # Ждем ответа от thermo_agent с таймаутом
+            # Ждем ответа от thermo_agent через сообщения
             extracted_params = None
             start_time = asyncio.get_event_loop().time()
             while (
                 asyncio.get_event_loop().time() - start_time
             ) < self.config.timeout_seconds:
-                extracted_params = self.storage.get(extracted_params_key)
+                # Получаем сообщения от thermo агента
+                messages = self.storage.receive_messages(
+                    self.agent_id, message_type="response"
+                )
+
+                # Ищем ответ на наше сообщение
+                for msg in messages:
+                    if msg.correlation_id == thermo_message_id and msg.source_agent == "thermo_agent":
+                        self.logger.info(f"Received response from thermo_agent: {msg.payload}")
+                        if msg.payload.get("status") == "success":
+                            extracted_params = msg.payload.get("extracted_params")
+                            break
+
                 if extracted_params:
                     break
                 await asyncio.sleep(0.1)  # Проверяем каждые 0.1 секунды
@@ -307,14 +315,25 @@ class ThermoOrchestrator:
                     )
                     trace.append(f"Sent message to sql_agent: {sql_message_id}")
 
-                    # Ждем ответа от sql_agent
-                    sql_result_key = f"sql_result_{sql_message_id}"
+                    # Ждем ответа от sql_agent через сообщения
                     sql_result = None
                     sql_start_time = asyncio.get_event_loop().time()
                     while (
                         asyncio.get_event_loop().time() - sql_start_time
                     ) < self.config.timeout_seconds:
-                        sql_result = self.storage.get(sql_result_key)
+                        # Получаем сообщения от SQL агента
+                        messages = self.storage.receive_messages(
+                            self.agent_id, message_type="response"
+                        )
+
+                        # Ищем ответ на наше сообщение
+                        for msg in messages:
+                            if msg.correlation_id == sql_message_id and msg.source_agent == "sql_agent":
+                                self.logger.info(f"Received response from sql_agent: {msg.payload}")
+                                if msg.payload.get("status") == "success":
+                                    sql_result = msg.payload.get("sql_result")
+                                    break
+
                         if sql_result:
                             break
                         await asyncio.sleep(0.1)

@@ -1,0 +1,98 @@
+2025-09-17 22:09:43,890 - __main__ - INFO - ThermoSystem initialized
+2025-09-17 22:09:43,890 - __main__ - INFO - Initializing agents...
+2025-09-17 22:09:44,141 - thermo_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-09-17 22:09:44,148 - sql_agent - INFO - SQLGenerationAgent 'sql_agent' initialized
+2025-09-17 22:09:44,153 - __main__ - INFO - All agents initialized successfully
+2025-09-17 22:09:44,154 - __main__ - INFO - Starting agents...
+2025-09-17 22:09:44,154 - thermo_agent - INFO - Agent 'thermo_agent' started listening for messages
+2025-09-17 22:09:44,154 - sql_agent - INFO - Agent 'sql_agent' started listening for messages
+2025-09-17 22:09:45,170 - __main__ - INFO - All agents started
+2025-09-17 22:10:18,567 - orchestrator - INFO - Processing request: Возможна ли реакция оксида церия с соляной кислотой при 200 градусах?...
+2025-09-17 22:10:18,567 - thermo_agent - INFO - Processing message: 2c2141ac-0837-4af8-99a8-bd4fa1b5cc34 from orchestrator
+2025-09-17 22:10:23,808 - openai._base_client - INFO - Retrying request to /chat/completions in 0.450062 seconds
+2025-09-17 22:10:29,260 - openai._base_client - INFO - Retrying request to /chat/completions in 0.879528 seconds
+2025-09-17 22:10:31,215 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-17 22:11:07,095 - thermo_agent - INFO - Successfully extracted parameters: reaction
+2025-09-17 22:11:07 - INFO - EXTRACTED PARAMETERS:
+2025-09-17 22:11:07,095 - thermo_agents_session_20250917_220943 - INFO - EXTRACTED PARAMETERS:
+2025-09-17 22:11:07 - INFO -   Intent: reaction
+2025-09-17 22:11:07,096 - thermo_agents_session_20250917_220943 - INFO -   Intent: reaction
+2025-09-17 22:11:07 - INFO -   Compounds: ['CeO2', 'HCl', 'CeCl4', 'H2O']
+2025-09-17 22:11:07,096 - thermo_agents_session_20250917_220943 - INFO -   Compounds: ['CeO2', 'HCl', 'CeCl4', 'H2O']
+2025-09-17 22:11:07 - INFO -   Temperature: 473.15 K
+2025-09-17 22:11:07,096 - thermo_agents_session_20250917_220943 - INFO -   Temperature: 473.15 K
+2025-09-17 22:11:07 - INFO -   Temperature Range: [373.0, 673.0]
+2025-09-17 22:11:07,098 - thermo_agents_session_20250917_220943 - INFO -   Temperature Range: [373.0, 673.0]
+2025-09-17 22:11:07 - INFO -   Phases: ['s', 'aq', 's', 'l']
+2025-09-17 22:11:07,098 - thermo_agents_session_20250917_220943 - INFO -   Phases: ['s', 'aq', 's', 'l']
+2025-09-17 22:11:07 - INFO -   Properties: ['all']
+2025-09-17 22:11:07,098 - thermo_agents_session_20250917_220943 - INFO -   Properties: ['all']
+2025-09-17 22:11:07 - INFO -   SQL Hint: Find thermodynamic data for CeO2(s), HCl(aq), CeCl4(s), and H2O(l) in temperature range 373-673K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis. Consider alternative phases like HCl(g) and H2O(g) at higher temperatures if available.
+2025-09-17 22:11:07,098 - thermo_agents_session_20250917_220943 - INFO -   SQL Hint: Find thermodynamic data for CeO2(s), HCl(aq), CeCl4(s), and H2O(l) in temperature range 373-673K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis. Consider alternative phases like HCl(g) and H2O(g) at higher temperatures if available.
+2025-09-17 22:11:07 - INFO -   JSON Output:
+2025-09-17 22:11:07,099 - thermo_agents_session_20250917_220943 - INFO -   JSON Output:
+2025-09-17 22:11:07 - INFO - {
+  "intent": "reaction",
+  "compounds": [
+    "CeO2",
+    "HCl",
+    "CeCl4",
+    "H2O"
+  ],
+  "temperature_k": 473.15,
+  "temperature_range_k": [
+    373.0,
+    673.0
+  ],
+  "phases": [
+    "s",
+    "aq",
+    "s",
+    "l"
+  ],
+  "properties": [
+    "all"
+  ],
+  "sql_query_hint": "Find thermodynamic data for CeO2(s), HCl(aq), CeCl4(s), and H2O(l) in temperature range 373-673K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis. Consider alternative phases like HCl(g) and H2O(g) at higher temperatures if available."
+}
+2025-09-17 22:11:07,099 - thermo_agents_session_20250917_220943 - INFO - {
+  "intent": "reaction",
+  "compounds": [
+    "CeO2",
+    "HCl",
+    "CeCl4",
+    "H2O"
+  ],
+  "temperature_k": 473.15,
+  "temperature_range_k": [
+    373.0,
+    673.0
+  ],
+  "phases": [
+    "s",
+    "aq",
+    "s",
+    "l"
+  ],
+  "properties": [
+    "all"
+  ],
+  "sql_query_hint": "Find thermodynamic data for CeO2(s), HCl(aq), CeCl4(s), and H2O(l) in temperature range 373-673K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis. Consider alternative phases like HCl(g) and H2O(g) at higher temperatures if available."
+}
+2025-09-17 22:11:07,100 - thermo_agent - INFO - Forwarded to SQL agent: 35f27bde-9b93-4132-bc8a-10c6549950fe
+2025-09-17 22:11:07,565 - sql_agent - INFO - Processing message: 35f27bde-9b93-4132-bc8a-10c6549950fe from thermo_agent
+2025-09-17 22:11:08,379 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-17 22:11:48,143 - sql_agent - INFO - Generated SQL query: SELECT * FROM compounds WHERE ((Formula LIKE 'CeO2%' AND Phase = 's') OR (Formula LIKE 'HCl%' AND Ph...
+2025-09-17 22:11:48,982 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-17 22:12:07 - ERROR - ERROR: SQL agent did not respond to orchestrator
+2025-09-17 22:12:07,268 - thermo_agents_session_20250917_220943 - ERROR - ERROR: SQL agent did not respond to orchestrator
+2025-09-17 22:18:53,904 - __main__ - ERROR - Interactive mode error: 
+Traceback (most recent call last):
+  File "c:\IDE\repository\agents_for_david\main.py", line 306, in interactive_mode
+    user_input = input("Query> ").strip()
+                 ^^^^^^^^^^^^^^^^
+EOFError
+2025-09-17 22:18:54,083 - __main__ - INFO - Stopping agents...
+2025-09-17 22:18:54,084 - thermo_agent - INFO - Agent 'thermo_agent' stopped
+2025-09-17 22:18:54,084 - sql_agent - INFO - Agent 'sql_agent' stopped
+2025-09-17 22:18:54,085 - orchestrator - INFO - Shutting down orchestrator

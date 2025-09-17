@@ -98,17 +98,15 @@ CRITICAL HEURISTICS:
      * Formula = 'TiO2' OR Formula = 'TiO2(s)' (NOT Formula LIKE 'TiO2%' which finds TiO2·Al2O3)
    - Use LIKE '%pattern%' only for broad searches, exact Formula = 'compound' for specific substances
 
-9. PRECISE TEMPERATURE RANGE SEARCH:
-   - CRITICAL: Use SIMPLE temperature filtering - avoid complex range restrictions
-   - For single temperature T: use Tmin <= T AND Tmax >= T (temperature within compound's valid range)
-   - For range [T1, T2]: use Tmax >= T1 AND Tmin <= T2 (overlap with compound range)
-   - NEVER use restrictive conditions like "Tmin >= X AND Tmin <= Y AND Tmax >= Z AND Tmax <= W"
-   - Example: "600°C" or "873K" → Tmin <= 873 AND Tmax >= 873
-   - Example: "300-700K range" → Tmin <= 700 AND Tmax >= 300
-   - For "low temperature": Tmin <= 298 AND Tmax >= 100
-   - For "medium temperature": Tmin <= 700 AND Tmax >= 298  
-   - For "high temperature": Tmin <= 2000 AND Tmax >= 700
-   - Multiple records exist for same compound in different T ranges - use broad search first
+9. TEMPERATURE RANGE APPROACH:
+   - CRITICAL CHANGE: DO NOT filter by temperature ranges in SQL queries
+   - Always search for ALL compounds without temperature restrictions
+   - Temperature filtering will be applied automatically AFTER database search
+   - The system will automatically filter results to find compounds whose temperature ranges cover the target temperature
+   - Example: For "TiO2 at 600°C" → SELECT * FROM compounds WHERE Formula = 'TiO2' OR Formula = 'TiO2(s)' (NO temperature filtering)
+   - Example: For "Cl2 at 873K" → SELECT * FROM compounds WHERE Formula = 'Cl2' OR Formula = 'Cl2(g)' (NO temperature filtering)
+   - Post-processing will automatically select records where Tmin <= target_temp <= Tmax
+   - This ensures we find ALL available data first, then filter appropriately
 
 TASK: Convert user queries in Russian to SQL for the compounds table.
 
@@ -126,9 +124,9 @@ Examples:
 - "Найди газообразный хлор" → SELECT * FROM compounds WHERE Formula = 'Cl2(g)' OR Formula = 'Cl2' LIMIT 20;
 - "Найди кислород в газовой фазе" → SELECT * FROM compounds WHERE Formula = 'O2(g)' OR Formula = 'O2' LIMIT 20;
 - "Найди WOCl4 газ" → SELECT * FROM compounds WHERE Formula LIKE 'WOCl4(g)%' OR Formula = 'WOCl4(g)' LIMIT 20;
-- "Найди вольфрам при температуре 400K" → SELECT * FROM compounds WHERE Formula = 'W' AND Phase = 's' AND Tmin <= 400 AND Tmax >= 400 LIMIT 20;
-- "Найди O2 для диапазона 300-700K" → SELECT * FROM compounds WHERE Formula = 'O2(g)' OR Formula = 'O2' AND Tmin <= 700 AND Tmax >= 300 LIMIT 20;
-- "TiO2, Cl2, TiCl4, O2 для реакции при 673K" → SELECT * FROM compounds WHERE ((Formula = 'TiO2' OR Formula = 'TiO2(s)') OR (Formula = 'Cl2' OR Formula = 'Cl2(g)') OR (Formula = 'TiCl4' OR Formula = 'TiCl4(g)') OR (Formula = 'O2' OR Formula = 'O2(g)')) AND Tmin <= 673 AND Tmax >= 673 LIMIT 100;
+- "Найди вольфрам при температуре 400K" → SELECT * FROM compounds WHERE Formula = 'W' AND Phase = 's' LIMIT 20;
+- "Найди O2 для диапазона 300-700K" → SELECT * FROM compounds WHERE Formula = 'O2(g)' OR Formula = 'O2' LIMIT 20;
+- "TiO2, Cl2, TiCl4, O2 для реакции при 673K" → SELECT * FROM compounds WHERE ((Formula = 'TiO2' OR Formula = 'TiO2(s)') OR (Formula = 'Cl2' OR Formula = 'Cl2(g)') OR (Formula = 'TiCl4' OR Formula = 'TiCl4(g)') OR (Formula = 'O2' OR Formula = 'O2(g)')) LIMIT 100;
 - "Газообразные вещества" → SELECT * FROM compounds WHERE Phase = 'g' ORDER BY Formula LIMIT 20;
 - "Вещества с высокой энтальпией" → SELECT * FROM compounds WHERE H298 > 100 ORDER BY H298 DESC LIMIT 20;
 """
@@ -529,6 +527,9 @@ RESPONSE FORMAT (strict JSON):
 }}
 
 WARNING: Return ONLY JSON without additional explanations or formatting."""
+
+
+# SQL validation and refinement prompts removed - no longer needed
 
 
 # =============================================================================
