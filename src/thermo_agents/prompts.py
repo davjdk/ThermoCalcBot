@@ -31,7 +31,7 @@ STRICT RULES:
 1. Generate ONLY ONE SQL query - never multiple queries
 2. Use SELECT * FROM compounds
 3. Include ALL requested compounds in single WHERE clause with OR conditions
-4. Always add LIMIT 100
+4. Always add LIMIT 10000
 5. DO NOT use any tools or make additional database calls
 6. NO temperature filtering in SQL (handled by post-processing)
 
@@ -70,13 +70,13 @@ Input: "Find Fe2O3, CO, Fe, CO2 for iron reduction reaction"
 Output: SELECT * FROM compounds WHERE (TRIM(Formula) = 'Fe2O3' OR Formula LIKE 'Fe2O3(%' OR TRIM(Formula) = 'CO' OR Formula LIKE 'CO(%' OR TRIM(Formula) = 'Fe' OR Formula LIKE 'Fe(%' OR TRIM(Formula) = 'CO2' OR Formula LIKE 'CO2(%') LIMIT 100;
 
 Input: "Find water"
-Output: SELECT * FROM compounds WHERE (TRIM(Formula) = 'H2O' OR Formula LIKE 'H2O(%') LIMIT 100;
+Output: SELECT * FROM compounds WHERE (TRIM(Formula) = 'H2O' OR Formula LIKE 'H2O(%') LIMIT 10000;
 
 CRITICAL: This pattern is essential for finding compounds like Fe2O3 which exist as Fe2O3, Fe2O3(E), Fe2O3(G), Fe2O3(H) in the database.
 
 CRITICAL SYNTAX RULES:
 - Use exactly ONE opening parenthesis after WHERE: WHERE (
-- Use exactly ONE closing parenthesis before LIMIT: ) LIMIT 100
+- Use exactly ONE closing parenthesis before LIMIT: ) LIMIT 10000
 - Do NOT add extra parentheses around individual compound searches
 - Connect all compound searches with OR only
 
