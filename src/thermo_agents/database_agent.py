@@ -11,7 +11,7 @@ import asyncio
 import logging
 import sqlite3
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from .agent_storage import AgentStorage, get_storage
 from .thermo_agents_logger import SessionLogger
@@ -199,21 +199,33 @@ class DatabaseAgent:
 
             self.logger.info(f"SQL executed successfully: {len(data_rows)} rows found")
 
-            # Применяем фильтрацию по температуре если есть целевая температура
+            # Применяем фильтрацию по температуре если есть температурный диапазон
             original_count = len(data_rows)
             target_temperature = extracted_params.get("temperature_k")
+            temperature_range = extracted_params.get("temperature_range_k")
 
-            if target_temperature and data_rows:
-                self.logger.info(f"Applying temperature filtering at {target_temperature}K...")
-                data_rows = self._filter_by_temperature(data_rows, columns, target_temperature)
-                filtered_count = len(data_rows)
-                self.logger.info(f"Temperature filtering: {filtered_count} of {original_count} rows remain")
+            if (temperature_range or target_temperature) and data_rows:
+                # Используем диапазон если есть, иначе создаем узкий диапазон вокруг целевой температуры
+                if temperature_range and len(temperature_range) >= 2:
+                    filter_range = [float(temperature_range[0]), float(temperature_range[1])]
+                    self.logger.info(f"Applying temperature range filtering: {filter_range[0]}-{filter_range[1]}K...")
+                elif target_temperature:
+                    # Если задана только точная температура, создаем узкий диапазон ±10K
+                    filter_range = [target_temperature - 10, target_temperature + 10]
+                    self.logger.info(f"Applying narrow temperature filtering around {target_temperature}K: {filter_range[0]}-{filter_range[1]}K...")
+                else:
+                    filter_range = None
 
-                if self.config.session_logger:
-                    self.config.session_logger.log_info(
-                        f"TEMPERATURE FILTER: Target={target_temperature}K, "
-                        f"Matched={filtered_count}, Excluded={original_count - filtered_count}"
-                    )
+                if filter_range:
+                    data_rows = self._filter_by_temperature_range(data_rows, columns, filter_range)
+                    filtered_count = len(data_rows)
+                    self.logger.info(f"Temperature filtering: {filtered_count} of {original_count} rows remain")
+
+                    if self.config.session_logger:
+                        self.config.session_logger.log_info(
+                            f"TEMPERATURE FILTER: Range={filter_range[0]}-{filter_range[1]}K, "
+                            f"Matched={filtered_count}, Excluded={original_count - filtered_count}"
+                        )
 
             # Логируем результаты через session_logger
             if self.config.session_logger:
@@ -229,6 +241,7 @@ class DatabaseAgent:
                 "original_row_count": original_count,
                 "temperature_filtered": bool(target_temperature),
                 "target_temperature_k": target_temperature,
+                "filter_temperature_range_k": filter_range if 'filter_range' in locals() else None,
             }
 
         except Exception as e:
@@ -266,8 +279,18 @@ class DatabaseAgent:
 
         return cleaned
 
-    def _filter_by_temperature(self, data_rows, columns, target_temperature_k: float):
-        """Фильтрация данных по температурному диапазону."""
+    def _filter_by_temperature_range(self, data_rows, columns, filter_range_k: List[float]):
+        """
+        Фильтрация данных по температурному диапазону.
+
+        Args:
+            data_rows: Строки данных
+            columns: Названия колонок
+            filter_range_k: Диапазон температур [min, max] в Кельвинах
+
+        Returns:
+            Отфильтрованные строки, где диапазон соединения перекрывается с запрошенным диапазоном
+        """
         # Найдем индексы колонок Tmin и Tmax
         tmin_idx = None
         tmax_idx = None
@@ -282,15 +305,18 @@ class DatabaseAgent:
             self.logger.warning("Temperature columns (Tmin/Tmax) not found, skipping temperature filtering")
             return data_rows
 
-        # Фильтруем строки по температурному диапазону
+        filter_min, filter_max = filter_range_k
+
+        # Фильтруем строки по пересечению температурных диапазонов
         filtered_rows = []
         for row in data_rows:
             try:
                 tmin = float(row[tmin_idx]) if row[tmin_idx] is not None else 0
                 tmax = float(row[tmax_idx]) if row[tmax_idx] is not None else 9999
 
-                # Проверяем, входит ли целевая температура в диапазон
-                if tmin <= target_temperature_k <= tmax:
+                # Проверяем пересечение диапазонов:
+                # диапазоны пересекаются если max(tmin, filter_min) <= min(tmax, filter_max)
+                if max(tmin, filter_min) <= min(tmax, filter_max):
                     filtered_rows.append(row)
 
             except (ValueError, TypeError, IndexError):
