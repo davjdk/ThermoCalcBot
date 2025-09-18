@@ -35,16 +35,50 @@ STRICT RULES:
 5. DO NOT use any tools or make additional database calls
 6. NO temperature filtering in SQL (handled by post-processing)
 
-FORMULA PATTERNS:
-- Single compound: Formula = 'H2O' OR Formula = 'H2O(g)' OR Formula = 'H2O(l)'
-- Multiple compounds: ((Formula = 'A' OR Formula = 'A(s)') OR (Formula = 'B' OR Formula = 'B(g)'))
+FORMULA SEARCH PATTERNS (CRITICAL FOR Fe2O3 AND COMPLEX COMPOUNDS):
+Database contains compounds with modifiers in parentheses like Fe2O3(E), Fe2O3(G), Fe2O3(H), TiO2(A), etc.
+
+For EACH compound use this comprehensive search pattern:
+- TRIM(Formula) = 'CompoundName' OR Formula LIKE 'CompoundName(%'
+
+This captures:
+- Exact matches: Fe2O3
+- Phase variants: Fe2O3(s), Fe2O3(g), Fe2O3(l)
+- Structural modifiers: Fe2O3(E), Fe2O3(G), Fe2O3(H)
+- Any other modifications in parentheses
+
+FORMAL SQL CONSTRUCTION RULES:
+1. For single compound:
+   (TRIM(Formula) = 'H2O' OR Formula LIKE 'H2O(%')
+
+2. For multiple compounds - combine all conditions with OR:
+   (TRIM(Formula) = 'Fe2O3' OR Formula LIKE 'Fe2O3(%' OR
+    TRIM(Formula) = 'CO' OR Formula LIKE 'CO(%' OR
+    TRIM(Formula) = 'Fe' OR Formula LIKE 'Fe(%' OR
+    TRIM(Formula) = 'CO2' OR Formula LIKE 'CO2(%')
+
+3. Always use TRIM() to handle any whitespace
+4. Always use LIKE with (% pattern to catch modifications
+5. Use exactly ONE pair of parentheses around the entire WHERE condition
+6. Connect all compound searches with OR - do NOT add extra parentheses around individual compounds
 
 EXAMPLES:
 Input: "Find CeO2, HCl, CeCl3, H2O for reaction"
-Output: SELECT * FROM compounds WHERE ((Formula = 'CeO2' OR Formula = 'CeO2(s)') OR (Formula = 'HCl' OR Formula = 'HCl(g)') OR (Formula = 'CeCl3' OR Formula = 'CeCl3(s)') OR (Formula = 'H2O' OR Formula = 'H2O(g)')) LIMIT 100;
+Output: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CeO2' OR Formula LIKE 'CeO2(%' OR TRIM(Formula) = 'HCl' OR Formula LIKE 'HCl(%' OR TRIM(Formula) = 'CeCl3' OR Formula LIKE 'CeCl3(%' OR TRIM(Formula) = 'H2O' OR Formula LIKE 'H2O(%') LIMIT 100;
+
+Input: "Find Fe2O3, CO, Fe, CO2 for iron reduction reaction"
+Output: SELECT * FROM compounds WHERE (TRIM(Formula) = 'Fe2O3' OR Formula LIKE 'Fe2O3(%' OR TRIM(Formula) = 'CO' OR Formula LIKE 'CO(%' OR TRIM(Formula) = 'Fe' OR Formula LIKE 'Fe(%' OR TRIM(Formula) = 'CO2' OR Formula LIKE 'CO2(%') LIMIT 100;
 
 Input: "Find water"
-Output: SELECT * FROM compounds WHERE Formula = 'H2O' OR Formula = 'H2O(g)' OR Formula = 'H2O(l)' OR Formula = 'H2O(s)' LIMIT 20;
+Output: SELECT * FROM compounds WHERE (TRIM(Formula) = 'H2O' OR Formula LIKE 'H2O(%') LIMIT 100;
+
+CRITICAL: This pattern is essential for finding compounds like Fe2O3 which exist as Fe2O3, Fe2O3(E), Fe2O3(G), Fe2O3(H) in the database.
+
+CRITICAL SYNTAX RULES:
+- Use exactly ONE opening parenthesis after WHERE: WHERE (
+- Use exactly ONE closing parenthesis before LIMIT: ) LIMIT 100
+- Do NOT add extra parentheses around individual compound searches
+- Connect all compound searches with OR only
 
 Return ONLY the SQL query text, nothing else."""
 
@@ -65,6 +99,7 @@ ANALYZE AND EXTRACT:
    - Extract ALL reaction participants: reactants AND products
    - Convert chemical names to formulas: "titanium oxide" → "TiO2", "chlorine" → "Cl2"
    - For reactions like "chlorination of TiO2", extract: ["TiO2", "Cl2", "TiCl4", "O2"]
+   - For binary interactions like "WC + Mg", determine likely products: ["WC", "Mg", "MgC", "W"]
    - Use standard formulas: H2O, NaCl, TiO2, WCl6, Al(OH)3
    - If compound names mentioned, convert to chemical formulas
 
@@ -87,7 +122,13 @@ ANALYZE AND EXTRACT:
    - For lookup: "basic" (H298, S298)
    - For calculations: "thermal" (heat capacity data)
 
-6. SQL_QUERY_HINT (compose search strategy):
+6. REACTION_EQUATION (for reactions only):
+   - Generate balanced chemical equation when intent="reaction"
+   - Include all identified reactants and products
+   - Example: "WC + Mg → MgC + W" or "TiO2 + 2Cl2 → TiCl4 + O2"
+   - For complex reactions, provide most probable equation based on chemical knowledge
+
+7. SQL_QUERY_HINT (compose search strategy):
    - Create detailed search instruction for SQL_GENERATION_PROMPT
    - Must find ALL compounds in appropriate phases and temperature ranges
    - Include alternative formulas and phase combinations
@@ -110,6 +151,7 @@ Response:
   "temperature_range_k": [573, 873],
   "phases": ["s", "g", "g", "g"],
   "properties": ["all"],
+  "reaction_equation": "TiO2 + 2Cl2 → TiCl4 + O2",
   "sql_query_hint": "Find thermodynamic data for TiO2(s), Cl2(g), TiCl4(g), and O2(g) in temperature range 573-873K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis."
 }
 
@@ -123,6 +165,19 @@ Response:
   "phases": ["g"],
   "properties": ["basic"],
   "sql_query_hint": "Find H2O in gas phase with temperature range covering 500K. Include H298 and S298 data."
+}
+
+Query: "При какой температуре идет взаимодействие карбида вольфрама с магнием?"
+Response:
+{
+  "intent": "reaction",
+  "compounds": ["WC", "Mg", "MgC", "W"],
+  "temperature_k": 298.15,
+  "temperature_range_k": [200, 2000],
+  "phases": ["s", "s", "s", "s"],
+  "properties": ["all"],
+  "reaction_equation": "WC + Mg → MgC + W",
+  "sql_query_hint": "Find thermodynamic data for WC(s), Mg(s), MgC(s), and W(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction WC + Mg → MgC + W."
 }
 
 CRITICAL:
@@ -280,11 +335,30 @@ RESULT_FILTER_PROMPT = """Ты - эксперт в термодинамике и
 НАЙДЕННЫЕ ДАННЫЕ (упрощенный формат):
 {formatted_sql_results}
 
+КРИТИЧЕСКИЕ ПРАВИЛА СОПОСТАВЛЕНИЯ СОЕДИНЕНИЙ:
+При сопоставлении целевых соединений с записями в базе используй ГИБКОЕ сопоставление:
+- NH4Cl находит: NH4Cl, NH4Cl(s), NH4Cl(l), NH4Cl(g), NH4Cl(ia), NH4Cl(a), и т.д.
+- TiO2 находит: TiO2, TiO2(s), TiO2(ANATASE), TiO2(RUTILE), TiO2(A), TiO2(R), и т.д.
+- Fe2O3 находит: Fe2O3, Fe2O3(s), Fe2O3(E), Fe2O3(G), Fe2O3(H), Fe2O3(ALPHA), и т.д.
+- H2O находит: H2O, H2O(l), H2O(g), H2O(s), H2O(STEAM), и т.д.
+- B2O3 находит: B2O3, B2O3(s), B2O3(l), B2O3(g), B2O3(A), B2O3(G), и т.д.
+- Na2O находит: Na2O, Na2O(s), Na2O(l), Na2O(g), Na2O(+g), и т.д.
+
+Применяй поиск по подстроке: если Formula.startswith(целевое_соединение) или целевое_соединение в Formula.
+
+КРИТИЧЕСКИЕ ПРАВИЛА ОПРЕДЕЛЕНИЯ ФАЗ:
+- Когда колонка Phase = 's': это ТВЕРДАЯ фаза
+- Когда колонка Phase = 'l': это ЖИДКАЯ фаза
+- Когда колонка Phase = 'g': это ГАЗОВАЯ фаза
+- Когда колонка Phase = 'aq': это ВОДНЫЙ РАСТВОР
+- Модификаторы формулы как B2O3(A), B2O3(G), Na2O(+g) - это структурные варианты, НЕ индикаторы фазы
+- ВСЕГДА проверяй колонку Phase для фактического фазового состояния, НЕ модификаторы формулы
+
 КРИТЕРИИ ОТБОРА:
 
 1. ФАЗОВОЕ СОСТОЯНИЕ - определи корректную фазу каждого вещества при заданной температуре:
     - s (твердое): T < температуры плавления (MeltingPoint)
-    - l (жидкое): MeltingPoint < T < BoilingPoint  
+    - l (жидкое): MeltingPoint < T < BoilingPoint
     - g (газообразное): T > BoilingPoint
     - aq (водный раствор): для растворимых веществ в водных системах
     - Если данные о переходах отсутствуют (0 или null), используй химическую интуицию
@@ -302,9 +376,10 @@ RESULT_FILTER_PROMPT = """Ты - эксперт в термодинамике и
 
 ОСОБЫЕ ПРАВИЛА:
 - Для реакций высокотемпературных процессов (>800K) предпочитай газовую фазу
-- При сомнениях в фазовом состоянии включи предупреждение  
+- При сомнениях в фазовом состоянии включи предупреждение
 - Если для соединения нет подходящих записей, включи его в missing_compounds
 - КРИТИЧНО: используй только ID записей из предоставленных данных
+- ВСЕГДА проверяй варианты соединений с модификаторами в скобках (например, NH4Cl(ia), Fe2O3(G))
 
 ФОРМАТ ОТВЕТА (строго JSON):
 {
@@ -395,6 +470,25 @@ INPUT DATA:
 FOUND DATA (simplified format):
 {formatted_sql_results}
 
+CRITICAL COMPOUND MATCHING RULES:
+When matching target compounds to database records, use FLEXIBLE matching:
+- NH4Cl matches: NH4Cl, NH4Cl(s), NH4Cl(l), NH4Cl(g), NH4Cl(ia), NH4Cl(a), etc.
+- TiO2 matches: TiO2, TiO2(s), TiO2(ANATASE), TiO2(RUTILE), TiO2(A), TiO2(R), etc.
+- Fe2O3 matches: Fe2O3, Fe2O3(s), Fe2O3(E), Fe2O3(G), Fe2O3(H), Fe2O3(ALPHA), etc.
+- H2O matches: H2O, H2O(l), H2O(g), H2O(s), H2O(STEAM), etc.
+- B2O3 matches: B2O3, B2O3(s), B2O3(l), B2O3(g), B2O3(A), B2O3(G), etc.
+- Na2O matches: Na2O, Na2O(s), Na2O(l), Na2O(g), Na2O(+g), etc.
+
+Apply substring matching: if Formula.startswith(target_compound) or target_compound in Formula.
+
+CRITICAL PHASE IDENTIFICATION RULES:
+- When Phase column = 's': this is SOLID phase
+- When Phase column = 'l': this is LIQUID phase
+- When Phase column = 'g': this is GAS phase
+- When Phase column = 'aq': this is AQUEOUS phase
+- Formula modifiers like B2O3(A), B2O3(G), Na2O(+g) are structural variants, NOT phase indicators
+- ALWAYS check the Phase column for actual phase state, NOT the formula modifiers
+
 SELECTION CRITERIA:
 
 1. PHASE STATE - determine the correct phase for each substance at the given temperature:
@@ -408,7 +502,6 @@ SELECTION CRITERIA:
     - Prefer narrow ranges (higher accuracy)
     - Prefer ranges centered close to the target temperature
     - If no exact coverage, choose the nearest suitable range
-    - If temperature range spans melting/boiling points, select appropriate phase for each range
 
 3. ELIMINATE DUPLICATES - for each compound in a specific phase, select ONLY one best record:
     - When multiple records exist for one phase, choose the one with better temperature coverage
@@ -421,7 +514,7 @@ SPECIAL RULES:
 - When in doubt about phase state, include a warning
 - If no suitable records exist for a compound, include it in missing_compounds
 - CRITICAL: use only record IDs from the provided data
-- When temperature range spans phase transitions, select the appropriate phase for each temperature subrange
+- ALWAYS check for compound variants with modifiers in parentheses (e.g., NH4Cl(ia), Fe2O3(G))
 
 RESPONSE FORMAT (strict JSON):
 {{

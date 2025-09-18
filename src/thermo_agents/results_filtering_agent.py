@@ -21,16 +21,26 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from .agent_storage import AgentStorage, get_storage
+from .prompts import RESULT_FILTER_ENGLISH_PROMPT
 from .thermo_agents_logger import SessionLogger
 
+
+class SelectedEntry(BaseModel):
+    """Выбранная запись с обоснованием."""
+    compound: str
+    selected_id: int
+    reasoning: str
 
 class FilteredResult(BaseModel):
     """Результат фильтрации записей."""
 
-    selected_records: List[Dict[str, Any]]  # Выбранные записи
-    reasoning: str  # Обоснование выбора
-    temperature_coverage: Dict[str, Any]  # Анализ покрытия температурного диапазона
-    compounds_analysis: Dict[str, Any]  # Анализ по веществам
+    selected_entries: List[SelectedEntry]  # Выбранные записи с ID
+    phase_determinations: Dict[str, Dict[str, Any]]  # Анализ фаз
+    missing_compounds: List[str]  # Отсутствующие соединения
+    excluded_entries_count: int  # Количество исключенных записей
+    overall_confidence: float  # Общая уверенность
+    warnings: List[str]  # Предупреждения
+    filter_summary: str  # Резюме фильтрации
 
 
 @dataclass
@@ -90,33 +100,7 @@ class ResultsFilteringAgent:
 
         model = OpenAIChatModel(self.config.llm_model, provider=provider)
 
-        system_prompt = """You are a thermodynamic data filtering expert. Your task is to select the most relevant database records for specific compounds and phases within a given temperature range.
-
-TASK:
-1. Analyze all provided database records
-2. For each requested compound and phase, select the MOST RELEVANT records that:
-   - Cover the requested temperature range (even partial overlap is acceptable)
-   - Represent the correct chemical formula and phase
-   - Provide the best thermodynamic data quality
-
-SELECTION CRITERIA:
-- Temperature range coverage: Records should overlap with the requested temperature range
-- Phase accuracy: Must match the requested phase (s/l/g/aq)
-- Formula accuracy: Must match the requested chemical formula
-- Data completeness: Prefer records with complete thermodynamic data (H298, S298, f1-f6)
-- Temperature range width: For broad coverage, multiple records per compound may be needed
-
-IMPORTANT RULES:
-- If multiple records exist for the same compound and phase, select the one with the best temperature range coverage
-- If no single record covers the entire temperature range, select multiple complementary records
-- Always prioritize phase-accurate matches
-- Provide clear reasoning for your selections
-
-OUTPUT FORMAT:
-- selected_records: List of chosen database records
-- reasoning: Detailed explanation of selection criteria and decisions
-- temperature_coverage: Analysis of how well the selection covers the requested temperature range
-- compounds_analysis: Per-compound analysis of the selections made"""
+        system_prompt = RESULT_FILTER_ENGLISH_PROMPT
 
         agent = Agent(
             model,
@@ -198,13 +182,17 @@ OUTPUT FORMAT:
                     temp_filtered_records, columns, compounds, phases, temperature_range, target_temperature
                 )
 
+                # Конвертируем selected_entries (ID) обратно в полные записи
+                selected_records = self._convert_ids_to_records(filtered_result.selected_entries, temp_filtered_records)
+
                 # Сохраняем результат в хранилище
                 result_key = f"filtered_result_{message.id}"
                 result_data = {
                     "filtered_result": filtered_result.model_dump(),
+                    "selected_records": selected_records,  # Добавляем полные записи
                     "original_count": len(rows),
                     "temp_filtered_count": len(temp_filtered_records),
-                    "final_count": len(filtered_result.selected_records),
+                    "final_count": len(selected_records),
                     "extracted_params": extracted_params,
                 }
 
@@ -212,7 +200,7 @@ OUTPUT FORMAT:
                 self.logger.info(f"Filtering result stored with key: {result_key}")
 
                 # Логируем финальную отфильтрованную таблицу
-                self._log_filtered_table(filtered_result.selected_records, filtered_result.reasoning)
+                self._log_filtered_table(selected_records, filtered_result.filter_summary)
 
                 # Отправляем ответ SQL агенту (который ожидает результат)
                 # Поскольку database_agent пересылает correlation_id от SQL агента,
@@ -229,7 +217,7 @@ OUTPUT FORMAT:
                         "statistics": {
                             "original_count": len(rows),
                             "temp_filtered_count": len(temp_filtered_records),
-                            "final_count": len(filtered_result.selected_records),
+                            "final_count": len(selected_records),
                         },
                     },
                 )
@@ -344,13 +332,19 @@ OUTPUT FORMAT:
         Returns:
             Результат LLM-фильтрации
         """
-        # Подготавливаем данные для LLM в YAML формате
+        # Подготавливаем данные для LLM в YAML формате с ID записей
+        records_with_ids = []
+        for i, record in enumerate(records[:50]):  # Ограничиваем для LLM
+            record_with_id = record.copy()
+            record_with_id["record_id"] = i
+            records_with_ids.append(record_with_id)
+
         analysis_data = {
             "requested_compounds": compounds,
             "requested_phases": phases,
             "temperature_range_k": temperature_range,
             "target_temperature_k": target_temperature,
-            "available_records": records[:50],  # Ограничиваем для LLM
+            "available_records": records_with_ids,
             "total_records_count": len(records),
         }
 
@@ -382,6 +376,28 @@ Consider that multiple records per compound may be needed for full temperature r
             # Возвращаем базовую фильтрацию по формулам
             return self._fallback_filter(records, compounds, phases)
 
+    def _convert_ids_to_records(self, selected_entries: List[SelectedEntry], all_records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Конвертирует selected_entries с ID обратно в полные записи.
+
+        Args:
+            selected_entries: Выбранные записи с ID
+            all_records: Все доступные записи для поиска
+
+        Returns:
+            Список полных записей
+        """
+        selected_records = []
+
+        for entry in selected_entries:
+            # Ищем запись по ID (который является индексом в массиве)
+            if 0 <= entry.selected_id < len(all_records):
+                selected_records.append(all_records[entry.selected_id])
+            else:
+                self.logger.warning(f"Invalid record ID {entry.selected_id} for compound {entry.compound}")
+
+        return selected_records
+
     def _fallback_filter(self, records: List[Dict[str, Any]], compounds: List[str], phases: List[str]) -> FilteredResult:
         """Резервная фильтрация без LLM."""
         selected = []
@@ -397,11 +413,23 @@ Consider that multiple records per compound may be needed for full temperature r
                     selected.append(record)
                     break
 
+        # Создаем SelectedEntry объекты для fallback
+        selected_entries = []
+        for i, record in enumerate(selected):
+            selected_entries.append(SelectedEntry(
+                compound=record.get("Formula", ""),
+                selected_id=i,  # Используем индекс как ID
+                reasoning=f"Matched formula and phase for {record.get('Formula', '')}"
+            ))
+
         return FilteredResult(
-            selected_records=selected,
-            reasoning=reasoning,
-            temperature_coverage={"status": "basic_matching"},
-            compounds_analysis={"method": "formula_phase_matching"}
+            selected_entries=selected_entries,
+            phase_determinations={},
+            missing_compounds=[],
+            excluded_entries_count=len(records) - len(selected),
+            overall_confidence=0.7,  # Средняя уверенность для fallback
+            warnings=["Used fallback filtering due to LLM error"],
+            filter_summary=reasoning
         )
 
     def _log_filtered_table(self, selected_records: List[Dict[str, Any]], reasoning: str):
@@ -416,6 +444,10 @@ Consider that multiple records per compound may be needed for full temperature r
         key_columns = ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax']
 
         self.logger.info(f"Filtered results: {len(selected_records)} selected records")
+
+        # Отладочное логирование - что именно в selected_records
+        self.logger.info(f"DEBUG: First record keys: {list(selected_records[0].keys()) if selected_records else 'No records'}")
+        self.logger.info(f"DEBUG: First record data: {selected_records[0] if selected_records else 'No records'}")
 
         if self.config.session_logger:
             self.config.session_logger.log_info(f"FILTERED RESULTS TABLE ({len(selected_records)} records):")

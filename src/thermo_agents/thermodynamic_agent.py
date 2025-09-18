@@ -26,12 +26,13 @@ class ExtractedParameters(BaseModel):
     """Извлеченные параметры из запроса пользователя."""
 
     intent: str  # "lookup", "calculation", "reaction", "comparison"
-    compounds: List[str]  # Химические формулы
+    compounds: List[str]  # Химические формулы (включая все реагенты и продукты)
     temperature_k: float  # Температура в Кельвинах
     temperature_range_k: List[float]  # Диапазон температур [min, max]
     phases: List[str]  # Фазовые состояния ["s", "l", "g", "aq"]
     properties: List[str]  # Требуемые свойства ["basic", "all", "thermal"]
     sql_query_hint: str  # Подсказка для генерации SQL
+    reaction_equation: Optional[str] = None  # Уравнение реакции (для intent="reaction")
 
 
 @dataclass

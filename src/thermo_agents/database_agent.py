@@ -105,9 +105,9 @@ class DatabaseAgent:
             if not sql_query:
                 raise ValueError("No sql_query in message payload")
 
-            self.logger.info(f"Executing SQL query: {sql_query[:100]}...")
+            self.logger.info(f"Executing SQL query: {sql_query}")
             if self.config.session_logger:
-                self.config.session_logger.log_info(f"DATABASE EXECUTION START: {sql_query[:100]}...")
+                self.config.session_logger.log_info(f"DATABASE EXECUTION START: {sql_query}")
 
             # Выполняем SQL запрос
             execution_result = await self._execute_query(sql_query, extracted_params)

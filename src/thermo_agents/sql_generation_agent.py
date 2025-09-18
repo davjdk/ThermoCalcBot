@@ -217,7 +217,7 @@ class SQLGenerationAgent:
             )
             sql_result = result.output
 
-            self.logger.info(f"Generated SQL query: {sql_result.sql_query[:100]}...")
+            self.logger.info(f"Generated SQL query: {sql_result.sql_query}")
             if self.config.session_logger:
                 self.config.session_logger.log_info(f"SQL GENERATION COMPLETE: Query length {len(sql_result.sql_query)}")
 

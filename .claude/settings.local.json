@@ -6,7 +6,8 @@
       "Bash(del test_sql_agent_fix.py)",
       "Bash(set -a)",
       "Bash(source .env)",
-      "Bash(set +a)"
+      "Bash(set +a)",
+      "Bash(sqlite3:*)"
     ],
     "deny": [],
     "ask": []
