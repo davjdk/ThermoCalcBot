@@ -1,0 +1,178 @@
+2025-09-18 11:32:06,797 - __main__ - INFO - ThermoSystem initialized
+2025-09-18 11:32:06,797 - __main__ - INFO - Initializing agents...
+2025-09-18 11:32:07,051 - thermo_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-09-18 11:32:07,051 - sql_agent - INFO - SQLGenerationAgent 'sql_agent' initialized
+2025-09-18 11:32:07,051 - database_agent - INFO - DatabaseAgent 'database_agent' initialized
+2025-09-18 11:32:07,052 - results_filtering_agent - INFO - ResultsFilteringAgent 'results_filtering_agent' initialized
+2025-09-18 11:32:07,056 - __main__ - INFO - All agents initialized successfully
+2025-09-18 11:32:07,061 - __main__ - INFO - Starting agents...
+2025-09-18 11:32:07,061 - thermo_agent - INFO - Agent 'thermo_agent' started listening for messages
+2025-09-18 11:32:07,061 - sql_agent - INFO - Agent 'sql_agent' started listening for messages
+2025-09-18 11:32:07,061 - database_agent - INFO - Agent 'database_agent' started listening for messages
+2025-09-18 11:32:07,062 - results_filtering_agent - INFO - Agent 'results_filtering_agent' started listening for messages
+2025-09-18 11:32:08,082 - __main__ - INFO - All agents started
+2025-09-18 11:32:41,012 - orchestrator - INFO - Processing request: При какой температуре идет взаимодействие карбида вольфрама с магнием?...
+2025-09-18 11:32:41,012 - thermo_agent - INFO - Processing message: 82d98d1c-74af-465a-9f13-bb28e5536837 from orchestrator
+2025-09-18 11:32:42,210 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-18 11:32:51,332 - thermo_agent - INFO - Successfully extracted parameters: reaction
+2025-09-18 11:32:51 - INFO - EXTRACTED PARAMETERS:
+2025-09-18 11:32:51,333 - thermo_agents_session_20250918_113206 - INFO - EXTRACTED PARAMETERS:
+2025-09-18 11:32:51 - INFO -   Intent: reaction
+2025-09-18 11:32:51,333 - thermo_agents_session_20250918_113206 - INFO -   Intent: reaction
+2025-09-18 11:32:51 - INFO -   Compounds: ['WC', 'Mg']
+2025-09-18 11:32:51,334 - thermo_agents_session_20250918_113206 - INFO -   Compounds: ['WC', 'Mg']
+2025-09-18 11:32:51 - INFO -   Temperature: 298.15 K
+2025-09-18 11:32:51,334 - thermo_agents_session_20250918_113206 - INFO -   Temperature: 298.15 K
+2025-09-18 11:32:51 - INFO -   Temperature Range: [200.0, 2000.0]
+2025-09-18 11:32:51,335 - thermo_agents_session_20250918_113206 - INFO -   Temperature Range: [200.0, 2000.0]
+2025-09-18 11:32:51 - INFO -   Phases: ['s', 's']
+2025-09-18 11:32:51,335 - thermo_agents_session_20250918_113206 - INFO -   Phases: ['s', 's']
+2025-09-18 11:32:51 - INFO -   Properties: ['all']
+2025-09-18 11:32:51,335 - thermo_agents_session_20250918_113206 - INFO -   Properties: ['all']
+2025-09-18 11:32:51 - INFO -   SQL Hint: Find thermodynamic data for WC(s) and Mg(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction WC + Mg.
+2025-09-18 11:32:51,335 - thermo_agents_session_20250918_113206 - INFO -   SQL Hint: Find thermodynamic data for WC(s) and Mg(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction WC + Mg.
+2025-09-18 11:32:51 - INFO -   JSON Output:
+2025-09-18 11:32:51,335 - thermo_agents_session_20250918_113206 - INFO -   JSON Output:
+2025-09-18 11:32:51 - INFO - {
+  "intent": "reaction",
+  "compounds": [
+    "WC",
+    "Mg"
+  ],
+  "temperature_k": 298.15,
+  "temperature_range_k": [
+    200.0,
+    2000.0
+  ],
+  "phases": [
+    "s",
+    "s"
+  ],
+  "properties": [
+    "all"
+  ],
+  "sql_query_hint": "Find thermodynamic data for WC(s) and Mg(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction WC + Mg."
+}
+2025-09-18 11:32:51,337 - thermo_agents_session_20250918_113206 - INFO - {
+  "intent": "reaction",
+  "compounds": [
+    "WC",
+    "Mg"
+  ],
+  "temperature_k": 298.15,
+  "temperature_range_k": [
+    200.0,
+    2000.0
+  ],
+  "phases": [
+    "s",
+    "s"
+  ],
+  "properties": [
+    "all"
+  ],
+  "sql_query_hint": "Find thermodynamic data for WC(s) and Mg(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction WC + Mg."
+}
+2025-09-18 11:32:51,337 - thermo_agent - INFO - Forwarded to SQL agent: 976d0969-7d54-4d3a-8452-ca8b871989c7
+2025-09-18 11:32:51,383 - orchestrator - INFO - Received response from thermo_agent: {'status': 'success', 'result_key': 'thermo_result_82d98d1c-74af-465a-9f13-bb28e5536837', 'extracted_params': {'intent': 'reaction', 'compounds': ['WC', 'Mg'], 'temperature_k': 298.15, 'temperature_range_k': [200.0, 2000.0], 'phases': ['s', 's'], 'properties': ['all'], 'sql_query_hint': 'Find thermodynamic data for WC(s) and Mg(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction WC + Mg.'}}
+2025-09-18 11:32:51,677 - sql_agent - INFO - Processing message: 976d0969-7d54-4d3a-8452-ca8b871989c7 from thermo_agent
+2025-09-18 11:32:51,678 - sql_agent - INFO - Processing SQL hint: Find thermodynamic data for WC(s) and Mg(s) in temperature range 200-2000K. Include H298, S298, and ...
+2025-09-18 11:32:51 - INFO - INFO: SQL GENERATION START: Processing message 976d0969-7d54-4d3a-8452-ca8b871989c7
+2025-09-18 11:32:51,678 - thermo_agents_session_20250918_113206 - INFO - INFO: SQL GENERATION START: Processing message 976d0969-7d54-4d3a-8452-ca8b871989c7
+2025-09-18 11:32:51,679 - sql_agent - INFO - Starting SQL query generation...
+2025-09-18 11:32:52,287 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-18 11:32:54,328 - sql_agent - INFO - Generated SQL query: SELECT * FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') OR (Formula = 'Mg' OR Formula =...
+2025-09-18 11:32:54 - INFO - INFO: SQL GENERATION COMPLETE: Query length 121
+2025-09-18 11:32:54,329 - thermo_agents_session_20250918_113206 - INFO - INFO: SQL GENERATION COMPLETE: Query length 121
+2025-09-18 11:32:54,331 - sql_agent - INFO - SQL query cleaned
+2025-09-18 11:32:54,331 - sql_agent - INFO - Prepared result data with key: sql_result_976d0969-7d54-4d3a-8452-ca8b871989c7
+2025-09-18 11:32:54,332 - sql_agent - INFO - Sending SQL query to database agent for execution...
+2025-09-18 11:32:54,332 - sql_agent - INFO - SQL query sent to database_agent: e4ddc428-fb1d-40b0-9380-07e461028630
+2025-09-18 11:32:54,658 - database_agent - INFO - Processing SQL execution request: e4ddc428-fb1d-40b0-9380-07e461028630 from sql_agent
+2025-09-18 11:32:54,659 - database_agent - INFO - Executing SQL query: SELECT * FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') OR (Formula = 'Mg' OR Formula =...
+2025-09-18 11:32:54 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') OR (Formula = 'Mg' OR Formula =...
+2025-09-18 11:32:54,659 - thermo_agents_session_20250918_113206 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') OR (Formula = 'Mg' OR Formula =...
+2025-09-18 11:32:54,665 - database_agent - INFO - SQL executed successfully: 52 rows found
+2025-09-18 11:32:54,665 - database_agent - INFO - Applying temperature filtering at 298.15K...
+2025-09-18 11:32:54,667 - database_agent - INFO - Temperature filtering: 22 of 52 rows remain
+2025-09-18 11:32:54 - INFO - INFO: TEMPERATURE FILTER: Target=298.15K, Matched=22, Excluded=30
+2025-09-18 11:32:54,667 - thermo_agents_session_20250918_113206 - INFO - INFO: TEMPERATURE FILTER: Target=298.15K, Matched=22, Excluded=30
+2025-09-18 11:32:54 - INFO - Executed query, found 22 rows
+2025-09-18 11:32:54,667 - thermo_agents_session_20250918_113206 - INFO - Executed query, found 22 rows
+2025-09-18 11:32:54 - INFO - QUERY RESULTS:
+2025-09-18 11:32:54,668 - thermo_agents_session_20250918_113206 - INFO - QUERY RESULTS:
+2025-09-18 11:32:54 - INFO -   SQL: SELECT * FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') OR (Formula = 'Mg' OR Formula = 'Mg(s)')) LIMIT 100
+2025-09-18 11:32:54,668 - thermo_agents_session_20250918_113206 - INFO -   SQL: SELECT * FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') OR (Formula = 'Mg' OR Formula = 'Mg(s)')) LIMIT 100
+2025-09-18 11:32:54 - INFO -   Total rows: 22
+2025-09-18 11:32:54,668 - thermo_agents_session_20250918_113206 - INFO -   Total rows: 22
+2025-09-18 11:32:54,669 - database_agent - INFO - Database result stored with key: db_result_e4ddc428-fb1d-40b0-9380-07e461028630
+2025-09-18 11:32:54,669 - database_agent - INFO - Sending results to filtering agent for analysis...
+2025-09-18 11:32:54,669 - database_agent - INFO - Results sent to filtering agent: c7c7e48b-9c92-4e50-ac5e-096829d26ed8
+2025-09-18 11:32:54,669 - database_agent - INFO - Response sent to sql_agent
+2025-09-18 11:32:54,670 - results_filtering_agent - INFO - Processing results filtering request: c7c7e48b-9c92-4e50-ac5e-096829d26ed8 from database_agent
+2025-09-18 11:32:54,670 - results_filtering_agent - INFO - Filtering 22 records for 2 compounds
+2025-09-18 11:32:54 - INFO - INFO: RESULTS FILTERING START: 22 records, target temp 298.15K
+2025-09-18 11:32:54,670 - thermo_agents_session_20250918_113206 - INFO - INFO: RESULTS FILTERING START: 22 records, target temp 298.15K
+2025-09-18 11:32:54,670 - results_filtering_agent - INFO - Temperature pre-filtering: 22 records remain
+2025-09-18 11:32:54,765 - sql_agent - INFO - Received database result: success
+2025-09-18 11:32:54,767 - sql_agent - INFO - Database execution successful: 22 rows
+2025-09-18 11:32:54,767 - sql_agent - INFO - Waiting for filtering agent results...
+2025-09-18 11:32:55,346 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-18 11:33:03,139 - results_filtering_agent - INFO - Filtering result stored with key: filtered_result_c7c7e48b-9c92-4e50-ac5e-096829d26ed8
+2025-09-18 11:33:03,139 - results_filtering_agent - INFO - Filtered results: 4 selected records
+2025-09-18 11:33:03 - INFO - INFO: FILTERED RESULTS TABLE (4 records):
+2025-09-18 11:33:03,140 - thermo_agents_session_20250918_113206 - INFO - INFO: FILTERED RESULTS TABLE (4 records):
+2025-09-18 11:33:03 - INFO - INFO: REASONING: For Mg (solid phase), multiple records from NASA 93 provide polynomial coefficients for heat capacity in two temperature ranges: 180-298.15 K and 298.15-923 K, which partially overlap the requested 200-2000 K range (up to the melting point of 923 K). These were selected as they offer detailed thermodynamic data via coefficients and cover the low and intermediate temperature regions. The Barin 77 record was included as it provides explicit S298 value and covers 298.15-922 K, complementing the NASA data with alternative reference and density information. Duplicates and near-identical records were avoided to select representative high-quality ones. For WC (solid phase), the Barin 93/Belov 99 record was selected as it covers 298.15-3050 K, fully encompassing the requested range up to 2000 K with complete H298, S298, and polynomial coefficients. Other WC records are similar or have narrower ranges (e.g., up to 2500 K), but this one provides the broadest coverage. All selected records have ReliabilityClass 1, match the formula and phase, and include complete f1-f6 where applicable (f5 and f6 are 0, indicating no higher-order terms needed). Priority was given to records with temperature overlap, phase accuracy, and data completeness over redundant entries.
+2025-09-18 11:33:03,141 - thermo_agents_session_20250918_113206 - INFO - INFO: REASONING: For Mg (solid phase), multiple records from NASA 93 provide polynomial coefficients for heat capacity in two temperature ranges: 180-298.15 K and 298.15-923 K, which partially overlap the requested 200-2000 K range (up to the melting point of 923 K). These were selected as they offer detailed thermodynamic data via coefficients and cover the low and intermediate temperature regions. The Barin 77 record was included as it provides explicit S298 value and covers 298.15-922 K, complementing the NASA data with alternative reference and density information. Duplicates and near-identical records were avoided to select representative high-quality ones. For WC (solid phase), the Barin 93/Belov 99 record was selected as it covers 298.15-3050 K, fully encompassing the requested range up to 2000 K with complete H298, S298, and polynomial coefficients. Other WC records are similar or have narrower ranges (e.g., up to 2500 K), but this one provides the broadest coverage. All selected records have ReliabilityClass 1, match the formula and phase, and include complete f1-f6 where applicable (f5 and f6 are 0, indicating no higher-order terms needed). Priority was given to records with temperature overlap, phase accuracy, and data completeness over redundant entries.
+2025-09-18 11:33:03 - INFO - INFO: SELECTED RECORDS:
+2025-09-18 11:33:03,142 - thermo_agents_session_20250918_113206 - INFO - INFO: SELECTED RECORDS:
+2025-09-18 11:33:03 - INFO - INFO: +---------+------------------+-------+--------+-------+-------+--------+--------+----------+-----+-----+-------+-------+
+2025-09-18 11:33:03,143 - thermo_agents_session_20250918_113206 - INFO - INFO: +---------+------------------+-------+--------+-------+-------+--------+--------+----------+-----+-----+-------+-------+
+2025-09-18 11:33:03 - INFO - INFO: | Formula | FirstName        | Phase | H298   | S298  | f1    | f2     | f3     | f4       | f5  | f6  | Tmin  | Tmax  |
+2025-09-18 11:33:03,144 - thermo_agents_session_20250918_113206 - INFO - INFO: | Formula | FirstName        | Phase | H298   | S298  | f1    | f2     | f3     | f4       | f5  | f6  | Tmin  | Tmax  |
+2025-09-18 11:33:03 - INFO - INFO: +---------+------------------+-------+--------+-------+-------+--------+--------+----------+-----+-----+-------+-------+
+2025-09-18 11:33:03,146 - thermo_agents_session_20250918_113206 - INFO - INFO: +---------+------------------+-------+--------+-------+-------+--------+--------+----------+-----+-----+-------+-------+
+2025-09-18 11:33:03 - INFO - INFO: | Mg      | Magnesium        | s     | 0      | 0     | 24.88 | 0.5923 | -1.113 | 10.87    | 0   | 0   | 180   | 298.1 |
+2025-09-18 11:33:03,146 - thermo_agents_session_20250918_113206 - INFO - INFO: | Mg      | Magnesium        | s     | 0      | 0     | 24.88 | 0.5923 | -1.113 | 10.87    | 0   | 0   | 180   | 298.1 |
+2025-09-18 11:33:03 - INFO - INFO: | Mg      | Magnesium        | s     | 0      | 0     | 28.45 | -6.447 | -2.481 | 11.93    | 0   | 0   | 298.1 | 923   |
+2025-09-18 11:33:03,147 - thermo_agents_session_20250918_113206 - INFO - INFO: | Mg      | Magnesium        | s     | 0      | 0     | 28.45 | -6.447 | -2.481 | 11.93    | 0   | 0   | 298.1 | 923   |
+2025-09-18 11:33:03 - INFO - INFO: | Mg      | Magnesium        | s     | 0      | 32.68 | 21.39 | 11.78  | 0      | 0        | 0   | 0   | 298.1 | 922   |
+2025-09-18 11:33:03,147 - thermo_agents_session_20250918_113206 - INFO - INFO: | Mg      | Magnesium        | s     | 0      | 32.68 | 21.39 | 11.78  | 0      | 0        | 0   | 0   | 298.1 | 922   |
+2025-09-18 11:33:03 - INFO - INFO: | WC      | Tungsten carbide | s     | -40.17 | 32.38 | 44.5  | 6.52   | -9.72  | 2.01e-14 | 0   | 0   | 298.1 | 3050  |
+2025-09-18 11:33:03,148 - thermo_agents_session_20250918_113206 - INFO - INFO: | WC      | Tungsten carbide | s     | -40.17 | 32.38 | 44.5  | 6.52   | -9.72  | 2.01e-14 | 0   | 0   | 298.1 | 3050  |
+2025-09-18 11:33:03 - INFO - INFO: +---------+------------------+-------+--------+-------+-------+--------+--------+----------+-----+-----+-------+-------+
+2025-09-18 11:33:03,148 - thermo_agents_session_20250918_113206 - INFO - INFO: +---------+------------------+-------+--------+-------+-------+--------+--------+----------+-----+-----+-------+-------+
+2025-09-18 11:33:03,149 - results_filtering_agent - INFO - Filtering response sent to sql_agent
+2025-09-18 11:33:24,824 - sql_agent - WARNING - Filtering agent did not respond in time, using raw database results
+2025-09-18 11:33:24,826 - sql_agent - INFO - Storing result with key: sql_result_976d0969-7d54-4d3a-8452-ca8b871989c7
+2025-09-18 11:33:24,826 - sql_agent - INFO - Result stored successfully
+2025-09-18 11:33:24,826 - sql_agent - INFO - Sending response to thermo_agent
+2025-09-18 11:33:24 - INFO - INFO: SENDING RESPONSE: To thermo_agent, key=sql_result_976d0969-7d54-4d3a-8452-ca8b871989c7
+2025-09-18 11:33:24,827 - thermo_agents_session_20250918_113206 - INFO - INFO: SENDING RESPONSE: To thermo_agent, key=sql_result_976d0969-7d54-4d3a-8452-ca8b871989c7
+2025-09-18 11:33:24,827 - sql_agent - INFO - Response sent successfully to thermo_agent
+2025-09-18 11:33:24 - INFO - GENERATED SQL:
+2025-09-18 11:33:24,828 - thermo_agents_session_20250918_113206 - INFO - GENERATED SQL:
+2025-09-18 11:33:24 - INFO -   SQL Query: SELECT * FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') OR (Formula = 'Mg' OR Formula = 'Mg(s)')) LIMIT 100
+2025-09-18 11:33:24,828 - thermo_agents_session_20250918_113206 - INFO -   SQL Query: SELECT * FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') OR (Formula = 'Mg' OR Formula = 'Mg(s)')) LIMIT 100
+2025-09-18 11:33:24 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax']
+2025-09-18 11:33:24,829 - thermo_agents_session_20250918_113206 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax']
+2025-09-18 11:33:24 - INFO -   Explanation: The query retrieves all columns for WC and Mg in solid phase, including H298, S298, and heat capacity coefficients f1-f6. Temperature range is handled post-query.
+2025-09-18 11:33:24,830 - thermo_agents_session_20250918_113206 - INFO -   Explanation: The query retrieves all columns for WC and Mg in solid phase, including H298, S298, and heat capacity coefficients f1-f6. Temperature range is handled post-query.
+2025-09-18 11:33:24,830 - sql_agent - INFO - Sending notification to orchestrator
+2025-09-18 11:33:24 - INFO - INFO: NOTIFYING ORCHESTRATOR: correlation_id=82d98d1c-74af-465a-9f13-bb28e5536837
+2025-09-18 11:33:24,830 - thermo_agents_session_20250918_113206 - INFO - INFO: NOTIFYING ORCHESTRATOR: correlation_id=82d98d1c-74af-465a-9f13-bb28e5536837
+2025-09-18 11:33:24,832 - sql_agent - INFO - Orchestrator notification sent successfully
+2025-09-18 11:33:24,833 - sql_agent - INFO - Message processing completed successfully
+2025-09-18 11:33:24,933 - orchestrator - INFO - Received sql_ready from sql_agent: {'result_key': 'sql_result_976d0969-7d54-4d3a-8452-ca8b871989c7', 'sql_query': "SELECT * FROM compounds WHERE ((Formula = 'WC' OR Formula = 'WC(s)') OR (Formula = 'Mg' OR Formula = 'Mg(s)')) LIMIT 100"}
+2025-09-18 11:34:21,837 - __main__ - ERROR - Interactive mode error: 
+Traceback (most recent call last):
+  File "c:\IDE\repository\agents_for_david\main.py", line 384, in interactive_mode
+    user_input = input("Query> ").strip()
+                 ^^^^^^^^^^^^^^^^
+EOFError
+2025-09-18 11:34:23,947 - __main__ - INFO - Stopping agents...
+2025-09-18 11:34:23,947 - thermo_agent - INFO - Agent 'thermo_agent' stopped
+2025-09-18 11:34:23,947 - sql_agent - INFO - Agent 'sql_agent' stopped
+2025-09-18 11:34:23,947 - database_agent - INFO - Agent 'database_agent' stopped
+2025-09-18 11:34:23,948 - results_filtering_agent - INFO - Agent 'results_filtering_agent' stopped
+2025-09-18 11:34:23,948 - orchestrator - INFO - Shutting down orchestrator

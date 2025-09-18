@@ -123,7 +123,23 @@ class DatabaseAgent:
             self.storage.set(result_key, result_data, ttl_seconds=600)
             self.logger.info(f"Database result stored with key: {result_key}")
 
-            # Отправляем ответ
+            # Отправляем результаты агенту фильтрации для интеллектуального отбора
+            if execution_result.get("success") and execution_result.get("row_count", 0) > 0:
+                self.logger.info("Sending results to filtering agent for analysis...")
+                filtering_message_id = self.storage.send_message(
+                    source_agent=self.agent_id,
+                    target_agent="results_filtering_agent",
+                    message_type="filter_results",
+                    correlation_id=message.correlation_id,  # Используем исходный correlation_id от SQL агента
+                    payload={
+                        "execution_result": execution_result,
+                        "extracted_params": extracted_params,
+                        "sql_query": sql_query,
+                    },
+                )
+                self.logger.info(f"Results sent to filtering agent: {filtering_message_id}")
+
+            # Отправляем ответ SQL агенту
             self.storage.send_message(
                 source_agent=self.agent_id,
                 target_agent=message.source_agent,

@@ -275,6 +275,42 @@ class SQLGenerationAgent:
             if db_result:
                 result_data["execution_result"] = db_result
                 self.logger.info(f"Database execution successful: {db_result.get('row_count', 0)} rows")
+
+                # Ждем результат фильтрации от агента фильтрации результатов
+                if db_result.get("success") and db_result.get("row_count", 0) > 0:
+                    self.logger.info("Waiting for filtering agent results...")
+                    filtering_result = None
+                    filtering_start_time = asyncio.get_event_loop().time()
+                    filtering_timeout = 30  # 30 секунд на фильтрацию
+
+                    while (asyncio.get_event_loop().time() - filtering_start_time) < filtering_timeout:
+                        # Получаем сообщения от агента фильтрации
+                        filtering_messages = self.storage.receive_messages(
+                            self.agent_id, message_type="results_filtered"
+                        )
+
+                        for filter_msg in filtering_messages:
+                            # Проверяем correlation_id (должен соответствовать исходному message ID)
+                            if (filter_msg.source_agent == "results_filtering_agent" and
+                                filter_msg.correlation_id == message.id):
+                                self.logger.info(f"Received filtering result: {filter_msg.payload.get('status')}")
+                                if filter_msg.payload.get("status") == "success":
+                                    filtering_result = filter_msg.payload.get("filtered_result")
+                                    break
+                                elif filter_msg.payload.get("status") == "no_results":
+                                    self.logger.warning("No records found after filtering")
+                                    break
+
+                        if filtering_result:
+                            break
+                        await asyncio.sleep(0.1)
+
+                    # Добавляем результат фильтрации к данным
+                    if filtering_result:
+                        result_data["filtered_result"] = filtering_result
+                        self.logger.info(f"Filtering successful: {len(filtering_result.get('selected_records', []))} relevant records")
+                    else:
+                        self.logger.warning("Filtering agent did not respond in time, using raw database results")
             else:
                 self.logger.warning("Database agent did not respond in time")
                 result_data["execution_result"] = {

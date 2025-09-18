@@ -28,6 +28,7 @@ from thermo_agents.orchestrator import (
 )
 from thermo_agents.database_agent import DatabaseAgentConfig, DatabaseAgent
 from thermo_agents.sql_generation_agent import SQLAgentConfig, SQLGenerationAgent
+from thermo_agents.results_filtering_agent import ResultsFilteringAgentConfig, ResultsFilteringAgent
 from thermo_agents.thermo_agents_logger import create_session_logger
 from thermo_agents.thermodynamic_agent import ThermoAgentConfig, ThermodynamicAgent
 
@@ -60,6 +61,8 @@ class ThermoSystem:
         # Инициализация агентов
         self.thermo_agent = None
         self.sql_agent = None
+        self.database_agent = None
+        self.results_filtering_agent = None
         self.orchestrator = None
 
         # Задачи для агентов
@@ -150,6 +153,19 @@ class ThermoSystem:
         )
         self.database_agent = DatabaseAgent(database_config)
 
+        # Агент фильтрации результатов
+        results_filtering_config = ResultsFilteringAgentConfig(
+            agent_id="results_filtering_agent",
+            llm_api_key=self.config["llm_api_key"],
+            llm_base_url=self.config["llm_base_url"],
+            llm_model=self.config["llm_model"],
+            storage=self.storage,
+            logger=logging.getLogger("results_filtering_agent"),
+            session_logger=self.session_logger,
+            poll_interval=0.5,
+        )
+        self.results_filtering_agent = ResultsFilteringAgent(results_filtering_config)
+
         # Оркестратор
         orchestrator_config = OrchestratorConfig(
             llm_api_key=self.config["llm_api_key"],
@@ -172,6 +188,7 @@ class ThermoSystem:
             asyncio.create_task(self.thermo_agent.start(), name="thermo_agent_task"),
             asyncio.create_task(self.sql_agent.start(), name="sql_agent_task"),
             asyncio.create_task(self.database_agent.start(), name="database_agent_task"),
+            asyncio.create_task(self.results_filtering_agent.start(), name="results_filtering_agent_task"),
         ]
 
         # Даем агентам время на инициализацию
@@ -191,6 +208,8 @@ class ThermoSystem:
             await self.sql_agent.stop()
         if self.database_agent:
             await self.database_agent.stop()
+        if self.results_filtering_agent:
+            await self.results_filtering_agent.stop()
         if self.orchestrator:
             await self.orchestrator.shutdown()
 
@@ -263,7 +282,7 @@ class ThermoSystem:
                 # Вывод извлеченных параметров
                 if "extracted_parameters" in result:
                     params = result["extracted_parameters"]
-                    print("\n✅ Extracted Parameters:")
+                    print("\n[OK] Extracted Parameters:")
                     print(f"  🎯 Intent: {params.get('intent', 'unknown')}")
                     print(f"  🧪 Compounds: {params.get('compounds', [])}")
                     print(f"  🌡️ Temperature: {params.get('temperature_k', 298.15)} K")
@@ -271,7 +290,7 @@ class ThermoSystem:
 
                 # Вывод SQL запроса
                 if "sql_query" in result:
-                    print("\n✅ Generated SQL:")
+                    print("\n[OK] Generated SQL:")
                     print(f"  📝 Query: {result['sql_query']}")
                     if "explanation" in result:
                         print(f"  💡 Explanation: {result['explanation']}")
@@ -280,16 +299,61 @@ class ThermoSystem:
                 if "execution_result" in result:
                     exec_result = result["execution_result"]
                     if exec_result.get("success"):
-                        print("\n✅ Query Results:")
-                        print(f"  📋 Found {exec_result.get('row_count', 0)} records")
+                        print("\n[OK] Raw Query Results:")
+                        print(f"  📋 Found {exec_result.get('row_count', 0)} total records")
                         if exec_result.get("columns"):
                             print(f"  📊 Columns: {', '.join(exec_result['columns'])}")
                     else:
                         print(
-                            f"\n❌ Query Error: {exec_result.get('error', 'Unknown error')}"
+                            f"\n[ERROR] Query Error: {exec_result.get('error', 'Unknown error')}"
                         )
+
+                # Вывод отфильтрованных результатов
+                if "filtered_result" in result:
+                    filtered = result["filtered_result"]
+                    selected_records = filtered.get("selected_records", [])
+
+                    print(f"\n🎯 Filtered Results (LLM Selected):")
+                    print(f"  📋 Selected {len(selected_records)} most relevant records")
+
+                    if filtered.get("reasoning"):
+                        print(f"  💭 Reasoning: {filtered['reasoning']}")
+
+                    # Показываем таблицу отфильтрованных результатов
+                    if selected_records:
+                        print("\n📊 Selected Thermodynamic Data:")
+                        print("-" * 100)
+
+                        # Определяем ключевые колонки для отображения
+                        key_columns = ["Formula", "FirstName", "Phase", "H298", "S298", "Tmin", "Tmax"]
+                        available_columns = []
+
+                        for col in key_columns:
+                            if col in selected_records[0]:
+                                available_columns.append(col)
+
+                        # Заголовок таблицы
+                        header = " | ".join(f"{col:>12}" for col in available_columns)
+                        print(header)
+                        print("-" * len(header))
+
+                        # Строки данных
+                        for record in selected_records[:10]:  # Показываем первые 10 записей
+                            row_values = []
+                            for col in available_columns:
+                                value = record.get(col, "N/A")
+                                if isinstance(value, (int, float)):
+                                    row_values.append(f"{value:>12.2f}" if isinstance(value, float) else f"{value:>12}")
+                                else:
+                                    row_values.append(f"{str(value)[:12]:>12}")
+                            print(" | ".join(row_values))
+
+                        if len(selected_records) > 10:
+                            print(f"... and {len(selected_records) - 10} more records")
+
+                        print("-" * 100)
             else:
-                print(f"\n❌ Processing Error: {', '.join(response.errors)}")
+                print(f"\n[ERROR] Processing Error: {', '.join(response.errors)}")
 
             # Trace для отладки
             if self.config["debug"] and response.trace:
@@ -298,13 +362,13 @@ class ThermoSystem:
                     print(f"  • {step}")
 
         except Exception as e:
-            print(f"\n❌ System Error: {e}")
+            print(f"\n[ERROR] System Error: {e}")
             self.logger.error(f"Error processing query: {e}", exc_info=True)
 
     async def interactive_mode(self):
         """Интерактивный режим работы с системой."""
         print("\n" + "=" * 80)
-        print("🤖 THERMO AGENTS v2.0 - Interactive Mode")
+        print("THERMO AGENTS v2.0 - Interactive Mode")
         print("Using fully encapsulated Agent-to-Agent architecture")
         print("=" * 80)
         print("Commands:")
@@ -332,7 +396,7 @@ class ThermoSystem:
 
                 elif user_input.lower() == "clear":
                     self.storage.clear()
-                    print("✅ Storage cleared")
+                    print("[OK] Storage cleared")
 
                 else:
                     # Обработка термодинамического запроса
@@ -344,7 +408,7 @@ class ThermoSystem:
                 print("\nInterrupted by user")
                 break
             except Exception as e:
-                print(f"❌ Error: {e}")
+                print(f"[ERROR] Error: {e}")
                 self.logger.error(f"Interactive mode error: {e}", exc_info=True)
 
     async def run(self):
@@ -367,7 +431,7 @@ class ThermoSystem:
             if self.session_logger:
                 self.session_logger.close()
 
-            print("\n✅ System shutdown complete")
+            print("\n[OK] System shutdown complete")
 
 
 async def main():
@@ -383,5 +447,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n\nShutdown by user")
     except Exception as e:
-        print(f"\n❌ Fatal error: {e}")
+        print(f"\n[ERROR] Fatal error: {e}")
         logging.error(f"Fatal error: {e}", exc_info=True)

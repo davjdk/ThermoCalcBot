@@ -166,60 +166,56 @@ class SessionLogger:
 
     def log_query_results_table(self, sql_query: str, columns: list, rows: list):
         """
-        Логирование результатов запроса в YAML формате по ID строки.
-        Включает только выбранные столбцы: FirstName, Formula, Phase, Tmax, Tmin, MeltingPoint, BoilingPoint
+        Логирование результатов запроса с базовой информацией.
 
         Args:
             sql_query: Выполненный SQL запрос
             columns: Список названий колонок
             rows: Список строк данных
         """
-        # Фильтруем только нужные столбцы
-        desired_columns = [
-            "FirstName",
-            "Formula",
-            "Phase",
-            "Tmax",
-            "Tmin",
-            "MeltingPoint",
-            "BoilingPoint",
-        ]
-        filtered_columns = []
-        column_indices = []
-
-        for i, col in enumerate(columns):
-            if col in desired_columns:
-                filtered_columns.append(col)
-                column_indices.append(i)
-
         row_count = len(rows)
 
         self.logger.info(f"Executed query, found {row_count} rows")
         self.logger.info("QUERY RESULTS:")
         self.logger.info(f"  SQL: {sql_query}")
 
-        # Конвертируем данные в YAML формат по ID строки
         if rows:
-            yaml_data = {}
-            for idx, row in enumerate(rows):
-                row_dict = {}
-                for filtered_col, col_idx in zip(filtered_columns, column_indices):
-                    row_dict[filtered_col] = (
-                        row[col_idx] if col_idx < len(row) else None
-                    )
-                yaml_data[f"row_{idx}"] = row_dict
-
-            # Выводим весь YAML блок как одну многострочную запись в логе
-            yaml_output = yaml.dump(
-                yaml_data, default_flow_style=False, allow_unicode=True, indent=2
-            )
-            # Используем многострочный формат в логере
-            self.logger.info("  YAML Results:\n" + yaml_output.rstrip())
+            self.logger.info(f"  Total rows: {row_count}")
         else:
             self.logger.info("  No data returned")
 
-        if row_count > 10:
-            self.logger.info(f"  ... and {row_count - 10} more rows")
+    def log_final_results_table(self, records: list, columns: list) -> str:
+        """
+        Создает таблицу финальных результатов как для логирования, так и для пользователя.
+
+        Args:
+            records: Список записей (словарей)
+            columns: Список колонок для отображения
+
+        Returns:
+            Отформатированная таблица в виде строки
+        """
+        if not records:
+            return "Нет данных для отображения"
+
+        # Формируем данные для таблицы
+        table_rows = []
+        for record in records:
+            row = []
+            for col in columns:
+                value = record.get(col, "")
+                # Форматируем числовые значения для лучшей читаемости
+                if isinstance(value, float):
+                    if abs(value) < 0.001 and value != 0.0:
+                        row.append(f"{value:.2e}")
+                    else:
+                        row.append(f"{value:.4g}")
+                else:
+                    row.append(str(value))
+            table_rows.append(row)
+
+        # Создаем таблицу
+        return self.format_table(columns, table_rows, max_rows=len(records))
 
     def close(self):
         """Закрытие сессии."""
