@@ -54,8 +54,8 @@ class ResultsFilteringAgentConfig:
     storage: AgentStorage = field(default_factory=get_storage)
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     session_logger: Optional[SessionLogger] = None
-    poll_interval: float = 1.0
-    max_retries: int = 2
+    poll_interval: float = 0.2  # Оптимизировано с 1.0 до 0.2с
+    max_retries: int = 3  # Увеличено с 2 до 3 для улучшенной надежности
 
 
 class ResultsFilteringAgent:
@@ -120,13 +120,19 @@ class ResultsFilteringAgent:
 
         while self.running:
             try:
-                # Получаем сообщения на фильтрацию результатов
-                messages = self.storage.receive_messages(
+                # Получаем сообщения обоих типов
+                messages_filter = self.storage.receive_messages(
                     self.agent_id, message_type="filter_results"
                 )
+                messages_individual = self.storage.receive_messages(
+                    self.agent_id, message_type="filter_individual_results"
+                )
+
+                # Объединяем сообщения
+                all_messages = messages_filter + messages_individual
 
                 # Обрабатываем каждое сообщение
-                for message in messages:
+                for message in all_messages:
                     await self._process_message(message)
 
                 # Ждем перед следующей проверкой
@@ -149,25 +155,61 @@ class ResultsFilteringAgent:
         )
 
         try:
-            # Извлекаем данные из сообщения
-            execution_result = message.payload.get("execution_result", {})
-            extracted_params = message.payload.get("extracted_params", {})
+            # Определяем тип сообщения
+            message_type = message.message_type
 
-            if not execution_result.get("success"):
-                raise ValueError("No successful execution result to filter")
+            # Инициализируем extracted_params для использования в блоке finally/except
+            extracted_params = {}
 
-            rows = execution_result.get("rows", [])
-            columns = execution_result.get("columns", [])
-            target_temperature = extracted_params.get("temperature_k", 298.15)
-            temperature_range = extracted_params.get("temperature_range_k", [298.15, 298.15])
-            compounds = extracted_params.get("compounds", [])
-            phases = extracted_params.get("phases", [])
+            if message_type == "filter_individual_results":
+                # Индивидуальная фильтрация для одного соединения
+                compound = message.payload.get("compound")
+                common_params = message.payload.get("common_params", {})
 
-            self.logger.info(f"Filtering {len(rows)} records for {len(compounds)} compounds")
-            if self.config.session_logger:
-                self.config.session_logger.log_info(
-                    f"RESULTS FILTERING START: {len(rows)} records, target temp {target_temperature}K"
-                )
+                execution_result = message.payload.get("execution_result", {})
+                if not execution_result.get("success"):
+                    raise ValueError("No successful execution result to filter")
+
+                rows = execution_result.get("rows", [])
+                columns = execution_result.get("columns", [])
+                target_temperature = common_params.get("temperature_k", 298.15)
+                temperature_range = common_params.get("temperature_range_k", [298.15, 298.15])
+                compounds = [compound]
+                phases = common_params.get("phases", [])
+
+                # Создаем extracted_params для совместимости
+                extracted_params = {
+                    "compounds": compounds,
+                    "temperature_k": target_temperature,
+                    "temperature_range_k": temperature_range,
+                    "phases": phases
+                }
+
+                self.logger.info(f"Individual filtering for compound {compound}: {len(rows)} records")
+                if self.config.session_logger:
+                    self.config.session_logger.log_info(
+                        f"INDIVIDUAL FILTERING START: {compound}, {len(rows)} records, target temp {target_temperature}K"
+                    )
+            else:
+                # Стандартная фильтрация
+                execution_result = message.payload.get("execution_result", {})
+                extracted_params = message.payload.get("extracted_params", {})
+
+                if not execution_result.get("success"):
+                    raise ValueError("No successful execution result to filter")
+
+                rows = execution_result.get("rows", [])
+                columns = execution_result.get("columns", [])
+                target_temperature = extracted_params.get("temperature_k", 298.15)
+                temperature_range = extracted_params.get("temperature_range_k", [298.15, 298.15])
+                compounds = extracted_params.get("compounds", [])
+                phases = extracted_params.get("phases", [])
+
+                self.logger.info(f"Filtering {len(rows)} records for {len(compounds)} compounds")
+                if self.config.session_logger:
+                    self.config.session_logger.log_info(
+                        f"RESULTS FILTERING START: {len(rows)} records, target temp {target_temperature}K"
+                    )
 
             # Шаг 1: Предварительная фильтрация по температурному диапазону
             temp_filtered_records = self._filter_by_temperature_range(
@@ -202,18 +244,31 @@ class ResultsFilteringAgent:
                 # Логируем финальную отфильтрованную таблицу
                 self._log_filtered_table(selected_records, filtered_result.filter_summary)
 
-                # Отправляем ответ SQL агенту (который ожидает результат)
-                # Поскольку database_agent пересылает correlation_id от SQL агента,
-                # нам нужно найти, кто изначально отправил запрос SQL агенту
+                # Определяем получателя ответа
+                if message_type == "filter_individual_results":
+                    # Для индивидуальных запросов отправляем Individual Search Agent
+                    target_agent = "individual_search_agent"
+                    response_message_type = "individual_filter_complete"
+                    correlation_id = message.correlation_id
+                else:
+                    # Стандартные запросы отправляем SQL агенту
+                    target_agent = "sql_agent"
+                    response_message_type = "results_filtered"
+                    correlation_id = message.correlation_id
+
+                # Отправляем ответ
                 self.storage.send_message(
                     source_agent=self.agent_id,
-                    target_agent="sql_agent",  # Всегда отправляем SQL агенту
-                    message_type="results_filtered",
-                    correlation_id=message.correlation_id,  # Используем исходный correlation_id
+                    target_agent=target_agent,
+                    message_type=response_message_type,
+                    correlation_id=correlation_id,
                     payload={
                         "status": "success",
                         "result_key": result_key,
                         "filtered_result": filtered_result.model_dump(),
+                        "search_results": temp_filtered_records,
+                        "filtered_data": selected_records,
+                        "confidence": self._calculate_individual_confidence(filtered_result, len(temp_filtered_records)),
                         "statistics": {
                             "original_count": len(rows),
                             "temp_filtered_count": len(temp_filtered_records),
@@ -222,19 +277,31 @@ class ResultsFilteringAgent:
                     },
                 )
 
-                self.logger.info("Filtering response sent to sql_agent")
+                self.logger.info(f"Filtering response sent to {target_agent}")
 
             else:
                 # Нет записей после температурной фильтрации
                 self.logger.warning("No records remain after temperature filtering")
+
+                # Определяем получателя ответа
+                if message_type == "filter_individual_results":
+                    target_agent = "individual_search_agent"
+                    response_message_type = "individual_filter_complete"
+                else:
+                    target_agent = "sql_agent"
+                    response_message_type = "results_filtered"
+
                 self.storage.send_message(
                     source_agent=self.agent_id,
-                    target_agent="sql_agent",  # Всегда отправляем SQL агенту
-                    message_type="results_filtered",
-                    correlation_id=message.correlation_id,  # Используем исходный correlation_id
+                    target_agent=target_agent,
+                    message_type=response_message_type,
+                    correlation_id=message.correlation_id,
                     payload={
                         "status": "no_results",
                         "error": "No records found in the specified temperature range",
+                        "search_results": [],
+                        "filtered_data": [],
+                        "confidence": 0.0,
                         "statistics": {
                             "original_count": len(rows),
                             "temp_filtered_count": 0,
@@ -246,13 +313,27 @@ class ResultsFilteringAgent:
         except Exception as e:
             self.logger.error(f"Error processing filtering message {message.id}: {e}")
 
-            # Отправляем сообщение об ошибке SQL агенту
+            # Определяем получателя для ошибки
+            if message.message_type == "filter_individual_results":
+                target_agent = "individual_search_agent"
+                response_message_type = "individual_filter_complete"
+            else:
+                target_agent = "sql_agent"
+                response_message_type = "results_filtered"
+
+            # Отправляем сообщение об ошибке
             self.storage.send_message(
                 source_agent=self.agent_id,
-                target_agent="sql_agent",  # Всегда отправляем SQL агенту
-                message_type="results_filtered",
-                correlation_id=message.correlation_id,  # Используем исходный correlation_id
-                payload={"status": "error", "error": str(e)},
+                target_agent=target_agent,
+                message_type=response_message_type,
+                correlation_id=message.correlation_id,
+                payload={
+                    "status": "error",
+                    "error": str(e),
+                    "search_results": [],
+                    "filtered_data": [],
+                    "confidence": 0.0,
+                },
             )
 
             if self.config.session_logger:
@@ -363,17 +444,35 @@ Your task is to select the optimal set of records that:
 Consider that multiple records per compound may be needed for full temperature range coverage."""
 
         try:
-            # Генерируем фильтрацию с тайм-аутом
+            # Генерируем фильтрацию с уменьшенным тайм-аутом
             result = await asyncio.wait_for(
                 self.agent.run(prompt, deps=self.config),
-                timeout=90.0  # 90 секунд на анализ
+                timeout=30.0  # Уменьшено с 45 до 30 секунд для ускорения
             )
+
+            # Проверяем результат на finish_reason=None и другие проблемы OpenAI API
+            if hasattr(result, 'usage') and result.usage is None:
+                self.logger.warning("OpenAI API returned None usage - using fallback filtering")
+                return self._fallback_filter(records, compounds, phases)
+
+            # Проверяем на пустой результат
+            if result.output is None:
+                self.logger.warning("OpenAI API returned None output - using fallback filtering")
+                return self._fallback_filter(records, compounds, phases)
 
             return result.output
 
+        except asyncio.TimeoutError:
+            self.logger.error("LLM filtering timeout - using fallback filtering")
+            return self._fallback_filter(records, compounds, phases)
         except Exception as e:
-            self.logger.error(f"Error in LLM filtering: {e}")
-            # Возвращаем базовую фильтрацию по формулам
+            # Обрабатываем конкретную ошибку finish_reason=None
+            error_str = str(e)
+            if "finish_reason" in error_str and "None" in error_str:
+                self.logger.error("OpenAI API finish_reason=None error - using fallback filtering")
+            else:
+                self.logger.error(f"Error in LLM filtering: {e}")
+            # Возвращаем базовую фильтрацию по формулам с улучшенной логикой
             return self._fallback_filter(records, compounds, phases)
 
     def _convert_ids_to_records(self, selected_entries: List[SelectedEntry], all_records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -398,37 +497,123 @@ Consider that multiple records per compound may be needed for full temperature r
 
         return selected_records
 
+    def _calculate_individual_confidence(self, filtered_result: FilteredResult, total_records: int) -> float:
+        """
+        Рассчитать уверенность для индивидуального поиска.
+
+        Args:
+            filtered_result: Результат фильтрации
+            total_records: Общее количество записей до фильтрации
+
+        Returns:
+            Уверенность от 0.0 до 1.0
+        """
+        if not filtered_result.selected_entries:
+            return 0.0
+
+        # Базовая уверенность из самого результата
+        base_confidence = filtered_result.overall_confidence
+
+        # Учитываем соотношение выбранных записей к общему количеству
+        selection_ratio = len(filtered_result.selected_entries) / max(1, total_records)
+        ratio_confidence = min(1.0, selection_ratio * 5)  # 20% записей = 1.0
+
+        # Учитываем отсутствие предупреждений
+        warning_penalty = len(filtered_result.warnings) * 0.1
+        warning_confidence = max(0.0, 1.0 - warning_penalty)
+
+        # Учитываем отсутствие отсутствующих соединений
+        missing_penalty = len(filtered_result.missing_compounds) * 0.2
+        missing_confidence = max(0.0, 1.0 - missing_penalty)
+
+        # Комбинируем все факторы
+        final_confidence = (
+            base_confidence * 0.4 +
+            ratio_confidence * 0.2 +
+            warning_confidence * 0.2 +
+            missing_confidence * 0.2
+        )
+
+        return min(1.0, max(0.0, final_confidence))
+
     def _fallback_filter(self, records: List[Dict[str, Any]], compounds: List[str], phases: List[str]) -> FilteredResult:
-        """Резервная фильтрация без LLM."""
+        """Улучшенная резервная фильтрация без LLM."""
         selected = []
         reasoning = "Fallback filtering: selected records matching requested formulas and phases"
 
-        # Простой отбор по формулам и фазам
-        for compound, phase in zip(compounds, phases):
-            for record in records:
-                formula = record.get("Formula", "")
-                record_phase = record.get("Phase", "")
+        # Улучшенный отбор по формулам и фазам
+        if phases and len(phases) == len(compounds):
+            # Если фазы указаны для каждого соединения
+            for compound, phase in zip(compounds, phases):
+                best_match = None
+                best_score = -1
 
-                if (formula == compound or formula == f"{compound}({phase})") and record_phase == phase:
-                    selected.append(record)
-                    break
+                for record in records:
+                    formula = record.get("Formula", "")
+                    record_phase = record.get("Phase", "")
+
+                    # Проверяем точное совпадение формулы и фазы
+                    if formula == compound and record_phase == phase:
+                        # Проверяем качество записи (наличие всех необходимых полей)
+                        score = 0
+                        if record.get("H298") is not None: score += 1
+                        if record.get("S298") is not None: score += 1
+                        if record.get("Tmin") is not None and record.get("Tmax") is not None: score += 1
+
+                        # Выбираем запись с максимальным количеством данных
+                        if score > best_score:
+                            best_score = score
+                            best_match = record
+
+                if best_match:
+                    selected.append(best_match)
+        else:
+            # Если фазы не указаны или их количество не совпадает
+            for compound in compounds:
+                best_match = None
+                best_score = -1
+
+                for record in records:
+                    formula = record.get("Formula", "")
+                    record_phase = record.get("Phase", "")
+
+                    # Проверяем совпадение формулы (любая фаза)
+                    if formula == compound:
+                        score = 0
+                        if record.get("H298") is not None: score += 1
+                        if record.get("S298") is not None: score += 1
+                        if record.get("Tmin") is not None and record.get("Tmax") is not None: score += 1
+
+                        if score > best_score:
+                            best_score = score
+                            best_match = record
+
+                if best_match:
+                    selected.append(best_match)
 
         # Создаем SelectedEntry объекты для fallback
         selected_entries = []
-        for i, record in enumerate(selected):
+        for record in selected:
+            # Находим оригинальный ID записи в исходном массиве
+            original_id = records.index(record) if record in records else len(selected_entries)
             selected_entries.append(SelectedEntry(
                 compound=record.get("Formula", ""),
-                selected_id=i,  # Используем индекс как ID
-                reasoning=f"Matched formula and phase for {record.get('Formula', '')}"
+                selected_id=original_id,
+                reasoning=f"Fallback selected: {record.get('Formula', '')} ({record.get('Phase', '')})"
             ))
+
+        # Определяем отсутствующие соединения
+        found_compounds = [record.get("Formula", "") for record in selected]
+        missing_compounds = [c for c in compounds if c not in found_compounds]
 
         return FilteredResult(
             selected_entries=selected_entries,
             phase_determinations={},
-            missing_compounds=[],
+            missing_compounds=missing_compounds,
             excluded_entries_count=len(records) - len(selected),
-            overall_confidence=0.7,  # Средняя уверенность для fallback
-            warnings=["Used fallback filtering due to LLM error"],
+            overall_confidence=0.6 if missing_compounds else 0.8,  # Выше уверенность если все найдены
+            warnings=["Used enhanced fallback filtering due to LLM error"] +
+                     [f"Missing compounds: {missing_compounds}"] if missing_compounds else [],
             filter_summary=reasoning
         )
 

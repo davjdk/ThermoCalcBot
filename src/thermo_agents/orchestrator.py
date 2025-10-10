@@ -48,8 +48,8 @@ class OrchestratorConfig:
     storage: AgentStorage = field(default_factory=get_storage)
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     session_logger: Optional[SessionLogger] = None
-    max_retries: int = 2
-    timeout_seconds: int = 60
+    max_retries: int = 3  # Увеличено с 2 до 3 для улучшенной надежности
+    timeout_seconds: int = 120  # Увеличено с 60 до 120 секунд для синхронизации с другими агентами
 
 
 class ThermoOrchestrator:
@@ -276,9 +276,11 @@ class ThermoOrchestrator:
             )
             trace.append(f"Sent message to thermo_agent: {thermo_message_id}")
 
-            # Ждем ответа от thermo_agent через сообщения
+            # Ждем ответа от thermo_agent через сообщения с улучшенным логированием
             extracted_params = None
             start_time = asyncio.get_event_loop().time()
+            self.logger.info(f"DEBUG: Waiting for thermo_agent response, timeout={self.config.timeout_seconds}s, message_id={thermo_message_id}")
+
             while (
                 asyncio.get_event_loop().time() - start_time
             ) < self.config.timeout_seconds:
@@ -287,23 +289,113 @@ class ThermoOrchestrator:
                     self.agent_id, message_type="response"
                 )
 
+                if messages:
+                    self.logger.debug(f"DEBUG: Found {len(messages)} response messages for thermo_agent")
+
                 # Ищем ответ на наше сообщение
                 for msg in messages:
                     if msg.correlation_id == thermo_message_id and msg.source_agent == "thermo_agent":
-                        self.logger.info(f"Received response from thermo_agent: {msg.payload}")
-                        if msg.payload.get("status") == "success":
+                        status = msg.payload.get("status")
+                        self.logger.info(f"DEBUG: Received response from thermo_agent: {status}")
+                        if status == "success":
                             extracted_params = msg.payload.get("extracted_params")
+                            if self.config.session_logger:
+                                self.config.session_logger.log_info(f"THERMO AGENT RESPONSE: Success with {len(extracted_params.get('compounds', []))} compounds")
+                            break
+                        elif status == "error":
+                            self.logger.error(f"DEBUG: Thermo agent returned error: {msg.payload.get('error')}")
+                            trace.append(f"Thermo agent error: {msg.payload.get('error')}")
                             break
 
                 if extracted_params:
                     break
-                await asyncio.sleep(0.1)  # Проверяем каждые 0.1 секунды
+                # Уменьшаем задержку для ускорения реакции
+                await asyncio.sleep(0.05)  # Уменьшено с 0.1 до 0.05 секунд
 
             if extracted_params:
                 trace.append("Received parameters from thermo_agent")
 
-                # Шаг 2: Ждем результат от SQL агента (thermo_agent уже отправил ему сообщение)
-                if extracted_params.get("sql_query_hint"):
+                # Определяем тип обработки на основе intent
+                intent = extracted_params.get("intent", "lookup")
+
+                if intent == "reaction" and extracted_params.get("compounds"):
+                    # Для реакций используем Individual Search Agent
+                    trace.append("Processing reaction via Individual Search Agent")
+
+                    # Ждем результата от Individual Search Agent с улучшенным логированием
+                    individual_result = None
+                    individual_start_time = asyncio.get_event_loop().time()
+                    timeout_seconds = self.config.timeout_seconds * 2  # Увеличенный таймаут для индивидуального поиска
+                    self.logger.info(f"DEBUG: Waiting for Individual Search Agent, timeout={timeout_seconds}s, correlation_id={thermo_message_id}")
+
+                    while (
+                        asyncio.get_event_loop().time() - individual_start_time
+                    ) < timeout_seconds:
+                        # Получаем сообщения от Individual Search Agent
+                        messages = self.storage.receive_messages(
+                            self.agent_id, message_type="individual_search_complete"
+                        )
+
+                        if messages:
+                            self.logger.debug(f"DEBUG: Found {len(messages)} individual search messages")
+
+                        # Ищем результат с правильным correlation_id
+                        for msg in messages:
+                            if msg.correlation_id == thermo_message_id and msg.source_agent == "individual_search_agent":
+                                status = msg.payload.get("status")
+                                self.logger.info(f"DEBUG: Received individual search result: {status}")
+                                if status == "success":
+                                    result_key = msg.payload.get("result_key")
+                                    if result_key:
+                                        # Получаем полный результат из хранилища
+                                        individual_result = self.storage.get(result_key)
+                                        if individual_result:
+                                            if self.config.session_logger:
+                                                self.config.session_logger.log_info(f"INDIVIDUAL SEARCH COMPLETE: {len(individual_result.get('individual_results', []))} compounds processed")
+                                        break
+                                elif status == "error":
+                                    self.logger.error(f"DEBUG: Individual Search Agent error: {msg.payload.get('error')}")
+                                    trace.append(f"Individual Search Agent error: {msg.payload.get('error')}")
+                                    break
+
+                        if individual_result:
+                            break
+                        # Уменьшаем задержку для ускорения реакции
+                        await asyncio.sleep(0.05)  # Уменьшено с 0.1 до 0.05 секунд
+
+                    if individual_result:
+                        trace.append("Received aggregated results from Individual Search Agent")
+
+                        # Собираем полный результат для реакции
+                        return OrchestratorResponse(
+                            success=True,
+                            result={
+                                "extracted_parameters": extracted_params,
+                                "aggregated_results": individual_result.get("aggregated_results"),
+                                "summary_table": individual_result.get("summary_table"),
+                                "overall_confidence": individual_result.get("overall_confidence"),
+                                "individual_results": individual_result.get("individual_results"),
+                                "missing_compounds": individual_result.get("missing_compounds"),
+                                "warnings": individual_result.get("warnings"),
+                                "processing_type": "individual_search",
+                            },
+                            trace=trace,
+                        )
+                    else:
+                        trace.append("Individual Search Agent result not ready")
+                        if self.config.session_logger:
+                            self.config.session_logger.log_error(
+                                "Individual Search Agent did not complete processing in time"
+                            )
+                        return OrchestratorResponse(
+                            success=False,
+                            result={},
+                            errors=["Individual Search Agent did not complete processing in time"],
+                            trace=trace,
+                        )
+
+                elif extracted_params.get("sql_query_hint"):
+                    # Для нерекакционных запросов используем стандартный SQL агент
                     trace.append("Waiting for SQL agent result (triggered by thermo_agent)")
 
                     # Ждем сообщения "sql_ready" от SQL агента
@@ -343,12 +435,12 @@ class ThermoOrchestrator:
                                 "explanation": sql_result.get("explanation"),
                                 "expected_columns": sql_result.get("expected_columns"),
                                 "execution_result": sql_result.get("execution_result"),
+                                "processing_type": "standard_search",
                             },
                             trace=trace,
                         )
                     else:
                         trace.append("SQL agent result not ready")
-                        # Логируем в сессионный лог
                         if self.config.session_logger:
                             self.config.session_logger.log_error(
                                 "SQL agent did not complete processing in time"

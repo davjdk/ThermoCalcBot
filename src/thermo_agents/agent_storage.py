@@ -170,30 +170,40 @@ class AgentStorage:
         self._message_queue.append(message)
         return message.id
 
-    def receive_messages(self, agent_id: str, message_type: Optional[str] = None) -> List[AgentMessage]:
+    def receive_messages(
+        self,
+        agent_id: str,
+        message_type: Optional[str] = None,
+        correlation_id: Optional[str] = None
+    ) -> List[AgentMessage]:
         """
         Получить все сообщения для агента.
-        
+
         Args:
             agent_id: ID агента-получателя
             message_type: Фильтр по типу сообщения (опционально)
-            
+            correlation_id: Фильтр по ID корреляции (опционально)
+
         Returns:
             Список сообщений для агента
         """
         messages = []
         remaining_queue = []
-        
+
         for msg in self._message_queue:
             if msg.target_agent == agent_id:
-                if message_type is None or msg.message_type == message_type:
+                # Применяем фильтры
+                type_match = message_type is None or msg.message_type == message_type
+                correlation_match = correlation_id is None or msg.correlation_id == correlation_id
+
+                if type_match and correlation_match:
                     messages.append(msg)
                     self._message_history.append(msg)
                 else:
                     remaining_queue.append(msg)
             else:
                 remaining_queue.append(msg)
-                
+
         self._message_queue = remaining_queue
         return messages
 

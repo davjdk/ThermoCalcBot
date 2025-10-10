@@ -69,13 +69,19 @@ class DatabaseAgent:
 
         while self.running:
             try:
-                # Получаем сообщения на выполнение SQL
-                messages = self.storage.receive_messages(
+                # Получаем сообщения на выполнение SQL (оба типа)
+                messages_standard = self.storage.receive_messages(
                     self.agent_id, message_type="execute_sql"
                 )
+                messages_individual = self.storage.receive_messages(
+                    self.agent_id, message_type="execute_individual_sql"
+                )
+
+                # Объединяем сообщения
+                all_messages = messages_standard + messages_individual
 
                 # Обрабатываем каждое сообщение
-                for message in messages:
+                for message in all_messages:
                     await self._process_message(message)
 
                 # Ждем перед следующей проверкой
@@ -94,18 +100,37 @@ class DatabaseAgent:
     async def _process_message(self, message):
         """Обработать входящее сообщение для выполнения SQL."""
         self.logger.info(
-            f"Processing SQL execution request: {message.id} from {message.source_agent}"
+            f"Processing SQL execution request: {message.id} from {message.source_agent}, type: {message.message_type}"
         )
 
         try:
             # Извлекаем SQL запрос и параметры
             sql_query = message.payload.get("sql_query")
-            extracted_params = message.payload.get("extracted_params", {})
+
+            # Определяем тип сообщения
+            is_individual = message.message_type == "execute_individual_sql"
+
+            if is_individual:
+                # Индивидуальный запрос
+                compound = message.payload.get("compound")
+                common_params = message.payload.get("common_params", {})
+                extracted_params = {
+                    "compounds": [compound],
+                    "temperature_k": common_params.get("temperature_k", 298.15),
+                    "temperature_range_k": common_params.get("temperature_range_k", [298.15, 298.15]),
+                    "phases": common_params.get("phases", []),
+                    "properties": common_params.get("properties", ["basic"]),
+                    "intent": "individual_lookup",
+                }
+                self.logger.info(f"Executing individual SQL query for compound {compound}: {sql_query}")
+            else:
+                # Стандартный запрос
+                extracted_params = message.payload.get("extracted_params", {})
+                self.logger.info(f"Executing standard SQL query: {sql_query}")
 
             if not sql_query:
                 raise ValueError("No sql_query in message payload")
 
-            self.logger.info(f"Executing SQL query: {sql_query}")
             if self.config.session_logger:
                 self.config.session_logger.log_info(f"DATABASE EXECUTION START: {sql_query}")
 
@@ -126,18 +151,36 @@ class DatabaseAgent:
             # Отправляем результаты агенту фильтрации для интеллектуального отбора
             if execution_result.get("success") and execution_result.get("row_count", 0) > 0:
                 self.logger.info("Sending results to filtering agent for analysis...")
-                filtering_message_id = self.storage.send_message(
-                    source_agent=self.agent_id,
-                    target_agent="results_filtering_agent",
-                    message_type="filter_results",
-                    correlation_id=message.correlation_id,  # Используем исходный correlation_id от SQL агента
-                    payload={
-                        "execution_result": execution_result,
-                        "extracted_params": extracted_params,
-                        "sql_query": sql_query,
-                    },
-                )
-                self.logger.info(f"Results sent to filtering agent: {filtering_message_id}")
+
+                if is_individual:
+                    # Индивидуальная фильтрация
+                    filtering_message_id = self.storage.send_message(
+                        source_agent=self.agent_id,
+                        target_agent="results_filtering_agent",
+                        message_type="filter_individual_results",
+                        correlation_id=message.correlation_id,  # Используем correlation_id от SQL агента
+                        payload={
+                            "execution_result": execution_result,
+                            "compound": compound,
+                            "common_params": common_params,
+                            "sql_query": sql_query,
+                        },
+                    )
+                    self.logger.info(f"Individual results sent to filtering agent: {filtering_message_id}")
+                else:
+                    # Стандартная фильтрация
+                    filtering_message_id = self.storage.send_message(
+                        source_agent=self.agent_id,
+                        target_agent="results_filtering_agent",
+                        message_type="filter_results",
+                        correlation_id=message.correlation_id,  # Используем исходный correlation_id от SQL агента
+                        payload={
+                            "execution_result": execution_result,
+                            "extracted_params": extracted_params,
+                            "sql_query": sql_query,
+                        },
+                    )
+                    self.logger.info(f"Results sent to filtering agent: {filtering_message_id}")
 
             # Отправляем ответ SQL агенту
             self.storage.send_message(

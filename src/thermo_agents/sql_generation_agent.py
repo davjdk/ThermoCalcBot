@@ -46,8 +46,8 @@ class SQLAgentConfig:
     storage: AgentStorage = field(default_factory=get_storage)
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     session_logger: Optional[SessionLogger] = None
-    poll_interval: float = 1.0  # Интервал проверки новых сообщений (секунды)
-    max_retries: int = 2
+    poll_interval: float = 0.5  # Уменьшено с 1.0 до 0.5с для ускорения реакции
+    max_retries: int = 3  # Увеличено с 2 до 3 для улучшенной надежности
 
 
 class SQLGenerationAgent:
@@ -149,6 +149,73 @@ class SQLGenerationAgent:
         """Wrapper для статического метода очистки SQL запросов."""
         return self._clean_sql_query_static(sql_query)
 
+    def _create_individual_sql_hint(self, compound: str, common_params: Dict) -> str:
+        """
+        Создать оптимизированную SQL подсказку для поиска одного соединения.
+
+        Args:
+            compound: Химическая формула
+            common_params: Общие параметры поиска
+
+        Returns:
+            Оптимизированная SQL подсказка
+        """
+        temperature = common_params.get("temperature_k", 298.15)
+        phases = common_params.get("phases", [])
+        properties = common_params.get("properties", ["basic"])
+
+        # Создаем специфичную подсказку для одного соединения
+        sql_hint = f"""
+        Сгенерируй SQL запрос для поиска одного химического соединения {compound} в таблице compounds.
+
+        Требования:
+        1. Используй TRIM(Formula) = '{compound}' для точного совпадения
+        2. Добавь Formula LIKE '{compound}(%' для фазовых/ионных вариантов
+        3. Примени температурную фильтрацию: температура {temperature}K должна быть в диапазоне [Tmin, Tmax]
+        4. Сортируй по ReliabilityClass ASC (1 = самые надежные данные)
+        5. Используй LIMIT 100 для контроля результатов
+        6. Приоритизуй фазы: {', '.join(phases) if phases else 'любые'}
+
+        Пример структуры:
+        SELECT * FROM compounds WHERE
+        (TRIM(Formula) = '{compound}' OR Formula LIKE '{compound}(%')
+        AND (Tmin IS NULL OR Tmax IS NULL OR ({temperature} >= Tmin AND {temperature} <= Tmax)))
+        ORDER BY ReliabilityClass ASC
+        LIMIT 100
+        """
+        return sql_hint.strip()
+
+    def _calculate_confidence(self, result_data: Dict) -> float:
+        """
+        Рассчитать уверенность в результате поиска.
+
+        Args:
+            result_data: Данные результата выполнения
+
+        Returns:
+            Уверенность от 0.0 до 1.0
+        """
+        execution_result = result_data.get("execution_result", {})
+        filtered_result = result_data.get("filtered_result", {})
+
+        if not execution_result.get("success", False):
+            return 0.0
+
+        row_count = execution_result.get("row_count", 0)
+        if row_count == 0:
+            return 0.0
+
+        # Базовая уверенность на основе количества найденных записей
+        base_confidence = min(1.0, row_count / 10.0)  # 10+ записей = 1.0
+
+        # Учитываем наличие отфильтрованных результатов
+        if filtered_result.get("selected_records"):
+            filtered_count = len(filtered_result["selected_records"])
+            filter_confidence = min(1.0, filtered_count / 3.0)  # 3+ записи = 1.0
+            return (base_confidence + filter_confidence) / 2.0
+
+        return base_confidence
+
     # Validation and refinement agent methods removed - no longer needed
 
     async def start(self):
@@ -164,13 +231,19 @@ class SQLGenerationAgent:
 
         while self.running:
             try:
-                # Получаем новые сообщения
-                messages = self.storage.receive_messages(
+                # Получаем новые сообщения (оба типа сообщений)
+                messages_query = self.storage.receive_messages(
                     self.agent_id, message_type="generate_query"
                 )
+                messages_individual = self.storage.receive_messages(
+                    self.agent_id, message_type="generate_individual_query"
+                )
+
+                # Объединяем сообщения
+                all_messages = messages_query + messages_individual
 
                 # Обрабатываем каждое сообщение
-                for message in messages:
+                for message in all_messages:
                     await self._process_message(message)
 
                 # Ждем перед следующей проверкой
@@ -198,16 +271,41 @@ class SQLGenerationAgent:
         )
 
         try:
-            # Извлекаем данные из сообщения
-            sql_hint = message.payload.get("sql_hint")
-            extracted_params = message.payload.get("extracted_params", {})
+            # Определяем тип сообщения
+            message_type = message.payload.get("compound") and "individual" or "standard"
 
-            self.logger.info(f"Processing SQL hint: {sql_hint[:100] if sql_hint else 'None'}...")
-            if self.config.session_logger:
-                self.config.session_logger.log_info(f"SQL GENERATION START: Processing message {message.id}")
+            if message_type == "individual":
+                # Индивидуальный запрос для одного соединения
+                compound = message.payload.get("compound")
+                common_params = message.payload.get("common_params", {})
+                search_strategy = message.payload.get("search_strategy", "individual_compound_search")
 
-            if not sql_hint:
-                raise ValueError("No sql_hint in message payload")
+                if not compound:
+                    raise ValueError("No compound in individual search message payload")
+
+                # Создаем оптимизированную SQL подсказку для одного соединения
+                sql_hint = self._create_individual_sql_hint(compound, common_params)
+                extracted_params = {
+                    "compounds": [compound],
+                    "temperature_k": common_params.get("temperature_k", 298.15),
+                    "temperature_range_k": common_params.get("temperature_range_k", [200, 2000]),
+                    "phases": common_params.get("phases", []),
+                    "properties": common_params.get("properties", ["basic"]),
+                    "intent": "individual_lookup",
+                }
+
+                self.logger.info(f"Processing individual search for compound: {compound}")
+            else:
+                # Стандартный запрос
+                sql_hint = message.payload.get("sql_hint")
+                extracted_params = message.payload.get("extracted_params", {})
+
+                self.logger.info(f"Processing SQL hint: {sql_hint[:100] if sql_hint else 'None'}...")
+                if self.config.session_logger:
+                    self.config.session_logger.log_info(f"SQL GENERATION START: Processing message {message.id}")
+
+                if not sql_hint:
+                    raise ValueError("No sql_hint in message payload")
 
             # Генерируем SQL запрос используя PydanticAI агента с тайм-аутом
             self.logger.info("Starting SQL query generation...")
@@ -236,17 +334,34 @@ class SQLGenerationAgent:
 
             self.logger.info(f"Prepared result data with key: {result_key}")
 
-            # Отправляем SQL запрос агенту базы данных для выполнения
-            self.logger.info("Sending SQL query to database agent for execution...")
-            db_message_id = self.storage.send_message(
-                source_agent=self.agent_id,
-                target_agent="database_agent",
-                message_type="execute_sql",
-                payload={
-                    "sql_query": sql_result.sql_query,
-                    "extracted_params": extracted_params,
-                },
-            )
+            # Определяем тип обработки результатов
+            if message_type == "individual":
+                # Для индивидуального запроса отправляем напрямую к Results Filtering Agent
+                self.logger.info("Sending SQL query to database agent for individual execution...")
+                db_message_id = self.storage.send_message(
+                    source_agent=self.agent_id,
+                    target_agent="database_agent",
+                    message_type="execute_individual_sql",
+                    correlation_id=message.id,
+                    payload={
+                        "sql_query": sql_result.sql_query,
+                        "compound": extracted_params["compounds"][0],
+                        "common_params": common_params if message_type == "individual" else {},
+                        "request_source": "individual_search_agent",
+                    },
+                )
+            else:
+                # Стандартная обработка
+                self.logger.info("Sending SQL query to database agent for execution...")
+                db_message_id = self.storage.send_message(
+                    source_agent=self.agent_id,
+                    target_agent="database_agent",
+                    message_type="execute_sql",
+                    payload={
+                        "sql_query": sql_result.sql_query,
+                        "extracted_params": extracted_params,
+                    },
+                )
             self.logger.info(f"SQL query sent to database_agent: {db_message_id}")
 
             # Ждем результат от агента базы данных
@@ -281,7 +396,7 @@ class SQLGenerationAgent:
                     self.logger.info("Waiting for filtering agent results...")
                     filtering_result = None
                     filtering_start_time = asyncio.get_event_loop().time()
-                    filtering_timeout = 30  # 30 секунд на фильтрацию
+                    filtering_timeout = 60  # Увеличено с 30 до 60 секунд на фильтрацию
 
                     while (asyncio.get_event_loop().time() - filtering_start_time) < filtering_timeout:
                         # Получаем сообщения от агента фильтрации
@@ -289,21 +404,29 @@ class SQLGenerationAgent:
                             self.agent_id, message_type="results_filtered"
                         )
 
+                        if filtering_messages:
+                            self.logger.debug(f"DEBUG: Found {len(filtering_messages)} filtering messages")
+
                         for filter_msg in filtering_messages:
                             # Проверяем correlation_id (должен соответствовать исходному message ID)
                             if (filter_msg.source_agent == "results_filtering_agent" and
                                 filter_msg.correlation_id == message.id):
-                                self.logger.info(f"Received filtering result: {filter_msg.payload.get('status')}")
-                                if filter_msg.payload.get("status") == "success":
+                                status = filter_msg.payload.get("status")
+                                self.logger.info(f"Received filtering result: {status}")
+                                if status == "success":
                                     filtering_result = filter_msg.payload.get("filtered_result")
                                     break
-                                elif filter_msg.payload.get("status") == "no_results":
+                                elif status == "no_results":
                                     self.logger.warning("No records found after filtering")
+                                    break
+                                elif status == "error":
+                                    self.logger.error(f"Filtering agent error: {filter_msg.payload.get('error')}")
                                     break
 
                         if filtering_result:
                             break
-                        await asyncio.sleep(0.1)
+                        # Уменьшаем задержку для ускорения реакции
+                        await asyncio.sleep(0.2)
 
                     # Добавляем результат фильтрации к данным
                     if filtering_result:
@@ -325,23 +448,35 @@ class SQLGenerationAgent:
             self.logger.info("Result stored successfully")
 
             # Отправляем ответное сообщение
-            self.logger.info(f"Sending response to {message.source_agent}")
+            if message_type == "individual":
+                # Для индивидуальных запросов отправляем Individual Search Agent
+                target_agent = "individual_search_agent"
+                response_message_type = "individual_sql_complete"
+            else:
+                # Стандартные запросы
+                target_agent = message.source_agent
+                response_message_type = "response"
+
+            self.logger.info(f"Sending {response_message_type} to {target_agent}")
             if self.config.session_logger:
-                self.config.session_logger.log_info(f"SENDING RESPONSE: To {message.source_agent}, key={result_key}")
+                self.config.session_logger.log_info(f"SENDING {response_message_type.upper()}: To {target_agent}, key={result_key}")
 
             try:
                 self.storage.send_message(
                     source_agent=self.agent_id,
-                    target_agent=message.source_agent,
-                    message_type="response",
+                    target_agent=target_agent,
+                    message_type=response_message_type,
                     correlation_id=message.id,
                     payload={
                         "status": "success",
                         "result_key": result_key,
                         "sql_result": result_data,
+                        "search_results": result_data.get("execution_result", {}).get("rows", []),
+                        "filtered_data": result_data.get("filtered_result", {}).get("selected_records", []),
+                        "confidence": self._calculate_confidence(result_data),
                     },
                 )
-                self.logger.info(f"Response sent successfully to {message.source_agent}")
+                self.logger.info(f"{response_message_type} sent successfully to {target_agent}")
             except Exception as e:
                 self.logger.error(f"Error sending response: {e}")
 

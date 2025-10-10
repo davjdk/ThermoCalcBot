@@ -29,6 +29,7 @@ from thermo_agents.orchestrator import (
 from thermo_agents.database_agent import DatabaseAgentConfig, DatabaseAgent
 from thermo_agents.sql_generation_agent import SQLAgentConfig, SQLGenerationAgent
 from thermo_agents.results_filtering_agent import ResultsFilteringAgentConfig, ResultsFilteringAgent
+from thermo_agents.individual_search_agent import IndividualSearchAgentConfig, IndividualSearchAgent
 from thermo_agents.thermo_agents_logger import create_session_logger
 from thermo_agents.thermodynamic_agent import ThermoAgentConfig, ThermodynamicAgent
 
@@ -63,6 +64,7 @@ class ThermoSystem:
         self.sql_agent = None
         self.database_agent = None
         self.results_filtering_agent = None
+        self.individual_search_agent = None
         self.orchestrator = None
 
         # Задачи для агентов
@@ -124,7 +126,7 @@ class ThermoSystem:
             storage=self.storage,
             logger=logging.getLogger("thermo_agent"),
             session_logger=self.session_logger,
-            poll_interval=0.5,  # Быстрый отклик
+            poll_interval=2.0,  # Увеличенный интервал для учета времени LLM
         )
         self.thermo_agent = ThermodynamicAgent(thermo_config)
 
@@ -138,7 +140,7 @@ class ThermoSystem:
             storage=self.storage,
             logger=logging.getLogger("sql_agent"),
             session_logger=self.session_logger,
-            poll_interval=0.5,
+            poll_interval=2.0,  # Увеличенный интервал
         )
         self.sql_agent = SQLGenerationAgent(sql_config)
 
@@ -149,7 +151,7 @@ class ThermoSystem:
             storage=self.storage,
             logger=logging.getLogger("database_agent"),
             session_logger=self.session_logger,
-            poll_interval=0.5,
+            poll_interval=2.0,  # Увеличенный интервал
         )
         self.database_agent = DatabaseAgent(database_config)
 
@@ -162,9 +164,22 @@ class ThermoSystem:
             storage=self.storage,
             logger=logging.getLogger("results_filtering_agent"),
             session_logger=self.session_logger,
-            poll_interval=0.5,
+            poll_interval=2.0,  # Увеличенный интервал
         )
         self.results_filtering_agent = ResultsFilteringAgent(results_filtering_config)
+
+        # Individual Search Agent (новый агент для индивидуального поиска)
+        individual_search_config = IndividualSearchAgentConfig(
+            agent_id="individual_search_agent",
+            storage=self.storage,
+            logger=logging.getLogger("individual_search_agent"),
+            session_logger=self.session_logger,
+            poll_interval=2.0,  # Увеличенный интервал
+            max_retries=3,  # Увеличенное количество попыток
+            timeout_seconds=180,  # 3 минуты на поиск одного вещества
+            max_parallel_searches=4,  # Максимум 4 параллельных поиска
+        )
+        self.individual_search_agent = IndividualSearchAgent(individual_search_config)
 
         # Оркестратор
         orchestrator_config = OrchestratorConfig(
@@ -174,6 +189,7 @@ class ThermoSystem:
             storage=self.storage,
             logger=logging.getLogger("orchestrator"),
             session_logger=self.session_logger,
+            timeout_seconds=180,  # Увеличенный таймаут для оркестратора
         )
         self.orchestrator = ThermoOrchestrator(orchestrator_config)
 
@@ -189,6 +205,7 @@ class ThermoSystem:
             asyncio.create_task(self.sql_agent.start(), name="sql_agent_task"),
             asyncio.create_task(self.database_agent.start(), name="database_agent_task"),
             asyncio.create_task(self.results_filtering_agent.start(), name="results_filtering_agent_task"),
+            asyncio.create_task(self.individual_search_agent.start(), name="individual_search_agent_task"),
         ]
 
         # Даем агентам время на инициализацию
@@ -210,6 +227,8 @@ class ThermoSystem:
             await self.database_agent.stop()
         if self.results_filtering_agent:
             await self.results_filtering_agent.stop()
+        if self.individual_search_agent:
+            await self.individual_search_agent.stop()
         if self.orchestrator:
             await self.orchestrator.shutdown()
 

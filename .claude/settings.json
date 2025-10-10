@@ -4,6 +4,6 @@
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6",
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-    "ANTHROPIC_AUTH_TOKEN": "c667473dfd7a4daca77eaf9f559060eb.3yj3fck51bZOFEbB"
+    "ANTHROPIC_AUTH_TOKEN": "92a003d351564c6ca3a0e67f64126021.iUtEpPbAUKPTqtC6"
   }
 }

@@ -35,6 +35,36 @@ class ExtractedParameters(BaseModel):
     reaction_equation: Optional[str] = None  # Уравнение реакции (для intent="reaction")
 
 
+class IndividualSearchRequest(BaseModel):
+    """Запрос на индивидуальный поиск соединений."""
+
+    compounds: List[str]  # Список соединений для поиска
+    common_params: Dict  # Общие параметры (температура, фазы)
+    search_strategy: str  # Стратегия поиска
+    correlation_id: str  # ID для корреляции
+    original_query: str  # Оригинальный запрос пользователя
+
+
+class IndividualCompoundResult(BaseModel):
+    """Результат поиска для одного соединения."""
+
+    compound: str  # Химическая формула
+    search_results: List[Dict]  # Результаты поиска
+    selected_records: List[Dict]  # Отобранные записи
+    confidence: float  # Уверенность в результате
+    errors: List[str]  # Ошибки поиска
+
+
+class AggregatedResults(BaseModel):
+    """Агрегированные результаты по всем соединениям."""
+
+    individual_results: List[IndividualCompoundResult]  # Результаты по веществам
+    summary_table: List[Dict]  # Сводная таблица
+    overall_confidence: float  # Общая уверенность
+    missing_compounds: List[str]  # Отсутствующие вещества
+    warnings: List[str]  # Предупреждения
+
+
 @dataclass
 class ThermoAgentConfig:
     """Конфигурация термодинамического агента."""
@@ -47,7 +77,7 @@ class ThermoAgentConfig:
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     session_logger: Optional[SessionLogger] = None
     poll_interval: float = 1.0  # Интервал проверки новых сообщений (секунды)
-    max_retries: int = 2
+    max_retries: int = 4
 
 
 class ThermodynamicAgent:
@@ -186,12 +216,51 @@ class ThermodynamicAgent:
                 raise ValueError("No user_query in message payload")
 
             # Извлекаем параметры используя PydanticAI агента
-            result = await self.agent.run(user_query, deps=self.config)
-            extracted_params = result.output
+            try:
+                self.logger.info(f"Starting parameter extraction for query: {user_query[:100]}...")
+                # Увеличиваем таймаут до 10 секунд для LLM ответа
+                import asyncio
+                result = await asyncio.wait_for(
+                    self.agent.run(user_query, deps=self.config),
+                    timeout=10.0  # 10 секунд на ответ модели
+                )
+                extracted_params = result.output
 
-            self.logger.info(
-                f"Successfully extracted parameters: {extracted_params.intent}"
-            )
+                self.logger.info(
+                    f"Successfully extracted parameters: {extracted_params.intent}, compounds: {extracted_params.compounds}"
+                )
+            except asyncio.TimeoutError:
+                self.logger.error(f"LLM timeout after 10 seconds, using fallback extraction")
+                extracted_params = self._fallback_extraction(user_query)
+            except Exception as e:
+                # Обрабатываем различные типы ошибок PydanticAI
+                error_msg = str(e)
+                self.logger.error(f"Parameter extraction error: {error_msg}")
+
+                if "finish_reason" in error_msg and "None" in error_msg:
+                    self.logger.error(f"PydanticAI validation error for finish_reason=None, using fallback")
+                    # Используем базовые параметры при ошибке валидации
+                    extracted_params = ExtractedParameters(
+                        intent="lookup",  # Предполагаем, что это поиск по умолчанию
+                        compounds=[],  # Пустой список соединений, будет заполнен позже
+                        temperature_k=298.15,
+                        temperature_range_k=[200, 2000],
+                        phases=[],
+                        properties=["basic"],
+                        sql_query_hint=f"Error occurred during parameter extraction, query: {user_query}",
+                        reaction_equation=None,
+                    )
+                elif "Exceeded maximum retries" in error_msg:
+                    self.logger.error(f"PydanticAI exceeded retries, using fallback extraction")
+                    # Пытаемся извлечь базовые параметры из запроса
+                    extracted_params = self._fallback_extraction(user_query)
+                elif "validation" in error_msg.lower():
+                    self.logger.error(f"PydanticAI validation error, using fallback")
+                    extracted_params = self._fallback_extraction(user_query)
+                else:
+                    # Для других ошибок пробрасываем исключение дальше
+                    self.logger.error(f"Unknown PydanticAI error, re-raising: {e}")
+                    raise e
 
             # Сохраняем результат в хранилище
             result_key = f"thermo_result_{message.id}"
@@ -214,8 +283,38 @@ class ThermodynamicAgent:
             if self.config.session_logger:
                 self.config.session_logger.log_extracted_parameters(extracted_params)
 
-            # Если нужна генерация SQL, отправляем сообщение SQL агенту
-            if extracted_params.sql_query_hint:
+            # Если найдены соединения и нужна индивидуальная обработка, отправляем запрос Individual Search Agent
+            if extracted_params.compounds and extracted_params.intent == "reaction":
+                # Создаем запрос на индивидуальный поиск
+                search_request = IndividualSearchRequest(
+                    compounds=extracted_params.compounds,
+                    common_params={
+                        "temperature_k": extracted_params.temperature_k,
+                        "temperature_range_k": extracted_params.temperature_range_k,
+                        "phases": extracted_params.phases,
+                        "properties": extracted_params.properties,
+                    },
+                    search_strategy="individual_compound_search",
+                    correlation_id=message.id,
+                    original_query=user_query,
+                )
+
+                # Отправляем запрос Individual Search Agent
+                individual_search_message_id = self.storage.send_message(
+                    source_agent=self.agent_id,
+                    target_agent="individual_search_agent",
+                    message_type="individual_search_request",
+                    correlation_id=message.id,
+                    payload={
+                        "search_request": search_request.model_dump(),
+                        "extracted_params": extracted_params.model_dump(),
+                        "original_query": user_query,
+                    },
+                )
+                self.logger.info(f"Forwarded to Individual Search Agent: {individual_search_message_id}")
+
+            # Если нужна генерация SQL (для нерекакционных запросов), отправляем сообщение SQL агенту
+            elif extracted_params.sql_query_hint:
                 sql_message_id = self.storage.send_message(
                     source_agent=self.agent_id,
                     target_agent="sql_agent",
@@ -255,20 +354,94 @@ class ThermodynamicAgent:
             Извлеченные параметры
         """
         try:
-            result = await self.agent.run(user_query, deps=self.config)
+            import asyncio
+            result = await asyncio.wait_for(
+                self.agent.run(user_query, deps=self.config),
+                timeout=10.0  # 10 секунд на ответ модели
+            )
             return result.output
         except Exception as e:
             self.logger.error(f"Error in single query processing: {e}")
-            # Возвращаем базовые параметры в случае ошибки
-            return ExtractedParameters(
-                intent="unknown",
-                compounds=[],
-                temperature_k=298.15,
-                temperature_range_k=[200, 2000],
-                phases=[],
-                properties=["basic"],
-                sql_query_hint="Error occurred during parameter extraction",
-            )
+            error_msg = str(e)
+
+            # Обрабатываем ошибку PydanticAI с finish_reason=None
+            if "finish_reason" in error_msg and "None" in error_msg:
+                self.logger.error(f"PydanticAI validation error for finish_reason=None, using fallback: {e}")
+                # Возвращаем базовые параметры с общим поиском
+                return ExtractedParameters(
+                    intent="lookup",  # Предполагаем, что это поиск по умолчанию
+                    compounds=[],  # Пустой список соединений, будет заполнен позже
+                    temperature_k=298.15,
+                    temperature_range_k=[200, 2000],
+                    phases=[],
+                    properties=["basic"],
+                    sql_query_hint=f"Error occurred during parameter extraction, query: {user_query}",
+                    reaction_equation=None,
+                )
+            else:
+                # Возвращаем базовые параметры в случае других ошибок
+                return ExtractedParameters(
+                    intent="unknown",
+                    compounds=[],
+                    temperature_k=298.15,
+                    temperature_range_k=[200, 2000],
+                    phases=[],
+                    properties=["basic"],
+                    sql_query_hint="Error occurred during parameter extraction",
+                )
+
+    def _fallback_extraction(self, user_query: str) -> ExtractedParameters:
+        """
+        Резервное извлечение параметров при сбоях PydanticAI.
+
+        Args:
+            user_query: Запрос пользователя
+
+        Returns:
+            Базовые ExtractedParameters
+        """
+        self.logger.warning(f"Using fallback extraction for query: {user_query[:100]}...")
+
+        # Простая эвристика для определения intent
+        query_lower = user_query.lower()
+        if any(word in query_lower for word in ['реакц', 'взаимод', 'превращ', 'получ', 'образует']):
+            intent = "reaction"
+        elif any(word in query_lower for word in ['температур', 'когда', 'при какой', 'услов']):
+            intent = "calculation"
+        else:
+            intent = "lookup"
+
+        # Базовая попытка извлечь химические соединения (простые паттерны)
+        import re
+
+        # Ищем простые химические формулы
+        compound_pattern = r'\b([A-Z][a-z]?[0-9]*[A-Za-z0-9]*)\b'
+        compounds = list(set(re.findall(compound_pattern, user_query)))
+
+        # Фильтруем очевидные не-химические слова
+        stop_words = {'температура', 'при', 'какой', 'реакция', 'взаимодействие', 'как', 'какая'}
+        compounds = [c for c in compounds if c not in stop_words and len(c) > 1]
+
+        # Температура по умолчанию
+        temperature_k = 298.15
+
+        # Ищем температуру в запросе
+        temp_pattern = r'(\d+)\s*°?[CcC]'
+        temp_match = re.search(temp_pattern, user_query)
+        if temp_match:
+            temp_c = float(temp_match.group(1))
+            temperature_k = temp_c + 273.15
+
+        return ExtractedParameters(
+            intent=intent,
+            compounds=compounds[:5],  # Максимум 5 соединений
+            temperature_k=temperature_k,
+            temperature_range_k=[temperature_k - 100, temperature_k + 200],
+            phases=['s'] * len(compounds),  # По умолчанию твердые
+            properties=['all'] if intent == 'reaction' else ['basic'],
+            sql_query_hint=f"Fallback extraction: {user_query[:100]}",
+            reaction_equation=None,
+        )
 
     def get_status(self) -> Dict:
         """Получить статус агента."""
