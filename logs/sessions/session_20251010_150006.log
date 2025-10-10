@@ -1,0 +1,202 @@
+2025-10-10 15:00:06,702 - __main__ - INFO - ThermoSystem initialized
+2025-10-10 15:00:06,702 - __main__ - INFO - Initializing agents...
+2025-10-10 15:00:06,954 - thermo_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-10-10 15:00:06,954 - sql_agent - INFO - SQLGenerationAgent 'sql_agent' initialized
+2025-10-10 15:00:06,956 - database_agent - INFO - DatabaseAgent 'database_agent' initialized
+2025-10-10 15:00:06,957 - results_filtering_agent - INFO - ResultsFilteringAgent 'results_filtering_agent' initialized
+2025-10-10 15:00:06,959 - __main__ - INFO - All agents initialized successfully
+2025-10-10 15:00:06,961 - __main__ - INFO - Starting agents...
+2025-10-10 15:00:06,962 - thermo_agent - INFO - Agent 'thermo_agent' started listening for messages
+2025-10-10 15:00:06,962 - sql_agent - INFO - Agent 'sql_agent' started listening for messages
+2025-10-10 15:00:06,963 - database_agent - INFO - Agent 'database_agent' started listening for messages
+2025-10-10 15:00:06,963 - results_filtering_agent - INFO - Agent 'results_filtering_agent' started listening for messages
+2025-10-10 15:00:07,966 - __main__ - INFO - All agents started
+2025-10-10 15:00:27,099 - orchestrator - INFO - Processing request: При какой температуре провзаимодействует оксид кальция и сульфид железа...
+2025-10-10 15:00:27,100 - thermo_agent - INFO - Processing message: 0b08a91d-0549-40a6-9c01-495b866e34a8 from orchestrator
+2025-10-10 15:00:28,449 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-10 15:00:33,426 - thermo_agent - INFO - Successfully extracted parameters: reaction
+2025-10-10 15:00:33 - INFO - EXTRACTED PARAMETERS:
+2025-10-10 15:00:33,426 - thermo_agents_session_20251010_150006 - INFO - EXTRACTED PARAMETERS:
+2025-10-10 15:00:33 - INFO -   Intent: reaction
+2025-10-10 15:00:33,427 - thermo_agents_session_20251010_150006 - INFO -   Intent: reaction
+2025-10-10 15:00:33 - INFO -   Compounds: ['CaO', 'FeS', 'CaS', 'FeO']
+2025-10-10 15:00:33,428 - thermo_agents_session_20251010_150006 - INFO -   Compounds: ['CaO', 'FeS', 'CaS', 'FeO']
+2025-10-10 15:00:33 - INFO -   Temperature: 298.15 K
+2025-10-10 15:00:33,428 - thermo_agents_session_20251010_150006 - INFO -   Temperature: 298.15 K
+2025-10-10 15:00:33 - INFO -   Temperature Range: [200.0, 2000.0]
+2025-10-10 15:00:33,428 - thermo_agents_session_20251010_150006 - INFO -   Temperature Range: [200.0, 2000.0]
+2025-10-10 15:00:33 - INFO -   Phases: ['s', 's', 's', 's']
+2025-10-10 15:00:33,429 - thermo_agents_session_20251010_150006 - INFO -   Phases: ['s', 's', 's', 's']
+2025-10-10 15:00:33 - INFO -   Properties: ['all']
+2025-10-10 15:00:33,429 - thermo_agents_session_20251010_150006 - INFO -   Properties: ['all']
+2025-10-10 15:00:33 - INFO -   SQL Hint: Find thermodynamic data for CaO(s), FeS(s), CaS(s), and FeO(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction CaO + FeS → CaS + FeO.
+2025-10-10 15:00:33,429 - thermo_agents_session_20251010_150006 - INFO -   SQL Hint: Find thermodynamic data for CaO(s), FeS(s), CaS(s), and FeO(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction CaO + FeS → CaS + FeO.
+2025-10-10 15:00:33 - INFO -   JSON Output:
+2025-10-10 15:00:33,429 - thermo_agents_session_20251010_150006 - INFO -   JSON Output:
+2025-10-10 15:00:33 - INFO - {
+  "intent": "reaction",
+  "compounds": [
+    "CaO",
+    "FeS",
+    "CaS",
+    "FeO"
+  ],
+  "temperature_k": 298.15,
+  "temperature_range_k": [
+    200.0,
+    2000.0
+  ],
+  "phases": [
+    "s",
+    "s",
+    "s",
+    "s"
+  ],
+  "properties": [
+    "all"
+  ],
+  "sql_query_hint": "Find thermodynamic data for CaO(s), FeS(s), CaS(s), and FeO(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction CaO + FeS → CaS + FeO.",
+  "reaction_equation": "CaO + FeS → CaS + FeO"
+}
+2025-10-10 15:00:33,430 - thermo_agents_session_20251010_150006 - INFO - {
+  "intent": "reaction",
+  "compounds": [
+    "CaO",
+    "FeS",
+    "CaS",
+    "FeO"
+  ],
+  "temperature_k": 298.15,
+  "temperature_range_k": [
+    200.0,
+    2000.0
+  ],
+  "phases": [
+    "s",
+    "s",
+    "s",
+    "s"
+  ],
+  "properties": [
+    "all"
+  ],
+  "sql_query_hint": "Find thermodynamic data for CaO(s), FeS(s), CaS(s), and FeO(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction CaO + FeS → CaS + FeO.",
+  "reaction_equation": "CaO + FeS → CaS + FeO"
+}
+2025-10-10 15:00:33,430 - thermo_agent - INFO - Forwarded to SQL agent: 8290d4a0-f6e6-4d3a-9e32-b987c9694168
+2025-10-10 15:00:33,442 - orchestrator - INFO - Received response from thermo_agent: {'status': 'success', 'result_key': 'thermo_result_0b08a91d-0549-40a6-9c01-495b866e34a8', 'extracted_params': {'intent': 'reaction', 'compounds': ['CaO', 'FeS', 'CaS', 'FeO'], 'temperature_k': 298.15, 'temperature_range_k': [200.0, 2000.0], 'phases': ['s', 's', 's', 's'], 'properties': ['all'], 'sql_query_hint': 'Find thermodynamic data for CaO(s), FeS(s), CaS(s), and FeO(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction CaO + FeS → CaS + FeO.', 'reaction_equation': 'CaO + FeS → CaS + FeO'}}
+2025-10-10 15:00:33,660 - sql_agent - INFO - Processing message: 8290d4a0-f6e6-4d3a-9e32-b987c9694168 from thermo_agent
+2025-10-10 15:00:33,661 - sql_agent - INFO - Processing SQL hint: Find thermodynamic data for CaO(s), FeS(s), CaS(s), and FeO(s) in temperature range 200-2000K. Inclu...
+2025-10-10 15:00:33 - INFO - INFO: SQL GENERATION START: Processing message 8290d4a0-f6e6-4d3a-9e32-b987c9694168
+2025-10-10 15:00:33,661 - thermo_agents_session_20251010_150006 - INFO - INFO: SQL GENERATION START: Processing message 8290d4a0-f6e6-4d3a-9e32-b987c9694168
+2025-10-10 15:00:33,662 - sql_agent - INFO - Starting SQL query generation...
+2025-10-10 15:00:34,834 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-10 15:00:39,008 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-10 15:00:44,281 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-10 15:00:58,219 - sql_agent - INFO - Generated SQL query: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%' OR TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%' OR TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%' OR TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') LIMIT 10000;
+2025-10-10 15:00:58 - INFO - INFO: SQL GENERATION COMPLETE: Query length 237
+2025-10-10 15:00:58,220 - thermo_agents_session_20251010_150006 - INFO - INFO: SQL GENERATION COMPLETE: Query length 237
+2025-10-10 15:00:58,220 - sql_agent - INFO - SQL query cleaned
+2025-10-10 15:00:58,220 - sql_agent - INFO - Prepared result data with key: sql_result_8290d4a0-f6e6-4d3a-9e32-b987c9694168
+2025-10-10 15:00:58,220 - sql_agent - INFO - Sending SQL query to database agent for execution...
+2025-10-10 15:00:58,221 - sql_agent - INFO - SQL query sent to database_agent: 76df8b00-e352-4359-ac26-4f65abd9af3e
+2025-10-10 15:00:58,519 - database_agent - INFO - Processing SQL execution request: 76df8b00-e352-4359-ac26-4f65abd9af3e from sql_agent
+2025-10-10 15:00:58,519 - database_agent - INFO - Executing SQL query: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%' OR TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%' OR TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%' OR TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') LIMIT 10000
+2025-10-10 15:00:58 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%' OR TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%' OR TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%' OR TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') LIMIT 10000
+2025-10-10 15:00:58,519 - thermo_agents_session_20251010_150006 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%' OR TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%' OR TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%' OR TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') LIMIT 10000
+2025-10-10 15:00:58,652 - database_agent - INFO - SQL executed successfully: 324 rows found
+2025-10-10 15:00:58,652 - database_agent - INFO - Applying temperature range filtering: 200.0-2000.0K...
+2025-10-10 15:00:58,652 - database_agent - INFO - Temperature filtering: 255 of 324 rows remain
+2025-10-10 15:00:58 - INFO - INFO: TEMPERATURE FILTER: Range=200.0-2000.0K, Matched=255, Excluded=69
+2025-10-10 15:00:58,654 - thermo_agents_session_20251010_150006 - INFO - INFO: TEMPERATURE FILTER: Range=200.0-2000.0K, Matched=255, Excluded=69
+2025-10-10 15:00:58 - INFO - Executed query, found 255 rows
+2025-10-10 15:00:58,654 - thermo_agents_session_20251010_150006 - INFO - Executed query, found 255 rows
+2025-10-10 15:00:58 - INFO - QUERY RESULTS:
+2025-10-10 15:00:58,655 - thermo_agents_session_20251010_150006 - INFO - QUERY RESULTS:
+2025-10-10 15:00:58 - INFO -   SQL: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%' OR TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%' OR TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%' OR TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') LIMIT 10000
+2025-10-10 15:00:58,655 - thermo_agents_session_20251010_150006 - INFO -   SQL: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%' OR TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%' OR TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%' OR TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') LIMIT 10000
+2025-10-10 15:00:58 - INFO -   Total rows: 255
+2025-10-10 15:00:58,655 - thermo_agents_session_20251010_150006 - INFO -   Total rows: 255
+2025-10-10 15:00:58,655 - database_agent - INFO - Database result stored with key: db_result_76df8b00-e352-4359-ac26-4f65abd9af3e
+2025-10-10 15:00:58,655 - database_agent - INFO - Sending results to filtering agent for analysis...
+2025-10-10 15:00:58,655 - database_agent - INFO - Results sent to filtering agent: 7d11b54f-15d6-4959-b95d-f5f890c21ec5
+2025-10-10 15:00:58,656 - database_agent - INFO - Response sent to sql_agent
+2025-10-10 15:00:58,656 - results_filtering_agent - INFO - Processing results filtering request: 7d11b54f-15d6-4959-b95d-f5f890c21ec5 from database_agent
+2025-10-10 15:00:58,656 - results_filtering_agent - INFO - Filtering 255 records for 4 compounds
+2025-10-10 15:00:58 - INFO - INFO: RESULTS FILTERING START: 255 records, target temp 298.15K
+2025-10-10 15:00:58,656 - thermo_agents_session_20251010_150006 - INFO - INFO: RESULTS FILTERING START: 255 records, target temp 298.15K
+2025-10-10 15:00:58,656 - results_filtering_agent - INFO - Temperature pre-filtering: 255 records remain
+2025-10-10 15:00:58,684 - sql_agent - INFO - Received database result: success
+2025-10-10 15:00:58,684 - sql_agent - INFO - Database execution successful: 255 rows
+2025-10-10 15:00:58,684 - sql_agent - INFO - Waiting for filtering agent results...
+2025-10-10 15:00:59,097 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-10 15:01:17,106 - results_filtering_agent - INFO - Filtering result stored with key: filtered_result_7d11b54f-15d6-4959-b95d-f5f890c21ec5
+2025-10-10 15:01:17,106 - results_filtering_agent - INFO - Filtered results: 9 selected records
+2025-10-10 15:01:17,108 - results_filtering_agent - INFO - DEBUG: First record keys: ['Formula', 'Structure', 'FirstName', 'SecondName', 'Phase', 'CAS', 'MeltingPoint', 'BoilingPoint', 'Density', 'Solubility', 'Color', 'H298', 'S298', 'Tmin', 'Tmax', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'ReliabilityClass', 'Reference']
+2025-10-10 15:01:17,108 - results_filtering_agent - INFO - DEBUG: First record data: {'Formula': 'CaO', 'Structure': None, 'FirstName': 'Calcium oxide', 'SecondName': None, 'Phase': 's', 'CAS': '1305-78-8', 'MeltingPoint': 3172.0, 'BoilingPoint': 3773.0, 'Density': 3.34, 'Solubility': 0.0, 'Color': 15, 'H298': -634.919958208, 'S298': 38.099997712, 'Tmin': 100.0, 'Tmax': 298.15, 'f1': 17.35161991096, 'f2': 122.7559989736, 'f3': -1.3750699264, 'f4': -117.0913014568, 'f5': 0.0, 'f6': 0.0, 'ReliabilityClass': 1, 'Reference': 'JANAF 98; Barin 89; Landolt 99'}
+2025-10-10 15:01:17 - INFO - INFO: FILTERED RESULTS TABLE (9 records):
+2025-10-10 15:01:17,109 - thermo_agents_session_20251010_150006 - INFO - INFO: FILTERED RESULTS TABLE (9 records):
+2025-10-10 15:01:17 - INFO - INFO: REASONING: From 255 records, selected 9 entries: solid‑phase records for each requested compound covering the 200‑2000 K temperature range with the most complete thermodynamic data.
+2025-10-10 15:01:17,109 - thermo_agents_session_20251010_150006 - INFO - INFO: REASONING: From 255 records, selected 9 entries: solid‑phase records for each requested compound covering the 200‑2000 K temperature range with the most complete thermodynamic data.
+2025-10-10 15:01:17 - INFO - INFO: SELECTED RECORDS:
+2025-10-10 15:01:17,110 - thermo_agents_session_20251010_150006 - INFO - INFO: SELECTED RECORDS:
+2025-10-10 15:01:17 - INFO - INFO: +---------+------------------+-------+--------+-------+-------+--------+--------+----------+-----+-----+-------+-------+
+2025-10-10 15:01:17,110 - thermo_agents_session_20251010_150006 - INFO - INFO: +---------+------------------+-------+--------+-------+-------+--------+--------+----------+-----+-----+-------+-------+
+2025-10-10 15:01:17 - INFO - INFO: | Formula | FirstName        | Phase | H298   | S298  | f1    | f2     | f3     | f4       | f5  | f6  | Tmin  | Tmax  |
+2025-10-10 15:01:17,112 - thermo_agents_session_20251010_150006 - INFO - INFO: | Formula | FirstName        | Phase | H298   | S298  | f1    | f2     | f3     | f4       | f5  | f6  | Tmin  | Tmax  |
+2025-10-10 15:01:17 - INFO - INFO: +---------+------------------+-------+--------+-------+-------+--------+--------+----------+-----+-----+-------+-------+
+2025-10-10 15:01:17,112 - thermo_agents_session_20251010_150006 - INFO - INFO: +---------+------------------+-------+--------+-------+-------+--------+--------+----------+-----+-----+-------+-------+
+2025-10-10 15:01:17 - INFO - INFO: | CaO     | Calcium oxide    | s     | -634.9 | 38.1  | 17.35 | 122.8  | -1.375 | -117.1   | 0   | 0   | 100   | 298.1 |
+2025-10-10 15:01:17,112 - thermo_agents_session_20251010_150006 - INFO - INFO: | CaO     | Calcium oxide    | s     | -634.9 | 38.1  | 17.35 | 122.8  | -1.375 | -117.1   | 0   | 0   | 100   | 298.1 |
+2025-10-10 15:01:17 - INFO - INFO: | CaO(L)  | Calcium oxide    | s     | -635.1 | 38.1  | 48.83 | 4.519  | -6.527 | 0        | 0   | 0   | 298.1 | 2000  |
+2025-10-10 15:01:17,112 - thermo_agents_session_20251010_150006 - INFO - INFO: | CaO(L)  | Calcium oxide    | s     | -635.1 | 38.1  | 48.83 | 4.519  | -6.527 | 0        | 0   | 0   | 298.1 | 2000  |
+2025-10-10 15:01:17 - INFO - INFO: | FeS     | Iron(II) sulfide | s     | -97.76 | 70.8  | 178.3 | -953.7 | -7.477 | 1855     | 0   | 0   | 100   | 298.1 |
+2025-10-10 15:01:17,113 - thermo_agents_session_20251010_150006 - INFO - INFO: | FeS     | Iron(II) sulfide | s     | -97.76 | 70.8  | 178.3 | -953.7 | -7.477 | 1855     | 0   | 0   | 100   | 298.1 |
+2025-10-10 15:01:17 - INFO - INFO: | FeS(LT) | Iron(II) sulfide | s     | -102.2 | 60    | 50.2  | 11.05  | -9.4   | 0        | 0   | 0   | 298.1 | 3000  |
+2025-10-10 15:01:17,113 - thermo_agents_session_20251010_150006 - INFO - INFO: | FeS(LT) | Iron(II) sulfide | s     | -102.2 | 60    | 50.2  | 11.05  | -9.4   | 0        | 0   | 0   | 298.1 | 3000  |
+2025-10-10 15:01:17 - INFO - INFO: | CaS     | Calcium sulfide  | s     | -482.4 | 56.5  | 46.29 | 8.369  | -1.188 | 2.51e-04 | 0   | 0   | 298.1 | 2800  |
+2025-10-10 15:01:17,113 - thermo_agents_session_20251010_150006 - INFO - INFO: | CaS     | Calcium sulfide  | s     | -482.4 | 56.5  | 46.29 | 8.369  | -1.188 | 2.51e-04 | 0   | 0   | 298.1 | 2800  |
+2025-10-10 15:01:17 - INFO - INFO: | FeO     | Iron(II) oxide   | s     | -265.1 | 59.81 | 50.28 | 3.651  | -1.941 | 8.234    | 0   | 0   | 298.1 | 600   |
+2025-10-10 15:01:17,114 - thermo_agents_session_20251010_150006 - INFO - INFO: | FeO     | Iron(II) oxide   | s     | -265.1 | 59.81 | 50.28 | 3.651  | -1.941 | 8.234    | 0   | 0   | 298.1 | 600   |
+2025-10-10 15:01:17 - INFO - INFO: | FeO     | Iron(II) oxide   | s     | 0      | 0     | 30.85 | 46.23  | 11.69  | -19.28   | 0   | 0   | 600   | 900   |
+2025-10-10 15:01:17,114 - thermo_agents_session_20251010_150006 - INFO - INFO: | FeO     | Iron(II) oxide   | s     | 0      | 0     | 30.85 | 46.23  | 11.69  | -19.28   | 0   | 0   | 600   | 900   |
+2025-10-10 15:01:17 - INFO - INFO: | FeO     | Iron(II) oxide   | s     | 0      | 0     | 90.41 | -38.02 | -83.81 | 15.36    | 0   | 0   | 900   | 1300  |
+2025-10-10 15:01:17,114 - thermo_agents_session_20251010_150006 - INFO - INFO: | FeO     | Iron(II) oxide   | s     | 0      | 0     | 90.41 | -38.02 | -83.81 | 15.36    | 0   | 0   | 900   | 1300  |
+2025-10-10 15:01:17 - INFO - INFO: | FeO     | Iron(II) oxide   | s     | 0      | 0     | 153.7 | -82.06 | -374.8 | 21.98    | 0   | 0   | 1300  | 1650  |
+2025-10-10 15:01:17,114 - thermo_agents_session_20251010_150006 - INFO - INFO: | FeO     | Iron(II) oxide   | s     | 0      | 0     | 153.7 | -82.06 | -374.8 | 21.98    | 0   | 0   | 1300  | 1650  |
+2025-10-10 15:01:17 - INFO - INFO: +---------+------------------+-------+--------+-------+-------+--------+--------+----------+-----+-----+-------+-------+
+2025-10-10 15:01:17,115 - thermo_agents_session_20251010_150006 - INFO - INFO: +---------+------------------+-------+--------+-------+-------+--------+--------+----------+-----+-----+-------+-------+
+2025-10-10 15:01:17,115 - results_filtering_agent - INFO - Filtering response sent to sql_agent
+2025-10-10 15:01:28,721 - sql_agent - WARNING - Filtering agent did not respond in time, using raw database results
+2025-10-10 15:01:28,721 - sql_agent - INFO - Storing result with key: sql_result_8290d4a0-f6e6-4d3a-9e32-b987c9694168
+2025-10-10 15:01:28,722 - sql_agent - INFO - Result stored successfully
+2025-10-10 15:01:28,722 - sql_agent - INFO - Sending response to thermo_agent
+2025-10-10 15:01:28 - INFO - INFO: SENDING RESPONSE: To thermo_agent, key=sql_result_8290d4a0-f6e6-4d3a-9e32-b987c9694168
+2025-10-10 15:01:28,722 - thermo_agents_session_20251010_150006 - INFO - INFO: SENDING RESPONSE: To thermo_agent, key=sql_result_8290d4a0-f6e6-4d3a-9e32-b987c9694168
+2025-10-10 15:01:28,722 - sql_agent - INFO - Response sent successfully to thermo_agent
+2025-10-10 15:01:28 - INFO - GENERATED SQL:
+2025-10-10 15:01:28,723 - thermo_agents_session_20251010_150006 - INFO - GENERATED SQL:
+2025-10-10 15:01:28 - INFO -   SQL Query: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%' OR TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%' OR TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%' OR TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') LIMIT 10000
+2025-10-10 15:01:28,723 - thermo_agents_session_20251010_150006 - INFO -   SQL Query: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%' OR TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%' OR TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%' OR TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') LIMIT 10000
+2025-10-10 15:01:28 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax']
+2025-10-10 15:01:28,723 - thermo_agents_session_20251010_150006 - INFO -   Expected Columns: ['Formula', 'FirstName', 'Phase', 'H298', 'S298', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'Tmin', 'Tmax']
+2025-10-10 15:01:28 - INFO -   Explanation: Query retrieves all records for CaO, FeS, CaS, and FeO, including any phase or modifier variants, without temperature filtering, and limits results to 10000 rows.
+2025-10-10 15:01:28,723 - thermo_agents_session_20251010_150006 - INFO -   Explanation: Query retrieves all records for CaO, FeS, CaS, and FeO, including any phase or modifier variants, without temperature filtering, and limits results to 10000 rows.
+2025-10-10 15:01:28,723 - sql_agent - INFO - Sending notification to orchestrator
+2025-10-10 15:01:28 - INFO - INFO: NOTIFYING ORCHESTRATOR: correlation_id=0b08a91d-0549-40a6-9c01-495b866e34a8
+2025-10-10 15:01:28,723 - thermo_agents_session_20251010_150006 - INFO - INFO: NOTIFYING ORCHESTRATOR: correlation_id=0b08a91d-0549-40a6-9c01-495b866e34a8
+2025-10-10 15:01:28,723 - sql_agent - INFO - Orchestrator notification sent successfully
+2025-10-10 15:01:28,725 - sql_agent - INFO - Message processing completed successfully
+2025-10-10 15:01:28,725 - orchestrator - INFO - Received sql_ready from sql_agent: {'result_key': 'sql_result_8290d4a0-f6e6-4d3a-9e32-b987c9694168', 'sql_query': "SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%' OR TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%' OR TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%' OR TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') LIMIT 10000"}
+2025-10-10 15:01:42,972 - __main__ - ERROR - Interactive mode error: 
+Traceback (most recent call last):
+  File "c:\IDE\repository\agents_for_david\main.py", line 384, in interactive_mode
+    user_input = input("Query> ").strip()
+                 ^^^^^^^^^^^^^^^^
+EOFError
+2025-10-10 15:01:43,131 - __main__ - INFO - Stopping agents...
+2025-10-10 15:01:43,131 - thermo_agent - INFO - Agent 'thermo_agent' stopped
+2025-10-10 15:01:43,131 - sql_agent - INFO - Agent 'sql_agent' stopped
+2025-10-10 15:01:43,131 - database_agent - INFO - Agent 'database_agent' stopped
+2025-10-10 15:01:43,132 - results_filtering_agent - INFO - Agent 'results_filtering_agent' stopped
+2025-10-10 15:01:43,132 - orchestrator - INFO - Shutting down orchestrator

@@ -9,7 +9,13 @@
       "Bash(set +a)",
       "Bash(sqlite3:*)",
       "Bash(del test_temperature_filter.py)",
-      "Bash(git merge:*)"
+      "Bash(curl:*)",
+      "Bash(mv:*)",
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []
