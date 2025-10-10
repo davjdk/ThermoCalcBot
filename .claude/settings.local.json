@@ -11,7 +11,9 @@
       "Bash(del test_temperature_filter.py)",
       "Bash(curl:*)",
       "Bash(mv:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
