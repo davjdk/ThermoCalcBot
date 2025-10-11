@@ -18,6 +18,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from .agent_storage import AgentStorage, get_storage
+from .operations import OperationType
 from .thermo_agents_logger import SessionLogger
 
 
@@ -258,14 +259,35 @@ class ThermoOrchestrator:
         Returns:
             Результат обработки всеми агентами
         """
-        self.logger.info(f"Processing request: {request.user_query[:100]}...")
-        trace = []
+        # Используем операцию для логирования координации
+        operation_context = None
+        if self.config.session_logger and self.config.session_logger.is_operations_enabled():
+            operation_context = self.config.session_logger.create_operation_context(
+                agent_name=self.agent_id,
+                operation_type=OperationType.PROCESS_REQUEST,
+                correlation_id=f"orch_req_{id(request)}",
+            )
+            operation_context.set_storage_snapshot_provider(lambda: self.storage.get_storage_snapshot(include_content=True))
+            operation = operation_context.__enter__()
+        else:
+            operation = None
 
         try:
+            # Инициализация трассировки
+            trace = []
+
+            # Устанавливаем входные данные для операции
+            input_data = {
+                "user_query": request.user_query[:200],  # Ограничиваем для лога
+                "request_type": request.request_type,
+            }
+
+            if operation:
+                operation.set_input_data(input_data)
+
             # Сохраняем запрос в хранилище
             request_id = f"orchestrator_request_{id(request)}"
             self.storage.set(request_id, request.model_dump(), ttl_seconds=600)
-            trace.append(f"Request saved with ID: {request_id}")
 
             # Шаг 1: Отправляем запрос thermo_agent
             thermo_message_id = self.storage.send_message(
@@ -274,7 +296,6 @@ class ThermoOrchestrator:
                 message_type="extract_parameters",
                 payload={"user_query": request.user_query},
             )
-            trace.append(f"Sent message to thermo_agent: {thermo_message_id}")
 
             # Ждем ответа от thermo_agent через сообщения с улучшенным логированием
             extracted_params = None
@@ -366,8 +387,22 @@ class ThermoOrchestrator:
                     if individual_result:
                         trace.append("Received aggregated results from Individual Search Agent")
 
+                        # Готовим результат операции
+                        operation_result = {
+                            "request_id": request_id,
+                            "status": "success",
+                            "compounds_count": len(extracted_params.get("compounds", [])),
+                            "processing_type": "individual_search",
+                            "individual_results_count": len(individual_result.get("individual_results", [])),
+                            "overall_confidence": individual_result.get("overall_confidence"),
+                        }
+
+                        # Устанавливаем результат операции
+                        if operation_context:
+                            operation_context.set_result(operation_result)
+
                         # Собираем полный результат для реакции
-                        return OrchestratorResponse(
+                        response = OrchestratorResponse(
                             success=True,
                             result={
                                 "extracted_parameters": extracted_params,
@@ -381,12 +416,23 @@ class ThermoOrchestrator:
                             },
                             trace=trace,
                         )
+
+                        # Завершаем операцию успешно
+                        if operation_context:
+                            operation_context.__exit__(None, None, None)
+
+                        return response
                     else:
                         trace.append("Individual Search Agent result not ready")
                         if self.config.session_logger:
                             self.config.session_logger.log_error(
                                 "Individual Search Agent did not complete processing in time"
                             )
+
+                        # Завершаем операцию с ошибкой
+                        if operation_context:
+                            operation_context.__exit__(TimeoutError, TimeoutError("Individual Search Agent timeout"), None)
+
                         return OrchestratorResponse(
                             success=False,
                             result={},
@@ -426,8 +472,22 @@ class ThermoOrchestrator:
                     if sql_result:
                         trace.append("Received SQL query and execution result from sql_agent")
 
+                        # Готовим результат операции
+                        operation_result = {
+                            "request_id": request_id,
+                            "status": "success",
+                            "compounds_count": len(extracted_params.get("compounds", [])),
+                            "processing_type": "standard_search",
+                            "sql_success": bool(sql_result.get("execution_result", {}).get("success")),
+                            "row_count": sql_result.get("execution_result", {}).get("row_count", 0),
+                        }
+
+                        # Устанавливаем результат операции
+                        if operation_context:
+                            operation_context.set_result(operation_result)
+
                         # Собираем полный результат
-                        return OrchestratorResponse(
+                        response = OrchestratorResponse(
                             success=True,
                             result={
                                 "extracted_parameters": extracted_params,
@@ -439,12 +499,23 @@ class ThermoOrchestrator:
                             },
                             trace=trace,
                         )
+
+                        # Завершаем операцию успешно
+                        if operation_context:
+                            operation_context.__exit__(None, None, None)
+
+                        return response
                     else:
                         trace.append("SQL agent result not ready")
                         if self.config.session_logger:
                             self.config.session_logger.log_error(
                                 "SQL agent did not complete processing in time"
                             )
+
+                        # Завершаем операцию с ошибкой
+                        if operation_context:
+                            operation_context.__exit__(TimeoutError, TimeoutError("SQL agent timeout"), None)
+
                         return OrchestratorResponse(
                             success=False,
                             result={},
@@ -453,11 +524,29 @@ class ThermoOrchestrator:
                         )
                 else:
                     # Только извлечение параметров, SQL не требуется
-                    return OrchestratorResponse(
+                    # Готовим результат операции
+                    operation_result = {
+                        "request_id": request_id,
+                        "status": "success",
+                        "compounds_count": len(extracted_params.get("compounds", [])),
+                        "processing_type": "parameter_extraction_only",
+                    }
+
+                    # Устанавливаем результат операции
+                    if operation_context:
+                        operation_context.set_result(operation_result)
+
+                    response = OrchestratorResponse(
                         success=True,
                         result={"extracted_parameters": extracted_params},
                         trace=trace,
                     )
+
+                    # Завершаем операцию успешно
+                    if operation_context:
+                        operation_context.__exit__(None, None, None)
+
+                    return response
             else:
                 trace.append("Thermo agent response not ready")
                 # Логируем в сессионный лог
@@ -465,6 +554,11 @@ class ThermoOrchestrator:
                     self.config.session_logger.log_error(
                         "Thermo agent did not respond to orchestrator"
                     )
+
+                # Завершаем операцию с ошибкой
+                if operation_context:
+                    operation_context.__exit__(TimeoutError, TimeoutError("Thermo agent timeout"), None)
+
                 return OrchestratorResponse(
                     success=False,
                     result={},
@@ -473,6 +567,11 @@ class ThermoOrchestrator:
                 )
         except Exception as e:
             self.logger.error(f"Error processing request: {e}")
+
+            # Завершаем операцию с ошибкой
+            if operation_context:
+                operation_context.__exit__(type(e), e, e.__traceback__)
+
             return OrchestratorResponse(
                 success=False, result={}, errors=[str(e)], trace=trace
             )

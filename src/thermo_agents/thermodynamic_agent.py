@@ -18,6 +18,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from .agent_storage import AgentStorage, get_storage
+from .operations import OperationType
 from .prompts import EXTRACT_INPUTS_PROMPT
 from .thermo_agents_logger import SessionLogger
 
@@ -205,15 +206,30 @@ class ThermodynamicAgent:
         Args:
             message: Сообщение из хранилища
         """
-        self.logger.info(
-            f"Processing message: {message.id} from {message.source_agent}"
-        )
+        # Используем операцию для логирования
+        operation_context = None
+        if self.config.session_logger and self.config.session_logger.is_operations_enabled():
+            operation_context = self.config.session_logger.create_operation_context(
+                agent_name=self.agent_id,
+                operation_type=OperationType.EXTRACT_PARAMETERS,
+                source_agent=message.source_agent,
+                correlation_id=message.id,
+            )
+            operation_context.set_storage_snapshot_provider(lambda: self.storage.get_storage_snapshot(include_content=True))
+            operation = operation_context.__enter__()
+        else:
+            operation = None
 
         try:
             # Извлекаем запрос пользователя из сообщения
             user_query = message.payload.get("user_query")
             if not user_query:
                 raise ValueError("No user_query in message payload")
+
+            # Устанавливаем входные данные для операции
+            input_data = {"user_query": user_query[:200]}  # Ограничиваем для лога
+            if operation:
+                operation.set_input_data(input_data)
 
             # Извлекаем параметры используя PydanticAI агента
             try:
@@ -279,9 +295,33 @@ class ThermodynamicAgent:
                 },
             )
 
-            # Логирование для сессии
+            # Готовим результат для логирования операции
+            operation_result = {
+                "intent": extracted_params.intent,
+                "compounds_count": len(extracted_params.compounds),
+                "compounds": extracted_params.compounds[:5],  # Максимум 5 соединений в логе
+                "temperature_k": extracted_params.temperature_k,
+                "has_sql_hint": bool(extracted_params.sql_query_hint),
+                "result_key": result_key,
+            }
+
+            # Добавляем информацию о маршрутизации
+            next_agent = None
+            if extracted_params.compounds and extracted_params.intent == "reaction":
+                next_agent = "individual_search_agent"
+            elif extracted_params.sql_query_hint:
+                next_agent = "sql_agent"
+
+            if next_agent:
+                operation_result["next_agent"] = next_agent
+
+            # Устанавливаем результат операции
+            if operation_context:
+                operation_context.set_result(operation_result)
+
+            # Дополнительная информация в лог (теперь это часть операции)
             if self.config.session_logger:
-                self.config.session_logger.log_extracted_parameters(extracted_params)
+                self.config.session_logger.log_info(f"EXTRACTION COMPLETE: {extracted_params.intent}, {len(extracted_params.compounds)} compounds")
 
             # Если найдены соединения и нужна индивидуальная обработка, отправляем запрос Individual Search Agent
             if extracted_params.compounds and extracted_params.intent == "reaction":
@@ -328,6 +368,10 @@ class ThermodynamicAgent:
                 )
                 self.logger.info(f"Forwarded to SQL agent: {sql_message_id}")
 
+            # Завершаем операцию успешно
+            if operation_context:
+                operation_context.__exit__(None, None, None)
+
         except Exception as e:
             self.logger.error(f"Error processing message {message.id}: {e}")
 
@@ -340,8 +384,13 @@ class ThermodynamicAgent:
                 payload={"status": "error", "error": str(e)},
             )
 
+            # Завершаем операцию с ошибкой
+            if operation_context:
+                operation_context.__exit__(type(e), e, e.__traceback__)
+
+            # Дополнительная информация в лог (теперь это часть операции)
             if self.config.session_logger:
-                self.config.session_logger.log_error(str(e))
+                self.config.session_logger.log_info(f"EXTRACTION ERROR: {str(e)[:100]}")
 
     async def process_single_query(self, user_query: str) -> ExtractedParameters:
         """

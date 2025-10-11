@@ -19,6 +19,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from .agent_storage import AgentStorage, get_storage
+from .operations import OperationType
 from .prompts import SQL_GENERATION_PROMPT
 from .thermo_agents_logger import SessionLogger
 
@@ -266,9 +267,19 @@ class SQLGenerationAgent:
         Args:
             message: Сообщение из хранилища
         """
-        self.logger.info(
-            f"Processing message: {message.id} from {message.source_agent}"
-        )
+        # Используем операцию для логирования
+        operation_context = None
+        if self.config.session_logger and self.config.session_logger.is_operations_enabled():
+            operation_context = self.config.session_logger.create_operation_context(
+                agent_name=self.agent_id,
+                operation_type=OperationType.GENERATE_QUERY,
+                source_agent=message.source_agent,
+                correlation_id=message.id,
+            )
+            operation_context.set_storage_snapshot_provider(lambda: self.storage.get_storage_snapshot(include_content=True))
+            operation = operation_context.__enter__()
+        else:
+            operation = None
 
         try:
             # Определяем тип сообщения
@@ -294,11 +305,26 @@ class SQLGenerationAgent:
                     "intent": "individual_lookup",
                 }
 
+                # Устанавливаем входные данные для операции
+                input_data = {
+                    "message_type": "individual",
+                    "compound": compound,
+                    "temperature_k": extracted_params["temperature_k"],
+                    "phases": extracted_params["phases"],
+                }
+
                 self.logger.info(f"Processing individual search for compound: {compound}")
             else:
                 # Стандартный запрос
                 sql_hint = message.payload.get("sql_hint")
                 extracted_params = message.payload.get("extracted_params", {})
+
+                # Устанавливаем входные данные для операции
+                input_data = {
+                    "message_type": "standard",
+                    "sql_hint": sql_hint[:100] if sql_hint else "None",
+                    "compounds_count": len(extracted_params.get("compounds", [])),
+                }
 
                 self.logger.info(f"Processing SQL hint: {sql_hint[:100] if sql_hint else 'None'}...")
                 if self.config.session_logger:
@@ -306,6 +332,10 @@ class SQLGenerationAgent:
 
                 if not sql_hint:
                     raise ValueError("No sql_hint in message payload")
+
+            # Устанавливаем входные данные для операции
+            if operation:
+                operation.set_input_data(input_data)
 
             # Генерируем SQL запрос используя PydanticAI агента с тайм-аутом
             self.logger.info("Starting SQL query generation...")
@@ -480,13 +510,9 @@ class SQLGenerationAgent:
             except Exception as e:
                 self.logger.error(f"Error sending response: {e}")
 
-            # Логирование для сессии
+            # Дополнительная информация в лог (теперь это часть операции)
             if self.config.session_logger:
-                self.config.session_logger.log_sql_generation(
-                    sql_result.sql_query,
-                    sql_result.expected_columns,
-                    sql_result.explanation,
-                )
+                self.config.session_logger.log_info(f"SQL GENERATED: {len(sql_result.sql_query)} chars, {len(sql_result.expected_columns)} columns expected")
 
             # Если есть оркестратор в цепочке, уведомляем его
             if message.source_agent == "thermo_agent":
@@ -509,12 +535,46 @@ class SQLGenerationAgent:
                 except Exception as e:
                     self.logger.error(f"Error sending orchestrator notification: {e}")
 
+            # Готовим результат для логирования операции
+            operation_result = {
+                "message_type": message_type,
+                "sql_query_length": len(sql_result.sql_query),
+                "expected_columns": len(sql_result.expected_columns),
+                "result_key": result_key,
+                "database_execution": bool(db_result),
+            }
+
+            if db_result:
+                operation_result["row_count"] = db_result.get("row_count", 0)
+                operation_result["execution_success"] = db_result.get("success", False)
+
+            if result_data.get("filtered_result"):
+                operation_result["filtered_records"] = len(result_data["filtered_result"].get("selected_records", []))
+
+            # Добавляем информацию о маршрутизации
+            if message_type == "individual":
+                operation_result["target_agent"] = "individual_search_agent"
+            else:
+                operation_result["target_agent"] = message.source_agent
+
+            # Устанавливаем результат операции
+            if operation_context:
+                operation_context.set_result(operation_result)
+
             self.logger.info("Message processing completed successfully")
+
+            # Завершаем операцию успешно
+            if operation_context:
+                operation_context.__exit__(None, None, None)
 
         except Exception as e:
             self.logger.error(f"Error processing message {message.id}: {e}")
             if self.config.session_logger:
-                self.config.session_logger.log_error(f"SQL AGENT ERROR: {str(e)}")
+                self.config.session_logger.log_info(f"SQL AGENT ERROR: {str(e)[:100]}")
+
+            # Завершаем операцию с ошибкой
+            if operation_context:
+                operation_context.__exit__(type(e), e, e.__traceback__)
 
             # Отправляем сообщение об ошибке
             self.logger.info(f"Sending error response to {message.source_agent}")
@@ -538,7 +598,7 @@ class SQLGenerationAgent:
                 )
 
             if self.config.session_logger:
-                self.config.session_logger.log_error(str(e))
+                self.config.session_logger.log_info(f"SQL ERROR: {str(e)[:100]}")
 
     # SQL execution and filtering methods removed - agent only generates queries
 

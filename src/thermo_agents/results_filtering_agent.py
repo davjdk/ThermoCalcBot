@@ -21,6 +21,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from .agent_storage import AgentStorage, get_storage
+from .operations import OperationType
 from .prompts import RESULT_FILTER_ENGLISH_PROMPT
 from .thermo_agents_logger import SessionLogger
 
@@ -150,9 +151,20 @@ class ResultsFilteringAgent:
 
     async def _process_message(self, message):
         """Обработать входящее сообщение для фильтрации результатов."""
-        self.logger.info(
-            f"Processing results filtering request: {message.id} from {message.source_agent}"
-        )
+        # Используем операцию для логирования
+        operation_context = None
+        if self.config.session_logger and self.config.session_logger.is_operations_enabled():
+            operation_type = OperationType.INDIVIDUAL_FILTER if message.message_type == "filter_individual_results" else OperationType.FILTER_RESULTS
+            operation_context = self.config.session_logger.create_operation_context(
+                agent_name=self.agent_id,
+                operation_type=operation_type,
+                source_agent=message.source_agent,
+                correlation_id=message.correlation_id,
+            )
+            operation_context.set_storage_snapshot_provider(lambda: self.storage.get_storage_snapshot(include_content=True))
+            operation = operation_context.__enter__()
+        else:
+            operation = None
 
         try:
             # Определяем тип сообщения
@@ -185,6 +197,15 @@ class ResultsFilteringAgent:
                     "phases": phases
                 }
 
+                # Устанавливаем входные данные для операции
+                input_data = {
+                    "message_type": "individual",
+                    "compound": compound,
+                    "input_records": len(rows),
+                    "target_temperature": target_temperature,
+                    "phases": phases,
+                }
+
                 self.logger.info(f"Individual filtering for compound {compound}: {len(rows)} records")
                 if self.config.session_logger:
                     self.config.session_logger.log_info(
@@ -205,11 +226,24 @@ class ResultsFilteringAgent:
                 compounds = extracted_params.get("compounds", [])
                 phases = extracted_params.get("phases", [])
 
+                # Устанавливаем входные данные для операции
+                input_data = {
+                    "message_type": "standard",
+                    "compounds_count": len(compounds),
+                    "input_records": len(rows),
+                    "target_temperature": target_temperature,
+                    "phases": phases,
+                }
+
                 self.logger.info(f"Filtering {len(rows)} records for {len(compounds)} compounds")
                 if self.config.session_logger:
                     self.config.session_logger.log_info(
                         f"RESULTS FILTERING START: {len(rows)} records, target temp {target_temperature}K"
                     )
+
+            # Устанавливаем входные данные для операции
+            if operation:
+                operation.set_input_data(input_data)
 
             # Шаг 1: Предварительная фильтрация по температурному диапазону
             temp_filtered_records = self._filter_by_temperature_range(
@@ -277,7 +311,31 @@ class ResultsFilteringAgent:
                     },
                 )
 
-                self.logger.info(f"Filtering response sent to {target_agent}")
+                # Готовим результат для логирования операции
+            operation_result = {
+                "message_type": message_type,
+                "input_records": len(rows),
+                "temp_filtered_records": len(temp_filtered_records),
+                "final_records": len(selected_records) if temp_filtered_records else 0,
+                "result_key": result_key if temp_filtered_records else None,
+                "target_agent": target_agent,
+                "filtering_success": True,
+            }
+
+            if message_type == "individual":
+                operation_result["compound"] = compound
+            else:
+                operation_result["compounds_count"] = len(compounds)
+
+            # Устанавливаем результат операции
+            if operation_context:
+                operation_context.set_result(operation_result)
+
+            self.logger.info(f"Filtering response sent to {target_agent}")
+
+            # Завершаем операцию успешно
+            if operation_context:
+                operation_context.__exit__(None, None, None)
 
             else:
                 # Нет записей после температурной фильтрации
@@ -290,6 +348,25 @@ class ResultsFilteringAgent:
                 else:
                     target_agent = "sql_agent"
                     response_message_type = "results_filtered"
+
+                # Готовим результат операции (без результатов)
+                operation_result = {
+                    "message_type": message_type,
+                    "input_records": len(rows),
+                    "temp_filtered_records": 0,
+                    "final_records": 0,
+                    "filtering_success": False,
+                    "reason": "No records after temperature filtering",
+                }
+
+                if message_type == "individual":
+                    operation_result["compound"] = compound
+                else:
+                    operation_result["compounds_count"] = len(compounds)
+
+                # Устанавливаем результат операции
+                if operation_context:
+                    operation_context.set_result(operation_result)
 
                 self.storage.send_message(
                     source_agent=self.agent_id,
@@ -310,8 +387,16 @@ class ResultsFilteringAgent:
                     },
                 )
 
+                # Завершаем операцию успешно (но без результатов)
+                if operation_context:
+                    operation_context.__exit__(None, None, None)
+
         except Exception as e:
             self.logger.error(f"Error processing filtering message {message.id}: {e}")
+
+            # Завершаем операцию с ошибкой
+            if operation_context:
+                operation_context.__exit__(type(e), e, e.__traceback__)
 
             # Определяем получателя для ошибки
             if message.message_type == "filter_individual_results":

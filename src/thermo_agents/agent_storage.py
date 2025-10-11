@@ -308,6 +308,71 @@ class AgentStorage:
             
         return len(expired_keys)
 
+    def get_storage_snapshot(self, include_content: bool = False) -> Dict[str, Any]:
+        """
+        Получить снимок состояния хранилища для логирования.
+
+        Args:
+            include_content: Включать ли полный контент сообщений и данных
+
+        Returns:
+            Словарь с состоянием хранилища
+        """
+        snapshot = {
+            "timestamp": datetime.now().isoformat(),
+            "stats": self.get_stats(),
+        }
+
+        if include_content:
+            # Включаем полный контент для детального логирования при ошибках
+            snapshot["storage_entries"] = {}
+            for key, entry in self._storage.items():
+                snapshot["storage_entries"][key] = {
+                    "created_at": entry.created_at.isoformat(),
+                    "updated_at": entry.updated_at.isoformat(),
+                    "ttl_seconds": entry.ttl_seconds,
+                    "metadata": entry.metadata,
+                    "value_type": type(entry.value).__name__,
+                    "value_preview": str(entry.value)[:200] if entry.value else None,
+                }
+
+            # Сообщения в очереди
+            snapshot["message_queue"] = []
+            for msg in self._message_queue:
+                snapshot["message_queue"].append({
+                    "id": msg.id,
+                    "timestamp": msg.timestamp.isoformat(),
+                    "source_agent": msg.source_agent,
+                    "target_agent": msg.target_agent,
+                    "message_type": msg.message_type,
+                    "correlation_id": msg.correlation_id,
+                    "payload_preview": str(msg.payload)[:200] if msg.payload else None,
+                })
+
+            # Последние сообщения из истории (ограничено для размера)
+            snapshot["recent_history"] = []
+            for msg in self._message_history[-10:]:  # Последние 10 сообщений
+                snapshot["recent_history"].append({
+                    "id": msg.id,
+                    "timestamp": msg.timestamp.isoformat(),
+                    "source_agent": msg.source_agent,
+                    "target_agent": msg.target_agent,
+                    "message_type": msg.message_type,
+                    "correlation_id": msg.correlation_id,
+                })
+
+            # Активные сессии агентов
+            snapshot["agent_sessions"] = {}
+            for agent_id, session_data in self._agent_sessions.items():
+                snapshot["agent_sessions"][agent_id] = {
+                    "status": session_data.get("status", "unknown"),
+                    "capabilities": session_data.get("capabilities", []),
+                    "metadata": {k: v for k, v in session_data.items()
+                               if k not in ["status", "capabilities"]},
+                }
+
+        return snapshot
+
     def to_dict(self) -> Dict[str, Any]:
         """Сериализовать хранилище в словарь."""
         return {

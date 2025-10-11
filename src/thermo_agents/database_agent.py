@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from .agent_storage import AgentStorage, get_storage
+from .operations import OperationType
 from .thermo_agents_logger import SessionLogger
 
 
@@ -99,9 +100,19 @@ class DatabaseAgent:
 
     async def _process_message(self, message):
         """Обработать входящее сообщение для выполнения SQL."""
-        self.logger.info(
-            f"Processing SQL execution request: {message.id} from {message.source_agent}, type: {message.message_type}"
-        )
+        # Используем операцию для логирования
+        operation_context = None
+        if self.config.session_logger and self.config.session_logger.is_operations_enabled():
+            operation_context = self.config.session_logger.create_operation_context(
+                agent_name=self.agent_id,
+                operation_type=OperationType.EXECUTE_QUERY,
+                source_agent=message.source_agent,
+                correlation_id=message.id,
+            )
+            operation_context.set_storage_snapshot_provider(lambda: self.storage.get_storage_snapshot(include_content=True))
+            operation = operation_context.__enter__()
+        else:
+            operation = None
 
         try:
             # Извлекаем SQL запрос и параметры
@@ -122,14 +133,36 @@ class DatabaseAgent:
                     "properties": common_params.get("properties", ["basic"]),
                     "intent": "individual_lookup",
                 }
+
+                # Устанавливаем входные данные для операции
+                input_data = {
+                    "message_type": "individual",
+                    "compound": compound,
+                    "temperature_k": extracted_params["temperature_k"],
+                    "sql_query_preview": sql_query[:100] if sql_query else "None",
+                }
+
                 self.logger.info(f"Executing individual SQL query for compound {compound}: {sql_query}")
             else:
                 # Стандартный запрос
                 extracted_params = message.payload.get("extracted_params", {})
+
+                # Устанавливаем входные данные для операции
+                input_data = {
+                    "message_type": "standard",
+                    "compounds_count": len(extracted_params.get("compounds", [])),
+                    "temperature_k": extracted_params.get("temperature_k"),
+                    "sql_query_preview": sql_query[:100] if sql_query else "None",
+                }
+
                 self.logger.info(f"Executing standard SQL query: {sql_query}")
 
             if not sql_query:
                 raise ValueError("No sql_query in message payload")
+
+            # Устанавливаем входные данные для операции
+            if operation:
+                operation.set_input_data(input_data)
 
             if self.config.session_logger:
                 self.config.session_logger.log_info(f"DATABASE EXECUTION START: {sql_query}")
@@ -149,6 +182,7 @@ class DatabaseAgent:
             self.logger.info(f"Database result stored with key: {result_key}")
 
             # Отправляем результаты агенту фильтрации для интеллектуального отбора
+            filtering_sent = False
             if execution_result.get("success") and execution_result.get("row_count", 0) > 0:
                 self.logger.info("Sending results to filtering agent for analysis...")
 
@@ -167,6 +201,7 @@ class DatabaseAgent:
                         },
                     )
                     self.logger.info(f"Individual results sent to filtering agent: {filtering_message_id}")
+                    filtering_sent = True
                 else:
                     # Стандартная фильтрация
                     filtering_message_id = self.storage.send_message(
@@ -181,6 +216,7 @@ class DatabaseAgent:
                         },
                     )
                     self.logger.info(f"Results sent to filtering agent: {filtering_message_id}")
+                    filtering_sent = True
 
             # Отправляем ответ SQL агенту
             self.storage.send_message(
@@ -195,10 +231,40 @@ class DatabaseAgent:
                 },
             )
 
+            # Готовим результат для логирования операции
+            operation_result = {
+                "message_type": "individual" if is_individual else "standard",
+                "execution_success": execution_result.get("success", False),
+                "row_count": execution_result.get("row_count", 0),
+                "result_key": result_key,
+                "filtering_sent": filtering_sent,
+            }
+
+            if execution_result.get("success"):
+                operation_result["original_row_count"] = execution_result.get("original_row_count", 0)
+                operation_result["temperature_filtered"] = execution_result.get("temperature_filtered", False)
+
+                if is_individual:
+                    operation_result["compound"] = compound
+                else:
+                    operation_result["compounds_count"] = len(extracted_params.get("compounds", []))
+
+            # Устанавливаем результат операции
+            if operation_context:
+                operation_context.set_result(operation_result)
+
             self.logger.info(f"Response sent to {message.source_agent}")
+
+            # Завершаем операцию успешно
+            if operation_context:
+                operation_context.__exit__(None, None, None)
 
         except Exception as e:
             self.logger.error(f"Error processing database message {message.id}: {e}")
+
+            # Завершаем операцию с ошибкой
+            if operation_context:
+                operation_context.__exit__(type(e), e, e.__traceback__)
 
             # Отправляем сообщение об ошибке
             self.storage.send_message(
@@ -210,7 +276,7 @@ class DatabaseAgent:
             )
 
             if self.config.session_logger:
-                self.config.session_logger.log_error(f"DATABASE ERROR: {str(e)}")
+                self.config.session_logger.log_info(f"DATABASE ERROR: {str(e)[:100]}")
 
     async def _execute_query(self, sql_query: str, extracted_params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -272,8 +338,8 @@ class DatabaseAgent:
 
             # Логируем результаты через session_logger
             if self.config.session_logger:
-                self.config.session_logger.log_query_results_table(
-                    sql_query=sql_query, columns=columns, rows=data_rows
+                self.config.session_logger.log_info(
+                    f"QUERY RESULTS: {len(data_rows)} rows, columns: {len(columns)}"
                 )
 
             return {
