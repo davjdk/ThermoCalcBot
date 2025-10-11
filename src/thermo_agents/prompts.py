@@ -180,12 +180,33 @@ Response:
   "sql_query_hint": "Find thermodynamic data for WC(s), Mg(s), MgC(s), and W(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction WC + Mg → MgC + W."
 }
 
+Query: "что будет если смешать?"
+Response:
+{
+  "intent": "lookup",
+  "compounds": [],
+  "temperature_k": 298.15,
+  "temperature_range_k": [200, 400],
+  "phases": [],
+  "properties": ["basic"],
+  "reaction_equation": null,
+  "sql_query_hint": "Query too ambiguous - no specific chemical compounds mentioned"
+}
+
+CRITICAL ERROR HANDLING:
+- If NO chemical compounds can be extracted from the query, return compounds: []
+- If the query is too ambiguous or unclear, return compounds: []
+- If chemical formulas/names cannot be identified, return compounds: []
+- DO NOT make up or guess chemical compounds - only extract what's clearly stated
+- Empty compounds list signals that the query cannot be processed
+
 CRITICAL:
 - Return ONLY JSON with extracted parameters
 - ALWAYS fill all fields - never leave empty if logical values can be inferred
 - For reactions, extract ALL participants (reactants + products)
 - Create comprehensive sql_query_hint for complete data retrieval
-- NO explanations, only JSON"""
+- NO explanations, only JSON
+- If extraction fails, return empty compounds list - do not try to guess"""
 
 
 VALIDATE_OR_COMPLETE_PROMPT = """You are a validator for thermodynamic database query parameters.

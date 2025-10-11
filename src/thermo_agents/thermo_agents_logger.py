@@ -53,6 +53,10 @@ class SessionLogger:
         """Логирование информационного сообщения (не операции)."""
         self.logger.info(f"INFO: {message}")
 
+    def log_error(self, message: str):
+        """Логирование сообщения об ошибке (не операции)."""
+        self.logger.error(f"ERROR: {message}")
+
     def create_operation_context(
         self,
         agent_name: str,

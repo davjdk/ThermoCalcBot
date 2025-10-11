@@ -305,27 +305,47 @@ class ThermoOrchestrator:
             while (
                 asyncio.get_event_loop().time() - start_time
             ) < self.config.timeout_seconds:
-                # Получаем сообщения от thermo агента
-                messages = self.storage.receive_messages(
+                # Получаем сообщения от thermo агента (и response, и error)
+                response_messages = self.storage.receive_messages(
                     self.agent_id, message_type="response"
                 )
+                error_messages = self.storage.receive_messages(
+                    self.agent_id, message_type="error"
+                )
 
-                if messages:
-                    self.logger.debug(f"DEBUG: Found {len(messages)} response messages for thermo_agent")
+                all_messages = response_messages + error_messages
+
+                if all_messages:
+                    self.logger.debug(f"DEBUG: Found {len(all_messages)} messages for thermo_agent")
 
                 # Ищем ответ на наше сообщение
-                for msg in messages:
+                for msg in all_messages:
                     if msg.correlation_id == thermo_message_id and msg.source_agent == "thermo_agent":
                         status = msg.payload.get("status")
-                        self.logger.info(f"DEBUG: Received response from thermo_agent: {status}")
-                        if status == "success":
+                        self.logger.info(f"DEBUG: Received {msg.message_type} from thermo_agent: {status}")
+
+                        if msg.message_type == "error" or status == "error":
+                            error_msg = msg.payload.get("error", "Unknown error")
+                            self.logger.error(f"DEBUG: Thermo agent returned error: {error_msg}")
+                            trace.append(f"Thermo agent error: {error_msg}")
+                            if self.config.session_logger:
+                                self.config.session_logger.log_error(f"Thermo agent error: {error_msg}")
+
+                            # Завершаем операцию с ошибкой
+                            if operation_context:
+                                operation_context.__exit__(ValueError, ValueError(error_msg), None)
+
+                            return OrchestratorResponse(
+                                success=False,
+                                result={},
+                                errors=[f"Не удалось извлечь параметры из запроса: {error_msg}"],
+                                trace=trace,
+                            )
+
+                        elif status == "success":
                             extracted_params = msg.payload.get("extracted_params")
                             if self.config.session_logger:
                                 self.config.session_logger.log_info(f"THERMO AGENT RESPONSE: Success with {len(extracted_params.get('compounds', []))} compounds")
-                            break
-                        elif status == "error":
-                            self.logger.error(f"DEBUG: Thermo agent returned error: {msg.payload.get('error')}")
-                            trace.append(f"Thermo agent error: {msg.payload.get('error')}")
                             break
 
                 if extracted_params:
@@ -336,8 +356,49 @@ class ThermoOrchestrator:
             if extracted_params:
                 trace.append("Received parameters from thermo_agent")
 
-                # Определяем тип обработки на основе intent
+                # Валидация извлеченных параметров
+                compounds = extracted_params.get("compounds", [])
                 intent = extracted_params.get("intent", "lookup")
+
+                # Проверяем, что извлечены соединения
+                if not compounds or len(compounds) == 0:
+                    trace.append("No compounds extracted - cannot proceed")
+                    if self.config.session_logger:
+                        self.config.session_logger.log_error(
+                            f"No compounds extracted from query: {request.user_query[:100]}"
+                        )
+
+                    # Завершаем операцию с ошибкой извлечения
+                    if operation_context:
+                        operation_context.__exit__(ValueError, ValueError("No compounds extracted"), None)
+
+                    return OrchestratorResponse(
+                        success=False,
+                        result={},
+                        errors=["Не удалось извлечь химические соединения из запроса. Пожалуйста, уточните запрос, используя химические формулы или названия веществ."],
+                        trace=trace,
+                    )
+
+                # Для реакций должно быть как минимум 2 соединения
+                if intent == "reaction" and len(compounds) < 2:
+                    trace.append(f"Reaction intent with only {len(compounds)} compounds - insufficient")
+                    if self.config.session_logger:
+                        self.config.session_logger.log_error(
+                            f"Reaction query with insufficient compounds: {len(compounds)} compounds from query: {request.user_query[:100]}"
+                        )
+
+                    # Завершаем операцию с ошибкой
+                    if operation_context:
+                        operation_context.__exit__(ValueError, ValueError("Insufficient compounds for reaction"), None)
+
+                    return OrchestratorResponse(
+                        success=False,
+                        result={},
+                        errors=[f"Для анализа реакции необходимо указать как минимум 2 соединения. Извлечено соединений: {len(compounds)}."],
+                        trace=trace,
+                    )
+
+                # Определяем тип обработки на основе intent
 
                 if intent == "reaction" and extracted_params.get("compounds"):
                     # Для реакций используем Individual Search Agent
@@ -562,7 +623,7 @@ class ThermoOrchestrator:
                 return OrchestratorResponse(
                     success=False,
                     result={},
-                    errors=["Thermo agent did not respond"],
+                    errors=["Не удалось извлечь параметры из запроса - превышено время ожидания. Пожалуйста, попробуйте упростить запрос или использовать более точные химические формулы."],
                     trace=trace,
                 )
         except Exception as e:
