@@ -245,6 +245,12 @@ class ThermodynamicAgent:
                 self.logger.info(
                     f"Successfully extracted parameters: {extracted_params.intent}, compounds: {extracted_params.compounds}"
                 )
+
+                # Дополнительное логирование для реакции
+                if extracted_params.intent == "reaction" and extracted_params.reaction_equation:
+                    if self.config.session_logger:
+                        self.config.session_logger.log_info(f"EXTRACTED REACTION: {extracted_params.reaction_equation}")
+                    self.logger.info(f"Extracted reaction equation: {extracted_params.reaction_equation}")
             except asyncio.TimeoutError:
                 self.logger.error(f"Network timeout after 30 seconds - cannot extract parameters")
                 raise ValueError(f"Не удалось извлечь параметры: превышено время ожидания ответа от модели. Попробуйте упростить запрос.")

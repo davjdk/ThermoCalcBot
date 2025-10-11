@@ -8,8 +8,9 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Any
 
+from tabulate import tabulate
 from .operations import OperationLogger, OperationType
 
 
@@ -91,6 +92,43 @@ class SessionLogger:
     def is_operations_enabled(self) -> bool:
         """Проверить включена ли система операций (всегда True)."""
         return True
+
+    def format_table(self, headers: List[str], rows: List[List[Any]], max_rows: Optional[int] = None) -> str:
+        """
+        Форматирует данные в виде таблицы с использованием tabulate.
+
+        Args:
+            headers: Список заголовков колонок
+            rows: Список строк с данными
+            max_rows: Максимальное количество строк для отображения
+
+        Returns:
+            Отформатированная таблица в виде строки
+        """
+        if not rows:
+            return "No data to display"
+
+        # Ограничиваем количество строк если нужно
+        display_rows = rows[:max_rows] if max_rows else rows
+
+        try:
+            # Используем tabulate для форматирования
+            formatted = tabulate(
+                display_rows,
+                headers=headers,
+                tablefmt="grid",  # Используем grid для красивого форматирования
+                floatfmt=".4g",   # Форматирование чисел с плавающей точкой
+                missingval="N/A"  # Значение для пустых ячеек
+            )
+            return formatted
+        except Exception as e:
+            self.logger.error(f"Error formatting table: {e}")
+            # Fallback - простой формат без tabulate
+            result = "| " + " | ".join(headers) + " |\n"
+            result += "|" + "|".join(["-" * (len(h) + 2) for h in headers]) + "|\n"
+            for row in display_rows:
+                result += "| " + " | ".join(str(cell) for cell in row) + " |\n"
+            return result
 
     @property
     def current_session_file(self) -> Optional[Path]:

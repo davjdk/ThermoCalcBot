@@ -16,7 +16,10 @@
       "Bash(git commit:*)",
       "Bash(git merge:*)",
       "Bash(git stash:*)",
-      "Bash(del:*)"
+      "Bash(del:*)",
+      "Bash(git push:*)",
+      "Bash(uv pip:*)",
+      "Bash(uv sync:*)"
     ],
     "deny": [],
     "ask": []
