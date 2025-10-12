@@ -31,8 +31,8 @@ class IndividualSearchAgentConfig:
     session_logger: Optional[SessionLogger] = None
     poll_interval: float = 0.5  # Уменьшено с 1.0 до 0.5с для ускорения реакции
     max_retries: int = 3  # Увеличено с 2 до 3 для улучшенной надежности
-    timeout_seconds: int = 90  # Уменьшено с 180 до 90 секунд для ускорения обработки
-    max_parallel_searches: int = 4  # Увеличено с 3 до 4 для балансировки скорости и нагрузки
+    timeout_seconds: int = 300  # Увеличено с 90 до 300 секунд для обработки сложных запросов
+    max_parallel_searches: int = 6  # Увеличено с 4 до 6 для улучшения производительности
 
 
 class IndividualSearchAgent:
@@ -300,7 +300,7 @@ class IndividualSearchAgent:
 
                 # Ожидаем ответа от SQL Agent
                 self.logger.info(f"DEBUG: Waiting for SQL result for compound {compound}")
-                sql_result = await self._wait_for_sql_result(sql_message_id, timeout=self.config.timeout_seconds)
+                sql_result = await self._wait_for_sql_result(sql_message_id, timeout=180)  # Используем фиксированный таймаут 180 секунд
 
                 if sql_result.get("status") == "error":
                     error_msg = sql_result.get('error', 'Unknown SQL error')
@@ -312,7 +312,7 @@ class IndividualSearchAgent:
                 # SQL Agent отправит запрос к Database Agent, затем к Filtering Agent
                 # Ждем финального результата от Filtering Agent
                 self.logger.info(f"DEBUG: Waiting for filtering result for compound {compound}")
-                final_result = await self._wait_for_filtering_result(search_id, timeout=self.config.timeout_seconds)
+                final_result = await self._wait_for_filtering_result(search_id, timeout=180)  # Используем фиксированный таймаут 180 секунд
 
                 if final_result.get("status") == "error":
                     error_msg = final_result.get('error', 'Unknown filtering error')
@@ -343,7 +343,7 @@ class IndividualSearchAgent:
                     errors=[str(e)]
                 )
 
-    async def _wait_for_sql_result(self, message_id: str, timeout: int = 90) -> Dict:
+    async def _wait_for_sql_result(self, message_id: str, timeout: int = 180) -> Dict:
         """Ожидать результат от SQL Agent с улучшенной обработкой."""
         start_time = asyncio.get_event_loop().time()
         self.logger.info(f"DEBUG: Waiting for SQL result for message {message_id}, timeout={timeout}s")
@@ -378,7 +378,7 @@ class IndividualSearchAgent:
         self.logger.error(f"DEBUG: SQL Agent timeout after {elapsed:.1f}s for message {message_id}")
         raise TimeoutError(f"SQL Agent response timeout for message {message_id} after {elapsed:.1f}s")
 
-    async def _wait_for_filtering_result(self, search_id: str, timeout: int = 90) -> Dict:
+    async def _wait_for_filtering_result(self, search_id: str, timeout: int = 180) -> Dict:
         """Ожидать результат от Filtering Agent с улучшенной обработкой."""
         start_time = asyncio.get_event_loop().time()
         self.logger.info(f"DEBUG: Waiting for filtering result for search {search_id}, timeout={timeout}s")

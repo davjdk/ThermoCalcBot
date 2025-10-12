@@ -405,32 +405,60 @@ class ThermodynamicAgent:
 
         Returns:
             Извлеченные параметры
+
+        Raises:
+            ValueError: Если не удалось извлечь параметры после повторных попыток
         """
-        try:
-            import asyncio
-            result = await asyncio.wait_for(
-                self.agent.run(user_query, deps=self.config),
-                timeout=30.0  # 30 секунд на ответ модели + network
-            )
-            return result.output
-        except Exception as e:
-            self.logger.error(f"Error in single query processing: {e}")
-            error_msg = str(e)
+        max_retries = 3
+        base_timeout = 30.0
 
-            # Дополнительное логирование для трассировки
-            if self.config.session_logger:
-                self.config.session_logger.log_error(f"SINGLE QUERY FAILED: {error_msg[:200]}")
+        for attempt in range(max_retries):
+            try:
+                import asyncio
+                timeout = base_timeout * (attempt + 1)  # Увеличиваем таймаут с каждой попыткой
 
-            # При любой ошибке возвращаем пустые параметры
-            return ExtractedParameters(
-                intent="unknown",
-                compounds=[],
-                temperature_k=298.15,
-                temperature_range_k=[200, 2000],
-                phases=[],
-                properties=["basic"],
-                sql_query_hint="Error occurred during parameter extraction",
-            )
+                result = await asyncio.wait_for(
+                    self.agent.run(user_query, deps=self.config),
+                    timeout=timeout
+                )
+                return result.output
+
+            except asyncio.TimeoutError:
+                self.logger.error(f"Timeout in single query processing (attempt {attempt + 1}/{max_retries})")
+                if attempt == max_retries - 1:
+                    raise ValueError(f"Не удалось извлечь параметры: превышено время ожидания ответа от модели после {max_retries} попыток. Попробуйте упростить запрос.")
+                await asyncio.sleep(1)  # Небольшая задержка перед повторной попыткой
+
+            except Exception as e:
+                self.logger.error(f"Error in single query processing (attempt {attempt + 1}/{max_retries}): {e}")
+                error_msg = str(e)
+
+                # Дополнительное логирование для трассировки
+                if self.config.session_logger:
+                    self.config.session_logger.log_error(f"SINGLE QUERY FAILED (attempt {attempt + 1}): {error_msg[:200]}")
+
+                # Определяем тип ошибки для более понятного сообщения
+                if "status_code: 401" in error_msg or "No auth credentials" in error_msg:
+                    raise ValueError("Ошибка аутентификации: проверьте API ключ для доступа к модели.")
+                elif "status_code: 429" in error_msg or "rate limit" in error_msg.lower():
+                    if attempt == max_retries - 1:
+                        raise ValueError("Превышен лимит запросов к модели. Попробуйте повторить запрос позже.")
+                    await asyncio.sleep(5)  # Ждем перед повторной попыткой при rate limit
+                elif "network" in error_msg.lower() or "connection" in error_msg.lower():
+                    if attempt == max_retries - 1:
+                        raise ValueError("Сетевая ошибка: проверьте подключение к интернету.")
+                    await asyncio.sleep(2)  # Ждем перед повторной попыткой при проблемах сети
+                elif "timeout" in error_msg.lower():
+                    if attempt == max_retries - 1:
+                        raise ValueError("Превышено время ожидания ответа от модели. Попробуйте упростить запрос.")
+                    await asyncio.sleep(1)
+                else:
+                    if attempt == max_retries - 1:
+                        raise ValueError(f"Не удалось извлечь параметры после {max_retries} попыток: {error_msg[:100]}...")
+                    await asyncio.sleep(1)
+
+        # Этот код не должен быть достигнут, так как все ошибки обрабатываются выше
+        raise ValueError(f"Не удалось извлечь параметры после {max_retries} попыток.")
 
   
     def get_status(self) -> Dict:

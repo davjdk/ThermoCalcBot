@@ -1,0 +1,1274 @@
+2025-10-12 01:38:50,936 - __main__ - INFO - ThermoSystem initialized
+2025-10-12 01:38:50,937 - __main__ - INFO - Initializing agents...
+2025-10-12 01:38:51,188 - thermo_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-10-12 01:38:51,190 - sql_agent - INFO - SQLGenerationAgent 'sql_agent' initialized
+2025-10-12 01:38:51,190 - database_agent - INFO - DatabaseAgent 'database_agent' initialized
+2025-10-12 01:38:51,191 - results_filtering_agent - INFO - ResultsFilteringAgent 'results_filtering_agent' initialized
+2025-10-12 01:38:51,191 - individual_search_agent - INFO - IndividualSearchAgent 'individual_search_agent' initialized
+2025-10-12 01:38:51,195 - __main__ - INFO - All agents initialized successfully
+2025-10-12 01:38:51,195 - __main__ - INFO - Starting agents...
+2025-10-12 01:38:51,196 - thermo_agent - INFO - Agent 'thermo_agent' started listening for messages
+2025-10-12 01:38:51,196 - sql_agent - INFO - Agent 'sql_agent' started listening for messages
+2025-10-12 01:38:51,197 - database_agent - INFO - Agent 'database_agent' started listening for messages
+2025-10-12 01:38:51,197 - results_filtering_agent - INFO - Agent 'results_filtering_agent' started listening for messages
+2025-10-12 01:38:51,197 - individual_search_agent - INFO - Agent 'individual_search_agent' started listening for messages
+2025-10-12 01:38:52,199 - __main__ - INFO - All agents started
+2025-10-12 01:39:13 - INFO - ОПЕРАЦИЯ: [orchestrator] -> PROCESS_REQUEST
+2025-10-12 01:39:13,886 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [orchestrator] -> PROCESS_REQUEST
+2025-10-12 01:39:13,887 - orchestrator - INFO - DEBUG: Waiting for thermo_agent response, timeout=180s, message_id=4ba4d876-bfe3-4ef6-b71e-8a029586a1d3
+2025-10-12 01:39:13 - INFO - ОПЕРАЦИЯ: [thermo_agent] -> EXTRACT_PARAMETERS [from orchestrator]
+2025-10-12 01:39:13,887 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [thermo_agent] -> EXTRACT_PARAMETERS [from orchestrator]
+2025-10-12 01:39:13,888 - thermo_agent - INFO - Starting parameter extraction for query: При какой температуре провзаимодействует оксид кальция и сульфид железа?...
+2025-10-12 01:39:15,792 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 01:39:16,728 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 01:39:21,037 - thermo_agent - INFO - Successfully extracted parameters: reaction, compounds: ['CaO', 'FeS', 'CaS', 'FeO']
+2025-10-12 01:39:21 - INFO - INFO: EXTRACTED REACTION: CaO + FeS → CaS + FeO
+2025-10-12 01:39:21,037 - thermo_agents_session_20251012_013850 - INFO - INFO: EXTRACTED REACTION: CaO + FeS → CaS + FeO
+2025-10-12 01:39:21,037 - thermo_agent - INFO - Extracted reaction equation: CaO + FeS → CaS + FeO
+2025-10-12 01:39:21 - INFO - INFO: EXTRACTION COMPLETE: reaction, 4 compounds
+2025-10-12 01:39:21,037 - thermo_agents_session_20251012_013850 - INFO - INFO: EXTRACTION COMPLETE: reaction, 4 compounds
+2025-10-12 01:39:21,037 - thermo_agent - INFO - Forwarded to Individual Search Agent: ddcd5e58-d023-412a-8083-361ddbb2a314
+2025-10-12 01:39:21 - INFO - РЕЗУЛЬТАТ: { "intent": "reaction", "compounds_count": 4, "compounds": 4 items, "temperature_k": 298.15, "has_sql_hint": True, ... }
+2025-10-12 01:39:21,038 - thermo_agents_session_20251012_013850 - INFO - РЕЗУЛЬТАТ: { "intent": "reaction", "compounds_count": 4, "compounds": 4 items, "temperature_k": 298.15, "has_sql_hint": True, ... }
+2025-10-12 01:39:21 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 7150.71ms
+2025-10-12 01:39:21,038 - thermo_agents_session_20251012_013850 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 7150.71ms
+2025-10-12 01:39:21 - INFO - МАРШРУТ: FROM: orchestrator
+2025-10-12 01:39:21,038 - thermo_agents_session_20251012_013850 - INFO - МАРШРУТ: FROM: orchestrator
+2025-10-12 01:39:21 - INFO - CORRELATION ID: 4ba4d876-bfe3-4ef6-b71e-8a029586a1d3
+2025-10-12 01:39:21,038 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: 4ba4d876-bfe3-4ef6-b71e-8a029586a1d3
+2025-10-12 01:39:21 - INFO - AGENT STORAGE: 2 entries, 2 pending messages, 6 active sessions
+2025-10-12 01:39:21,038 - thermo_agents_session_20251012_013850 - INFO - AGENT STORAGE: 2 entries, 2 pending messages, 6 active sessions
+2025-10-12 01:39:21 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:39:21,038 - thermo_agents_session_20251012_013850 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:39:21,089 - orchestrator - INFO - DEBUG: Received response from thermo_agent: success
+2025-10-12 01:39:21 - INFO - INFO: THERMO AGENT RESPONSE: Success with 4 compounds
+2025-10-12 01:39:21,089 - thermo_agents_session_20251012_013850 - INFO - INFO: THERMO AGENT RESPONSE: Success with 4 compounds
+2025-10-12 01:39:21,089 - orchestrator - INFO - DEBUG: Waiting for Individual Search Agent, timeout=360s, correlation_id=4ba4d876-bfe3-4ef6-b71e-8a029586a1d3
+2025-10-12 01:39:21,894 - individual_search_agent - INFO - Processing search request: ddcd5e58-d023-412a-8083-361ddbb2a314 from thermo_agent
+2025-10-12 01:39:21 - INFO - INFO: Starting individual search for 4 compounds
+2025-10-12 01:39:21,894 - thermo_agents_session_20251012_013850 - INFO - INFO: Starting individual search for 4 compounds
+2025-10-12 01:39:21,894 - individual_search_agent - INFO - DEBUG: Starting search for compound: CaO
+2025-10-12 01:39:21,894 - individual_search_agent - INFO - DEBUG: Created search ID: search_CaO_ddcd5e58-d023-412a-8083-361ddbb2a314_d75971fb
+2025-10-12 01:39:21,895 - individual_search_agent - INFO - DEBUG: Sending SQL generation request for compound CaO
+2025-10-12 01:39:21,895 - individual_search_agent - INFO - DEBUG: SQL request sent with message ID: f27956cb-62a9-419c-afdf-86f39e15cd71
+2025-10-12 01:39:21,895 - individual_search_agent - INFO - DEBUG: Waiting for SQL result for compound CaO
+2025-10-12 01:39:21,895 - individual_search_agent - INFO - DEBUG: Waiting for SQL result for message f27956cb-62a9-419c-afdf-86f39e15cd71, timeout=180s
+2025-10-12 01:39:21,895 - individual_search_agent - INFO - DEBUG: Starting search for compound: FeS
+2025-10-12 01:39:21,895 - individual_search_agent - INFO - DEBUG: Created search ID: search_FeS_ddcd5e58-d023-412a-8083-361ddbb2a314_40c65fd5
+2025-10-12 01:39:21,895 - individual_search_agent - INFO - DEBUG: Sending SQL generation request for compound FeS
+2025-10-12 01:39:21,895 - individual_search_agent - INFO - DEBUG: SQL request sent with message ID: e2884837-5bbb-4f95-8c59-f47c16ebda2e
+2025-10-12 01:39:21,895 - individual_search_agent - INFO - DEBUG: Waiting for SQL result for compound FeS
+2025-10-12 01:39:21,895 - individual_search_agent - INFO - DEBUG: Waiting for SQL result for message e2884837-5bbb-4f95-8c59-f47c16ebda2e, timeout=180s
+2025-10-12 01:39:21,896 - individual_search_agent - INFO - DEBUG: Starting search for compound: CaS
+2025-10-12 01:39:21,896 - individual_search_agent - INFO - DEBUG: Created search ID: search_CaS_ddcd5e58-d023-412a-8083-361ddbb2a314_4eabbfee
+2025-10-12 01:39:21,896 - individual_search_agent - INFO - DEBUG: Sending SQL generation request for compound CaS
+2025-10-12 01:39:21,896 - individual_search_agent - INFO - DEBUG: SQL request sent with message ID: 00560798-828c-4c11-9345-67e469ab909e
+2025-10-12 01:39:21,896 - individual_search_agent - INFO - DEBUG: Waiting for SQL result for compound CaS
+2025-10-12 01:39:21,896 - individual_search_agent - INFO - DEBUG: Waiting for SQL result for message 00560798-828c-4c11-9345-67e469ab909e, timeout=180s
+2025-10-12 01:39:21,896 - individual_search_agent - INFO - DEBUG: Starting search for compound: FeO
+2025-10-12 01:39:21,896 - individual_search_agent - INFO - DEBUG: Created search ID: search_FeO_ddcd5e58-d023-412a-8083-361ddbb2a314_f6a8ef4c
+2025-10-12 01:39:21,896 - individual_search_agent - INFO - DEBUG: Sending SQL generation request for compound FeO
+2025-10-12 01:39:21,896 - individual_search_agent - INFO - DEBUG: SQL request sent with message ID: 028169ea-4d67-4347-a305-b296cff5c6e8
+2025-10-12 01:39:21,897 - individual_search_agent - INFO - DEBUG: Waiting for SQL result for compound FeO
+2025-10-12 01:39:21,897 - individual_search_agent - INFO - DEBUG: Waiting for SQL result for message 028169ea-4d67-4347-a305-b296cff5c6e8, timeout=180s
+2025-10-12 01:39:23 - INFO - ОПЕРАЦИЯ: [sql_agent] -> GENERATE_QUERY [from individual_search_agent]
+2025-10-12 01:39:23,919 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [sql_agent] -> GENERATE_QUERY [from individual_search_agent]
+2025-10-12 01:39:23,921 - sql_agent - INFO - Processing individual search for compound: CaO
+2025-10-12 01:39:23,922 - sql_agent - INFO - Starting SQL query generation...
+2025-10-12 01:39:25,131 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 01:39:25,719 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 01:39:29,764 - sql_agent - INFO - Generated SQL query: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:39:29 - INFO - INFO: SQL GENERATION COMPLETE: Query length 191
+2025-10-12 01:39:29,764 - thermo_agents_session_20251012_013850 - INFO - INFO: SQL GENERATION COMPLETE: Query length 191
+2025-10-12 01:39:29,765 - sql_agent - INFO - SQL query cleaned
+2025-10-12 01:39:29,765 - sql_agent - INFO - Prepared result data with key: sql_result_f27956cb-62a9-419c-afdf-86f39e15cd71
+2025-10-12 01:39:29,766 - sql_agent - INFO - Sending SQL query to database agent for individual execution...
+2025-10-12 01:39:29,766 - sql_agent - INFO - SQL query sent to database_agent: f78e853f-9c28-4f8d-b0e5-cf6f5510c539
+2025-10-12 01:39:29 - INFO - ОПЕРАЦИЯ: [database_agent] -> EXECUTE_QUERY [from sql_agent]
+2025-10-12 01:39:29,920 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [database_agent] -> EXECUTE_QUERY [from sql_agent]
+2025-10-12 01:39:29,921 - database_agent - INFO - Executing individual SQL query for compound CaO: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:39:29 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:39:29,923 - thermo_agents_session_20251012_013850 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:39:29,978 - database_agent - INFO - SQL executed successfully: 43 rows found
+2025-10-12 01:39:29,979 - database_agent - INFO - Applying temperature range filtering: 200.0-2000.0K...
+2025-10-12 01:39:29,980 - database_agent - INFO - Temperature filtering: 43 of 43 rows remain
+2025-10-12 01:39:29 - INFO - INFO: TEMPERATURE FILTER: Range=200.0-2000.0K, Matched=43, Excluded=0
+2025-10-12 01:39:29,980 - thermo_agents_session_20251012_013850 - INFO - INFO: TEMPERATURE FILTER: Range=200.0-2000.0K, Matched=43, Excluded=0
+2025-10-12 01:39:29 - INFO - INFO: QUERY RESULTS: 43 rows, columns: 23
+2025-10-12 01:39:29,982 - thermo_agents_session_20251012_013850 - INFO - INFO: QUERY RESULTS: 43 rows, columns: 23
+2025-10-12 01:39:29,982 - database_agent - INFO - Database result stored with key: db_result_f78e853f-9c28-4f8d-b0e5-cf6f5510c539
+2025-10-12 01:39:29,982 - database_agent - INFO - Sending results to filtering agent for analysis...
+2025-10-12 01:39:29,983 - database_agent - INFO - Individual results sent to filtering agent: 27cf1a29-5fc4-48d6-b8e5-41ee218ed05e
+2025-10-12 01:39:29,983 - database_agent - INFO - Response sent to sql_agent
+2025-10-12 01:39:29 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "execution_success": True, "row_count": 43, "result_key": "db_result_f78e853f-9c28-4f8d-b0e5-cf6f5510c539", "filtering_sent": True, ... }
+2025-10-12 01:39:29,985 - thermo_agents_session_20251012_013850 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "execution_success": True, "row_count": 43, "result_key": "db_result_f78e853f-9c28-4f8d-b0e5-cf6f5510c539", "filtering_sent": True, ... }
+2025-10-12 01:39:29 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 63.08ms
+2025-10-12 01:39:29,985 - thermo_agents_session_20251012_013850 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 63.08ms
+2025-10-12 01:39:29 - INFO - МАРШРУТ: FROM: sql_agent
+2025-10-12 01:39:29,985 - thermo_agents_session_20251012_013850 - INFO - МАРШРУТ: FROM: sql_agent
+2025-10-12 01:39:29 - INFO - CORRELATION ID: f78e853f-9c28-4f8d-b0e5-cf6f5510c539
+2025-10-12 01:39:29,985 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: f78e853f-9c28-4f8d-b0e5-cf6f5510c539
+2025-10-12 01:39:29 - INFO - AGENT STORAGE: 3 entries, 2 pending messages, 6 active sessions
+2025-10-12 01:39:29,985 - thermo_agents_session_20251012_013850 - INFO - AGENT STORAGE: 3 entries, 2 pending messages, 6 active sessions
+2025-10-12 01:39:29 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:39:29,985 - thermo_agents_session_20251012_013850 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:39:29 - INFO - ОПЕРАЦИЯ: [results_filtering_agent] -> INDIVIDUAL_FILTER [from database_agent]
+2025-10-12 01:39:29,986 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [results_filtering_agent] -> INDIVIDUAL_FILTER [from database_agent]
+2025-10-12 01:39:29,986 - results_filtering_agent - INFO - Individual filtering for compound CaO: 43 records
+2025-10-12 01:39:29 - INFO - INFO: INDIVIDUAL FILTERING START: CaO, 43 records, target temp 298.15K
+2025-10-12 01:39:29,986 - thermo_agents_session_20251012_013850 - INFO - INFO: INDIVIDUAL FILTERING START: CaO, 43 records, target temp 298.15K
+2025-10-12 01:39:29,986 - results_filtering_agent - INFO - Temperature pre-filtering: 43 records remain
+2025-10-12 01:39:30,011 - results_filtering_agent - INFO - LLM filtering attempt 1/3 with 43 records
+2025-10-12 01:39:30,012 - sql_agent - INFO - Received database result: success
+2025-10-12 01:39:30,012 - sql_agent - INFO - Database execution successful: 43 rows
+2025-10-12 01:39:30,012 - sql_agent - INFO - Waiting for filtering agent results...
+2025-10-12 01:39:30,546 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 01:39:36,777 - results_filtering_agent - INFO - LLM filtering successful on attempt 1
+2025-10-12 01:39:36,777 - results_filtering_agent - INFO - Filtering result stored with key: filtered_result_27cf1a29-5fc4-48d6-b8e5-41ee218ed05e
+2025-10-12 01:39:36,777 - results_filtering_agent - INFO - Filtered results: 1 selected records
+2025-10-12 01:39:36,777 - results_filtering_agent - INFO - DEBUG: First record keys: ['Formula', 'Structure', 'FirstName', 'SecondName', 'Phase', 'CAS', 'MeltingPoint', 'BoilingPoint', 'Density', 'Solubility', 'Color', 'H298', 'S298', 'Tmin', 'Tmax', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'ReliabilityClass', 'Reference']
+2025-10-12 01:39:36,777 - results_filtering_agent - INFO - DEBUG: First record data: {'Formula': 'CaO', 'Structure': None, 'FirstName': 'Calcium oxide', 'SecondName': None, 'Phase': 's', 'CAS': '1305-78-8', 'MeltingPoint': 3172.0, 'BoilingPoint': 3773.0, 'Density': 3.34, 'Solubility': 0.0, 'Color': 15, 'H298': -635.0886, 'S298': 38.07436, 'Tmin': 298.15, 'Tmax': 3200.0, 'f1': 49.6221848, 'f2': 4.51871538, 'f3': -6.945432, 'f4': 0.0, 'f5': 0.0, 'f6': 0.0, 'ReliabilityClass': 1, 'Reference': 'Barin 89'}
+2025-10-12 01:39:36 - INFO - INFO: FILTERED RESULTS TABLE (1 records):
+2025-10-12 01:39:36,777 - thermo_agents_session_20251012_013850 - INFO - INFO: FILTERED RESULTS TABLE (1 records):
+2025-10-12 01:39:36 - INFO - INFO: REASONING: From 43 found records, selected 1: solid phase CaO with optimal temperature coverage for range 200-2000K.
+2025-10-12 01:39:36,778 - thermo_agents_session_20251012_013850 - INFO - INFO: REASONING: From 43 found records, selected 1: solid phase CaO with optimal temperature coverage for range 200-2000K.
+2025-10-12 01:39:36 - INFO - INFO: SELECTED RECORDS:
+2025-10-12 01:39:36,778 - thermo_agents_session_20251012_013850 - INFO - INFO: SELECTED RECORDS:
+2025-10-12 01:39:36 - INFO - INFO: +-----------+---------------+---------+--------+--------+-------+-------+--------+------+------+------+--------+--------+
+2025-10-12 01:39:36,778 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+---------------+---------+--------+--------+-------+-------+--------+------+------+------+--------+--------+
+2025-10-12 01:39:36 - INFO - INFO: | Formula   | FirstName     | Phase   |   H298 |   S298 |    f1 |    f2 |     f3 |   f4 |   f5 |   f6 |   Tmin |   Tmax |
+2025-10-12 01:39:36,778 - thermo_agents_session_20251012_013850 - INFO - INFO: | Formula   | FirstName     | Phase   |   H298 |   S298 |    f1 |    f2 |     f3 |   f4 |   f5 |   f6 |   Tmin |   Tmax |
+2025-10-12 01:39:36 - INFO - INFO: +===========+===============+=========+========+========+=======+=======+========+======+======+======+========+========+
+2025-10-12 01:39:36,778 - thermo_agents_session_20251012_013850 - INFO - INFO: +===========+===============+=========+========+========+=======+=======+========+======+======+======+========+========+
+2025-10-12 01:39:36 - INFO - INFO: | CaO       | Calcium oxide | s       | -635.1 |  38.07 | 49.62 | 4.519 | -6.945 |    0 |    0 |    0 |  298.1 |   3200 |
+2025-10-12 01:39:36,778 - thermo_agents_session_20251012_013850 - INFO - INFO: | CaO       | Calcium oxide | s       | -635.1 |  38.07 | 49.62 | 4.519 | -6.945 |    0 |    0 |    0 |  298.1 |   3200 |
+2025-10-12 01:39:36 - INFO - INFO: +-----------+---------------+---------+--------+--------+-------+-------+--------+------+------+------+--------+--------+
+2025-10-12 01:39:36,779 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+---------------+---------+--------+--------+-------+-------+--------+------+------+------+--------+--------+
+2025-10-12 01:39:36,779 - results_filtering_agent - INFO - Filtering response sent to individual_search_agent
+2025-10-12 01:39:36 - INFO - РЕЗУЛЬТАТ: { "message_type": "filter_individual_results", "input_records": 43, "temp_filtered_records": 43, "final_records": 1, "result_key": "filtered_result_27cf1a29-5fc4-48d6-b8e5-41ee218ed05e", ... }
+2025-10-12 01:39:36,779 - thermo_agents_session_20251012_013850 - INFO - РЕЗУЛЬТАТ: { "message_type": "filter_individual_results", "input_records": 43, "temp_filtered_records": 43, "final_records": 1, "result_key": "filtered_result_27cf1a29-5fc4-48d6-b8e5-41ee218ed05e", ... }
+2025-10-12 01:39:36 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 6792.83ms
+2025-10-12 01:39:36,779 - thermo_agents_session_20251012_013850 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 6792.83ms
+2025-10-12 01:39:36 - INFO - МАРШРУТ: FROM: database_agent
+2025-10-12 01:39:36,779 - thermo_agents_session_20251012_013850 - INFO - МАРШРУТ: FROM: database_agent
+2025-10-12 01:39:36 - INFO - CORRELATION ID: f27956cb-62a9-419c-afdf-86f39e15cd71
+2025-10-12 01:39:36,779 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: f27956cb-62a9-419c-afdf-86f39e15cd71
+2025-10-12 01:39:36 - INFO - AGENT STORAGE: 4 entries, 1 pending messages, 6 active sessions
+2025-10-12 01:39:36,780 - thermo_agents_session_20251012_013850 - INFO - AGENT STORAGE: 4 entries, 1 pending messages, 6 active sessions
+2025-10-12 01:39:36 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:39:36,780 - thermo_agents_session_20251012_013850 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:40:30,171 - sql_agent - WARNING - Filtering agent did not respond in time, using raw database results
+2025-10-12 01:40:30,171 - sql_agent - INFO - Storing result with key: sql_result_f27956cb-62a9-419c-afdf-86f39e15cd71
+2025-10-12 01:40:30,172 - sql_agent - INFO - Result stored successfully
+2025-10-12 01:40:30,172 - sql_agent - INFO - Sending individual_sql_complete to individual_search_agent
+2025-10-12 01:40:30 - INFO - INFO: SENDING INDIVIDUAL_SQL_COMPLETE: To individual_search_agent, key=sql_result_f27956cb-62a9-419c-afdf-86f39e15cd71
+2025-10-12 01:40:30,172 - thermo_agents_session_20251012_013850 - INFO - INFO: SENDING INDIVIDUAL_SQL_COMPLETE: To individual_search_agent, key=sql_result_f27956cb-62a9-419c-afdf-86f39e15cd71
+2025-10-12 01:40:30,172 - sql_agent - INFO - individual_sql_complete sent successfully to individual_search_agent
+2025-10-12 01:40:30 - INFO - INFO: SQL GENERATED: 191 chars, 14 columns expected
+2025-10-12 01:40:30,174 - thermo_agents_session_20251012_013850 - INFO - INFO: SQL GENERATED: 191 chars, 14 columns expected
+2025-10-12 01:40:30,174 - sql_agent - INFO - Message processing completed successfully
+2025-10-12 01:40:30 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "sql_query_length": 191, "expected_columns": 14, "result_key": "sql_result_f27956cb-62a9-419c-afdf-86f39e15cd71", "database_execution": True, ... }
+2025-10-12 01:40:30,175 - thermo_agents_session_20251012_013850 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "sql_query_length": 191, "expected_columns": 14, "result_key": "sql_result_f27956cb-62a9-419c-afdf-86f39e15cd71", "database_execution": True, ... }
+2025-10-12 01:40:30 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 66254.25ms
+2025-10-12 01:40:30,175 - thermo_agents_session_20251012_013850 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 66254.25ms
+2025-10-12 01:40:30 - INFO - МАРШРУТ: FROM: individual_search_agent
+2025-10-12 01:40:30,175 - thermo_agents_session_20251012_013850 - INFO - МАРШРУТ: FROM: individual_search_agent
+2025-10-12 01:40:30 - INFO - CORRELATION ID: f27956cb-62a9-419c-afdf-86f39e15cd71
+2025-10-12 01:40:30,175 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: f27956cb-62a9-419c-afdf-86f39e15cd71
+2025-10-12 01:40:30 - INFO - AGENT STORAGE: 5 entries, 2 pending messages, 6 active sessions
+2025-10-12 01:40:30,175 - thermo_agents_session_20251012_013850 - INFO - AGENT STORAGE: 5 entries, 2 pending messages, 6 active sessions
+2025-10-12 01:40:30 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:40:30,176 - thermo_agents_session_20251012_013850 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:40:30 - INFO - ОПЕРАЦИЯ: [sql_agent] -> GENERATE_QUERY [from individual_search_agent]
+2025-10-12 01:40:30,176 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [sql_agent] -> GENERATE_QUERY [from individual_search_agent]
+2025-10-12 01:40:30,176 - sql_agent - INFO - Processing individual search for compound: FeS
+2025-10-12 01:40:30,176 - sql_agent - INFO - Starting SQL query generation...
+2025-10-12 01:40:30,389 - individual_search_agent - INFO - DEBUG: SQL result received successfully for message f27956cb-62a9-419c-afdf-86f39e15cd71
+2025-10-12 01:40:30,389 - individual_search_agent - INFO - DEBUG: SQL result received for compound CaO, waiting for filtering
+2025-10-12 01:40:30,390 - individual_search_agent - INFO - DEBUG: Waiting for filtering result for compound CaO
+2025-10-12 01:40:30,390 - individual_search_agent - INFO - DEBUG: Waiting for filtering result for search search_CaO_ddcd5e58-d023-412a-8083-361ddbb2a314_d75971fb, timeout=180s
+2025-10-12 01:40:31,293 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 01:40:36,414 - sql_agent - INFO - Generated SQL query: SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:40:36 - INFO - INFO: SQL GENERATION COMPLETE: Query length 191
+2025-10-12 01:40:36,414 - thermo_agents_session_20251012_013850 - INFO - INFO: SQL GENERATION COMPLETE: Query length 191
+2025-10-12 01:40:36,414 - sql_agent - INFO - SQL query cleaned
+2025-10-12 01:40:36,414 - sql_agent - INFO - Prepared result data with key: sql_result_e2884837-5bbb-4f95-8c59-f47c16ebda2e
+2025-10-12 01:40:36,416 - sql_agent - INFO - Sending SQL query to database agent for individual execution...
+2025-10-12 01:40:36,416 - sql_agent - INFO - SQL query sent to database_agent: 78f291c6-cbe9-4c51-a72f-2cf8c0009d1b
+2025-10-12 01:40:38 - INFO - ОПЕРАЦИЯ: [database_agent] -> EXECUTE_QUERY [from sql_agent]
+2025-10-12 01:40:38,186 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [database_agent] -> EXECUTE_QUERY [from sql_agent]
+2025-10-12 01:40:38,187 - database_agent - INFO - Executing individual SQL query for compound FeS: SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:40:38 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:40:38,187 - thermo_agents_session_20251012_013850 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:40:38,244 - database_agent - INFO - SQL executed successfully: 42 rows found
+2025-10-12 01:40:38,244 - database_agent - INFO - Applying temperature range filtering: 200.0-2000.0K...
+2025-10-12 01:40:38,244 - database_agent - INFO - Temperature filtering: 42 of 42 rows remain
+2025-10-12 01:40:38 - INFO - INFO: TEMPERATURE FILTER: Range=200.0-2000.0K, Matched=42, Excluded=0
+2025-10-12 01:40:38,244 - thermo_agents_session_20251012_013850 - INFO - INFO: TEMPERATURE FILTER: Range=200.0-2000.0K, Matched=42, Excluded=0
+2025-10-12 01:40:38 - INFO - INFO: QUERY RESULTS: 42 rows, columns: 23
+2025-10-12 01:40:38,244 - thermo_agents_session_20251012_013850 - INFO - INFO: QUERY RESULTS: 42 rows, columns: 23
+2025-10-12 01:40:38,244 - database_agent - INFO - Database result stored with key: db_result_78f291c6-cbe9-4c51-a72f-2cf8c0009d1b
+2025-10-12 01:40:38,244 - database_agent - INFO - Sending results to filtering agent for analysis...
+2025-10-12 01:40:38,244 - database_agent - INFO - Individual results sent to filtering agent: 1cba8abb-ad28-4ce7-a1fa-57ebc8c96d78
+2025-10-12 01:40:38,244 - database_agent - INFO - Response sent to sql_agent
+2025-10-12 01:40:38 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "execution_success": True, "row_count": 42, "result_key": "db_result_78f291c6-cbe9-4c51-a72f-2cf8c0009d1b", "filtering_sent": True, ... }
+2025-10-12 01:40:38,246 - thermo_agents_session_20251012_013850 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "execution_success": True, "row_count": 42, "result_key": "db_result_78f291c6-cbe9-4c51-a72f-2cf8c0009d1b", "filtering_sent": True, ... }
+2025-10-12 01:40:38 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 57.87ms
+2025-10-12 01:40:38,246 - thermo_agents_session_20251012_013850 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 57.87ms
+2025-10-12 01:40:38 - INFO - МАРШРУТ: FROM: sql_agent
+2025-10-12 01:40:38,246 - thermo_agents_session_20251012_013850 - INFO - МАРШРУТ: FROM: sql_agent
+2025-10-12 01:40:38 - INFO - CORRELATION ID: 78f291c6-cbe9-4c51-a72f-2cf8c0009d1b
+2025-10-12 01:40:38,247 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: 78f291c6-cbe9-4c51-a72f-2cf8c0009d1b
+2025-10-12 01:40:38 - INFO - AGENT STORAGE: 6 entries, 3 pending messages, 6 active sessions
+2025-10-12 01:40:38,247 - thermo_agents_session_20251012_013850 - INFO - AGENT STORAGE: 6 entries, 3 pending messages, 6 active sessions
+2025-10-12 01:40:38 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:40:38,247 - thermo_agents_session_20251012_013850 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:40:38,247 - sql_agent - INFO - Received database result: success
+2025-10-12 01:40:38,247 - sql_agent - INFO - Database execution successful: 42 rows
+2025-10-12 01:40:38,247 - sql_agent - INFO - Waiting for filtering agent results...
+2025-10-12 01:40:38 - INFO - ОПЕРАЦИЯ: [results_filtering_agent] -> INDIVIDUAL_FILTER [from database_agent]
+2025-10-12 01:40:38,965 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [results_filtering_agent] -> INDIVIDUAL_FILTER [from database_agent]
+2025-10-12 01:40:38,965 - results_filtering_agent - INFO - Individual filtering for compound FeS: 42 records
+2025-10-12 01:40:38 - INFO - INFO: INDIVIDUAL FILTERING START: FeS, 42 records, target temp 298.15K
+2025-10-12 01:40:38,965 - thermo_agents_session_20251012_013850 - INFO - INFO: INDIVIDUAL FILTERING START: FeS, 42 records, target temp 298.15K
+2025-10-12 01:40:38,965 - results_filtering_agent - INFO - Temperature pre-filtering: 42 records remain
+2025-10-12 01:40:38,990 - results_filtering_agent - INFO - LLM filtering attempt 1/3 with 42 records
+2025-10-12 01:40:39,689 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 01:40:46,243 - results_filtering_agent - INFO - LLM filtering successful on attempt 1
+2025-10-12 01:40:46,244 - results_filtering_agent - INFO - Filtering result stored with key: filtered_result_1cba8abb-ad28-4ce7-a1fa-57ebc8c96d78
+2025-10-12 01:40:46,244 - results_filtering_agent - INFO - Filtered results: 3 selected records
+2025-10-12 01:40:46,244 - results_filtering_agent - INFO - DEBUG: First record keys: ['Formula', 'Structure', 'FirstName', 'SecondName', 'Phase', 'CAS', 'MeltingPoint', 'BoilingPoint', 'Density', 'Solubility', 'Color', 'H298', 'S298', 'Tmin', 'Tmax', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'ReliabilityClass', 'Reference']
+2025-10-12 01:40:46,244 - results_filtering_agent - INFO - DEBUG: First record data: {'Formula': 'FeS', 'Structure': None, 'FirstName': 'Iron(II) sulfide', 'SecondName': 'Troilite', 'Phase': 's', 'CAS': '1317-96-0', 'MeltingPoint': 1461.0, 'BoilingPoint': 0.0, 'Density': 4.74, 'Solubility': 0.0, 'Color': 16, 'H298': -97.7599888504, 'S298': 70.7999999224, 'Tmin': 100.0, 'Tmax': 298.15, 'f1': 178.2563912, 'f2': -953.712846744, 'f3': -7.476720136, 'f4': 1855.349010304, 'f5': 0.0, 'f6': 0.0, 'ReliabilityClass': 1, 'Reference': 'Holland 11; JANAF 98; Patnaik 03; Ba'}
+2025-10-12 01:40:46 - INFO - INFO: FILTERED RESULTS TABLE (3 records):
+2025-10-12 01:40:46,244 - thermo_agents_session_20251012_013850 - INFO - INFO: FILTERED RESULTS TABLE (3 records):
+2025-10-12 01:40:46 - INFO - INFO: REASONING: From 42 found records, selected 3: solid phase for low temperature range, liquid phase for intermediate range, and gas phase for high temperature range coverage.
+2025-10-12 01:40:46,245 - thermo_agents_session_20251012_013850 - INFO - INFO: REASONING: From 42 found records, selected 3: solid phase for low temperature range, liquid phase for intermediate range, and gas phase for high temperature range coverage.
+2025-10-12 01:40:46 - INFO - INFO: SELECTED RECORDS:
+2025-10-12 01:40:46,245 - thermo_agents_session_20251012_013850 - INFO - INFO: SELECTED RECORDS:
+2025-10-12 01:40:46 - INFO - INFO: +-----------+------------------+---------+--------+--------+--------+---------+--------+---------+------+------+--------+--------+
+2025-10-12 01:40:46,245 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+------------------+---------+--------+--------+--------+---------+--------+---------+------+------+--------+--------+
+2025-10-12 01:40:46 - INFO - INFO: | Formula   | FirstName        | Phase   |   H298 |   S298 |     f1 |      f2 |     f3 |      f4 |   f5 |   f6 |   Tmin |   Tmax |
+2025-10-12 01:40:46,246 - thermo_agents_session_20251012_013850 - INFO - INFO: | Formula   | FirstName        | Phase   |   H298 |   S298 |     f1 |      f2 |     f3 |      f4 |   f5 |   f6 |   Tmin |   Tmax |
+2025-10-12 01:40:46 - INFO - INFO: +===========+==================+=========+========+========+========+=========+========+=========+======+======+========+========+
+2025-10-12 01:40:46,246 - thermo_agents_session_20251012_013850 - INFO - INFO: +===========+==================+=========+========+========+========+=========+========+=========+======+======+========+========+
+2025-10-12 01:40:46 - INFO - INFO: | FeS       | Iron(II) sulfide | s       | -97.76 |  70.8  | 178.3  | -953.7  | -7.477 | 1855    |    0 |    0 |  100   |  298.1 |
+2025-10-12 01:40:46,246 - thermo_agents_session_20251012_013850 - INFO - INFO: | FeS       | Iron(II) sulfide | s       | -97.76 |  70.8  | 178.3  | -953.7  | -7.477 | 1855    |    0 |    0 |  100   |  298.1 |
+2025-10-12 01:40:46 - INFO - INFO: +-----------+------------------+---------+--------+--------+--------+---------+--------+---------+------+------+--------+--------+
+2025-10-12 01:40:46,246 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+------------------+---------+--------+--------+--------+---------+--------+---------+------+------+--------+--------+
+2025-10-12 01:40:46 - INFO - INFO: | FeS(l)    | Iron(II) sulfide | l       | -64.63 |  91.21 |  62.55 |    0    |  0     |    0    |    0 |    0 |  298.1 | 3000   |
+2025-10-12 01:40:46,246 - thermo_agents_session_20251012_013850 - INFO - INFO: | FeS(l)    | Iron(II) sulfide | l       | -64.63 |  91.21 |  62.55 |    0    |  0     |    0    |    0 |    0 |  298.1 | 3000   |
+2025-10-12 01:40:46 - INFO - INFO: +-----------+------------------+---------+--------+--------+--------+---------+--------+---------+------+------+--------+--------+
+2025-10-12 01:40:46,246 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+------------------+---------+--------+--------+--------+---------+--------+---------+------+------+--------+--------+
+2025-10-12 01:40:46 - INFO - INFO: | FeS(g)    | Iron(II) sulfide | g       | 370.8  | 252.3  |  45.65 |  -15.66 | -1.483 |   10.12 |    0 |    0 |  298.1 |  900   |
+2025-10-12 01:40:46,246 - thermo_agents_session_20251012_013850 - INFO - INFO: | FeS(g)    | Iron(II) sulfide | g       | 370.8  | 252.3  |  45.65 |  -15.66 | -1.483 |   10.12 |    0 |    0 |  298.1 |  900   |
+2025-10-12 01:40:46 - INFO - INFO: +-----------+------------------+---------+--------+--------+--------+---------+--------+---------+------+------+--------+--------+
+2025-10-12 01:40:46,247 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+------------------+---------+--------+--------+--------+---------+--------+---------+------+------+--------+--------+
+2025-10-12 01:40:46,247 - results_filtering_agent - INFO - Filtering response sent to individual_search_agent
+2025-10-12 01:40:46 - INFO - РЕЗУЛЬТАТ: { "message_type": "filter_individual_results", "input_records": 42, "temp_filtered_records": 42, "final_records": 3, "result_key": "filtered_result_1cba8abb-ad28-4ce7-a1fa-57ebc8c96d78", ... }
+2025-10-12 01:40:46,248 - thermo_agents_session_20251012_013850 - INFO - РЕЗУЛЬТАТ: { "message_type": "filter_individual_results", "input_records": 42, "temp_filtered_records": 42, "final_records": 3, "result_key": "filtered_result_1cba8abb-ad28-4ce7-a1fa-57ebc8c96d78", ... }
+2025-10-12 01:40:46 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 7282.27ms
+2025-10-12 01:40:46,248 - thermo_agents_session_20251012_013850 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 7282.27ms
+2025-10-12 01:40:46 - INFO - МАРШРУТ: FROM: database_agent
+2025-10-12 01:40:46,248 - thermo_agents_session_20251012_013850 - INFO - МАРШРУТ: FROM: database_agent
+2025-10-12 01:40:46 - INFO - CORRELATION ID: e2884837-5bbb-4f95-8c59-f47c16ebda2e
+2025-10-12 01:40:46,248 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: e2884837-5bbb-4f95-8c59-f47c16ebda2e
+2025-10-12 01:40:46 - INFO - AGENT STORAGE: 7 entries, 2 pending messages, 6 active sessions
+2025-10-12 01:40:46,250 - thermo_agents_session_20251012_013850 - INFO - AGENT STORAGE: 7 entries, 2 pending messages, 6 active sessions
+2025-10-12 01:40:46 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:40:46,250 - thermo_agents_session_20251012_013850 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:41:38,381 - sql_agent - WARNING - Filtering agent did not respond in time, using raw database results
+2025-10-12 01:41:38,382 - sql_agent - INFO - Storing result with key: sql_result_e2884837-5bbb-4f95-8c59-f47c16ebda2e
+2025-10-12 01:41:38,382 - sql_agent - INFO - Result stored successfully
+2025-10-12 01:41:38,382 - sql_agent - INFO - Sending individual_sql_complete to individual_search_agent
+2025-10-12 01:41:38 - INFO - INFO: SENDING INDIVIDUAL_SQL_COMPLETE: To individual_search_agent, key=sql_result_e2884837-5bbb-4f95-8c59-f47c16ebda2e
+2025-10-12 01:41:38,383 - thermo_agents_session_20251012_013850 - INFO - INFO: SENDING INDIVIDUAL_SQL_COMPLETE: To individual_search_agent, key=sql_result_e2884837-5bbb-4f95-8c59-f47c16ebda2e
+2025-10-12 01:41:38,383 - sql_agent - INFO - individual_sql_complete sent successfully to individual_search_agent
+2025-10-12 01:41:38 - INFO - INFO: SQL GENERATED: 191 chars, 14 columns expected
+2025-10-12 01:41:38,383 - thermo_agents_session_20251012_013850 - INFO - INFO: SQL GENERATED: 191 chars, 14 columns expected
+2025-10-12 01:41:38,383 - sql_agent - INFO - Message processing completed successfully
+2025-10-12 01:41:38 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "sql_query_length": 191, "expected_columns": 14, "result_key": "sql_result_e2884837-5bbb-4f95-8c59-f47c16ebda2e", "database_execution": True, ... }
+2025-10-12 01:41:38,384 - thermo_agents_session_20251012_013850 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "sql_query_length": 191, "expected_columns": 14, "result_key": "sql_result_e2884837-5bbb-4f95-8c59-f47c16ebda2e", "database_execution": True, ... }
+2025-10-12 01:41:38 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 68206.81ms
+2025-10-12 01:41:38,384 - thermo_agents_session_20251012_013850 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 68206.81ms
+2025-10-12 01:41:38 - INFO - МАРШРУТ: FROM: individual_search_agent
+2025-10-12 01:41:38,384 - thermo_agents_session_20251012_013850 - INFO - МАРШРУТ: FROM: individual_search_agent
+2025-10-12 01:41:38 - INFO - CORRELATION ID: e2884837-5bbb-4f95-8c59-f47c16ebda2e
+2025-10-12 01:41:38,386 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: e2884837-5bbb-4f95-8c59-f47c16ebda2e
+2025-10-12 01:41:38 - INFO - AGENT STORAGE: 8 entries, 3 pending messages, 6 active sessions
+2025-10-12 01:41:38,386 - thermo_agents_session_20251012_013850 - INFO - AGENT STORAGE: 8 entries, 3 pending messages, 6 active sessions
+2025-10-12 01:41:38 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:41:38,386 - thermo_agents_session_20251012_013850 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:41:38 - INFO - ОПЕРАЦИЯ: [sql_agent] -> GENERATE_QUERY [from individual_search_agent]
+2025-10-12 01:41:38,386 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [sql_agent] -> GENERATE_QUERY [from individual_search_agent]
+2025-10-12 01:41:38,386 - sql_agent - INFO - Processing individual search for compound: CaS
+2025-10-12 01:41:38,386 - sql_agent - INFO - Starting SQL query generation...
+2025-10-12 01:41:38,567 - individual_search_agent - INFO - DEBUG: SQL result received successfully for message e2884837-5bbb-4f95-8c59-f47c16ebda2e
+2025-10-12 01:41:38,567 - individual_search_agent - INFO - DEBUG: SQL result received for compound FeS, waiting for filtering
+2025-10-12 01:41:38,567 - individual_search_agent - INFO - DEBUG: Waiting for filtering result for compound FeS
+2025-10-12 01:41:38,567 - individual_search_agent - INFO - DEBUG: Waiting for filtering result for search search_FeS_ddcd5e58-d023-412a-8083-361ddbb2a314_40c65fd5, timeout=180s
+2025-10-12 01:41:39,143 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 01:41:43,782 - sql_agent - INFO - Generated SQL query: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:41:43 - INFO - INFO: SQL GENERATION COMPLETE: Query length 191
+2025-10-12 01:41:43,783 - thermo_agents_session_20251012_013850 - INFO - INFO: SQL GENERATION COMPLETE: Query length 191
+2025-10-12 01:41:43,784 - sql_agent - INFO - SQL query cleaned
+2025-10-12 01:41:43,784 - sql_agent - INFO - Prepared result data with key: sql_result_00560798-828c-4c11-9345-67e469ab909e
+2025-10-12 01:41:43,786 - sql_agent - INFO - Sending SQL query to database agent for individual execution...
+2025-10-12 01:41:43,786 - sql_agent - INFO - SQL query sent to database_agent: d8453c8e-8ceb-4d48-8e19-817abb7e8415
+2025-10-12 01:41:44 - INFO - ОПЕРАЦИЯ: [database_agent] -> EXECUTE_QUERY [from sql_agent]
+2025-10-12 01:41:44,295 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [database_agent] -> EXECUTE_QUERY [from sql_agent]
+2025-10-12 01:41:44,295 - database_agent - INFO - Executing individual SQL query for compound CaS: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:41:44 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:41:44,297 - thermo_agents_session_20251012_013850 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:41:44,351 - database_agent - INFO - SQL executed successfully: 21 rows found
+2025-10-12 01:41:44,351 - database_agent - INFO - Applying temperature range filtering: 200.0-2000.0K...
+2025-10-12 01:41:44,351 - database_agent - INFO - Temperature filtering: 21 of 21 rows remain
+2025-10-12 01:41:44 - INFO - INFO: TEMPERATURE FILTER: Range=200.0-2000.0K, Matched=21, Excluded=0
+2025-10-12 01:41:44,351 - thermo_agents_session_20251012_013850 - INFO - INFO: TEMPERATURE FILTER: Range=200.0-2000.0K, Matched=21, Excluded=0
+2025-10-12 01:41:44 - INFO - INFO: QUERY RESULTS: 21 rows, columns: 23
+2025-10-12 01:41:44,352 - thermo_agents_session_20251012_013850 - INFO - INFO: QUERY RESULTS: 21 rows, columns: 23
+2025-10-12 01:41:44,352 - database_agent - INFO - Database result stored with key: db_result_d8453c8e-8ceb-4d48-8e19-817abb7e8415
+2025-10-12 01:41:44,353 - database_agent - INFO - Sending results to filtering agent for analysis...
+2025-10-12 01:41:44,353 - database_agent - INFO - Individual results sent to filtering agent: af1916ed-1bd8-44e5-b124-f1947d7132f9
+2025-10-12 01:41:44,353 - database_agent - INFO - Response sent to sql_agent
+2025-10-12 01:41:44 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "execution_success": True, "row_count": 21, "result_key": "db_result_d8453c8e-8ceb-4d48-8e19-817abb7e8415", "filtering_sent": True, ... }
+2025-10-12 01:41:44,354 - thermo_agents_session_20251012_013850 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "execution_success": True, "row_count": 21, "result_key": "db_result_d8453c8e-8ceb-4d48-8e19-817abb7e8415", "filtering_sent": True, ... }
+2025-10-12 01:41:44 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 57.53ms
+2025-10-12 01:41:44,354 - thermo_agents_session_20251012_013850 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 57.53ms
+2025-10-12 01:41:44 - INFO - МАРШРУТ: FROM: sql_agent
+2025-10-12 01:41:44,354 - thermo_agents_session_20251012_013850 - INFO - МАРШРУТ: FROM: sql_agent
+2025-10-12 01:41:44 - INFO - CORRELATION ID: d8453c8e-8ceb-4d48-8e19-817abb7e8415
+2025-10-12 01:41:44,354 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: d8453c8e-8ceb-4d48-8e19-817abb7e8415
+2025-10-12 01:41:44 - INFO - AGENT STORAGE: 9 entries, 4 pending messages, 6 active sessions
+2025-10-12 01:41:44,355 - thermo_agents_session_20251012_013850 - INFO - AGENT STORAGE: 9 entries, 4 pending messages, 6 active sessions
+2025-10-12 01:41:44 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:41:44,355 - thermo_agents_session_20251012_013850 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:41:44,355 - sql_agent - INFO - Received database result: success
+2025-10-12 01:41:44,355 - sql_agent - INFO - Database execution successful: 21 rows
+2025-10-12 01:41:44,355 - sql_agent - INFO - Waiting for filtering agent results...
+2025-10-12 01:41:46 - INFO - ОПЕРАЦИЯ: [results_filtering_agent] -> INDIVIDUAL_FILTER [from database_agent]
+2025-10-12 01:41:46,289 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [results_filtering_agent] -> INDIVIDUAL_FILTER [from database_agent]
+2025-10-12 01:41:46,289 - results_filtering_agent - INFO - Individual filtering for compound CaS: 21 records
+2025-10-12 01:41:46 - INFO - INFO: INDIVIDUAL FILTERING START: CaS, 21 records, target temp 298.15K
+2025-10-12 01:41:46,290 - thermo_agents_session_20251012_013850 - INFO - INFO: INDIVIDUAL FILTERING START: CaS, 21 records, target temp 298.15K
+2025-10-12 01:41:46,290 - results_filtering_agent - INFO - Temperature pre-filtering: 21 records remain
+2025-10-12 01:41:46,304 - results_filtering_agent - INFO - LLM filtering attempt 1/3 with 21 records
+2025-10-12 01:41:49,409 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 01:41:51,854 - results_filtering_agent - INFO - LLM filtering successful on attempt 1
+2025-10-12 01:41:51,854 - results_filtering_agent - INFO - Filtering result stored with key: filtered_result_af1916ed-1bd8-44e5-b124-f1947d7132f9
+2025-10-12 01:41:51,854 - results_filtering_agent - INFO - Filtered results: 1 selected records
+2025-10-12 01:41:51,854 - results_filtering_agent - INFO - DEBUG: First record keys: ['Formula', 'Structure', 'FirstName', 'SecondName', 'Phase', 'CAS', 'MeltingPoint', 'BoilingPoint', 'Density', 'Solubility', 'Color', 'H298', 'S298', 'Tmin', 'Tmax', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'ReliabilityClass', 'Reference']
+2025-10-12 01:41:51,856 - results_filtering_agent - INFO - DEBUG: First record data: {'Formula': 'CaS', 'Structure': None, 'FirstName': 'Calcium sulfide', 'SecondName': 'Oldhamite', 'Phase': 's', 'CAS': '20548-54-3', 'MeltingPoint': 2798.0, 'BoilingPoint': 0.0, 'Density': 2.59, 'Solubility': 0.0, 'Color': 14, 'H298': -482.4152, 'S298': 56.49998288, 'Tmin': 298.15, 'Tmax': 2800.0, 'f1': 46.29060448, 'f2': 8.369046, 'f3': -1.18842336, 'f4': 0.00025104, 'f5': 0.0, 'f6': 0.0, 'ReliabilityClass': 1, 'Reference': 'Patnaik 03, JANAF 98, Binnewies 02,'}
+2025-10-12 01:41:51 - INFO - INFO: FILTERED RESULTS TABLE (1 records):
+2025-10-12 01:41:51,856 - thermo_agents_session_20251012_013850 - INFO - INFO: FILTERED RESULTS TABLE (1 records):
+2025-10-12 01:41:51 - INFO - INFO: REASONING: From 21 found records, selected 1: solid phase CaS with optimal temperature coverage (298.15-2800.0K) for target range 200.0-2000.0K.
+2025-10-12 01:41:51,857 - thermo_agents_session_20251012_013850 - INFO - INFO: REASONING: From 21 found records, selected 1: solid phase CaS with optimal temperature coverage (298.15-2800.0K) for target range 200.0-2000.0K.
+2025-10-12 01:41:51 - INFO - INFO: SELECTED RECORDS:
+2025-10-12 01:41:51,857 - thermo_agents_session_20251012_013850 - INFO - INFO: SELECTED RECORDS:
+2025-10-12 01:41:51 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+----------+------+------+--------+--------+
+2025-10-12 01:41:51,857 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+----------+------+------+--------+--------+
+2025-10-12 01:41:51 - INFO - INFO: | Formula   | FirstName       | Phase   |   H298 |   S298 |    f1 |    f2 |     f3 |       f4 |   f5 |   f6 |   Tmin |   Tmax |
+2025-10-12 01:41:51,857 - thermo_agents_session_20251012_013850 - INFO - INFO: | Formula   | FirstName       | Phase   |   H298 |   S298 |    f1 |    f2 |     f3 |       f4 |   f5 |   f6 |   Tmin |   Tmax |
+2025-10-12 01:41:51 - INFO - INFO: +===========+=================+=========+========+========+=======+=======+========+==========+======+======+========+========+
+2025-10-12 01:41:51,857 - thermo_agents_session_20251012_013850 - INFO - INFO: +===========+=================+=========+========+========+=======+=======+========+==========+======+======+========+========+
+2025-10-12 01:41:51 - INFO - INFO: | CaS       | Calcium sulfide | s       | -482.4 |   56.5 | 46.29 | 8.369 | -1.188 | 0.000251 |    0 |    0 |  298.1 |   2800 |
+2025-10-12 01:41:51,859 - thermo_agents_session_20251012_013850 - INFO - INFO: | CaS       | Calcium sulfide | s       | -482.4 |   56.5 | 46.29 | 8.369 | -1.188 | 0.000251 |    0 |    0 |  298.1 |   2800 |
+2025-10-12 01:41:51 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+----------+------+------+--------+--------+
+2025-10-12 01:41:51,859 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+----------+------+------+--------+--------+
+2025-10-12 01:41:51,859 - results_filtering_agent - INFO - Filtering response sent to individual_search_agent
+2025-10-12 01:41:51 - INFO - РЕЗУЛЬТАТ: { "message_type": "filter_individual_results", "input_records": 21, "temp_filtered_records": 21, "final_records": 1, "result_key": "filtered_result_af1916ed-1bd8-44e5-b124-f1947d7132f9", ... }
+2025-10-12 01:41:51,860 - thermo_agents_session_20251012_013850 - INFO - РЕЗУЛЬТАТ: { "message_type": "filter_individual_results", "input_records": 21, "temp_filtered_records": 21, "final_records": 1, "result_key": "filtered_result_af1916ed-1bd8-44e5-b124-f1947d7132f9", ... }
+2025-10-12 01:41:51 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 5569.20ms
+2025-10-12 01:41:51,861 - thermo_agents_session_20251012_013850 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 5569.20ms
+2025-10-12 01:41:51 - INFO - МАРШРУТ: FROM: database_agent
+2025-10-12 01:41:51,861 - thermo_agents_session_20251012_013850 - INFO - МАРШРУТ: FROM: database_agent
+2025-10-12 01:41:51 - INFO - CORRELATION ID: 00560798-828c-4c11-9345-67e469ab909e
+2025-10-12 01:41:51,861 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: 00560798-828c-4c11-9345-67e469ab909e
+2025-10-12 01:41:51 - INFO - AGENT STORAGE: 10 entries, 3 pending messages, 6 active sessions
+2025-10-12 01:41:51,862 - thermo_agents_session_20251012_013850 - INFO - AGENT STORAGE: 10 entries, 3 pending messages, 6 active sessions
+2025-10-12 01:41:51 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:41:51,862 - thermo_agents_session_20251012_013850 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:42:21,982 - individual_search_agent - ERROR - DEBUG: SQL Agent timeout after 180.1s for message 028169ea-4d67-4347-a305-b296cff5c6e8
+2025-10-12 01:42:21,983 - individual_search_agent - ERROR - DEBUG: Error searching compound FeO: SQL Agent response timeout for message 028169ea-4d67-4347-a305-b296cff5c6e8 after 180.1s
+2025-10-12 01:42:21,983 - individual_search_agent - ERROR - DEBUG: SQL Agent timeout after 180.1s for message 00560798-828c-4c11-9345-67e469ab909e
+2025-10-12 01:42:21,984 - individual_search_agent - ERROR - DEBUG: Error searching compound CaS: SQL Agent response timeout for message 00560798-828c-4c11-9345-67e469ab909e after 180.1s
+2025-10-12 01:42:44,344 - sql_agent - WARNING - Filtering agent did not respond in time, using raw database results
+2025-10-12 01:42:44,344 - sql_agent - INFO - Storing result with key: sql_result_00560798-828c-4c11-9345-67e469ab909e
+2025-10-12 01:42:44,346 - sql_agent - INFO - Result stored successfully
+2025-10-12 01:42:44,346 - sql_agent - INFO - Sending individual_sql_complete to individual_search_agent
+2025-10-12 01:42:44 - INFO - INFO: SENDING INDIVIDUAL_SQL_COMPLETE: To individual_search_agent, key=sql_result_00560798-828c-4c11-9345-67e469ab909e
+2025-10-12 01:42:44,346 - thermo_agents_session_20251012_013850 - INFO - INFO: SENDING INDIVIDUAL_SQL_COMPLETE: To individual_search_agent, key=sql_result_00560798-828c-4c11-9345-67e469ab909e
+2025-10-12 01:42:44,346 - sql_agent - INFO - individual_sql_complete sent successfully to individual_search_agent
+2025-10-12 01:42:44 - INFO - INFO: SQL GENERATED: 191 chars, 14 columns expected
+2025-10-12 01:42:44,347 - thermo_agents_session_20251012_013850 - INFO - INFO: SQL GENERATED: 191 chars, 14 columns expected
+2025-10-12 01:42:44,347 - sql_agent - INFO - Message processing completed successfully
+2025-10-12 01:42:44 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "sql_query_length": 191, "expected_columns": 14, "result_key": "sql_result_00560798-828c-4c11-9345-67e469ab909e", "database_execution": True, ... }
+2025-10-12 01:42:44,348 - thermo_agents_session_20251012_013850 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "sql_query_length": 191, "expected_columns": 14, "result_key": "sql_result_00560798-828c-4c11-9345-67e469ab909e", "database_execution": True, ... }
+2025-10-12 01:42:44 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 65961.34ms
+2025-10-12 01:42:44,348 - thermo_agents_session_20251012_013850 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 65961.34ms
+2025-10-12 01:42:44 - INFO - МАРШРУТ: FROM: individual_search_agent
+2025-10-12 01:42:44,349 - thermo_agents_session_20251012_013850 - INFO - МАРШРУТ: FROM: individual_search_agent
+2025-10-12 01:42:44 - INFO - CORRELATION ID: 00560798-828c-4c11-9345-67e469ab909e
+2025-10-12 01:42:44,349 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: 00560798-828c-4c11-9345-67e469ab909e
+2025-10-12 01:42:44 - INFO - AGENT STORAGE: 11 entries, 4 pending messages, 6 active sessions
+2025-10-12 01:42:44,349 - thermo_agents_session_20251012_013850 - INFO - AGENT STORAGE: 11 entries, 4 pending messages, 6 active sessions
+2025-10-12 01:42:44 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:42:44,349 - thermo_agents_session_20251012_013850 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:42:44 - INFO - ОПЕРАЦИЯ: [sql_agent] -> GENERATE_QUERY [from individual_search_agent]
+2025-10-12 01:42:44,349 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [sql_agent] -> GENERATE_QUERY [from individual_search_agent]
+2025-10-12 01:42:44,350 - sql_agent - INFO - Processing individual search for compound: FeO
+2025-10-12 01:42:44,350 - sql_agent - INFO - Starting SQL query generation...
+2025-10-12 01:42:45,152 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 01:42:48,839 - sql_agent - INFO - Generated SQL query: SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:42:48 - INFO - INFO: SQL GENERATION COMPLETE: Query length 191
+2025-10-12 01:42:48,839 - thermo_agents_session_20251012_013850 - INFO - INFO: SQL GENERATION COMPLETE: Query length 191
+2025-10-12 01:42:48,839 - sql_agent - INFO - SQL query cleaned
+2025-10-12 01:42:48,839 - sql_agent - INFO - Prepared result data with key: sql_result_028169ea-4d67-4347-a305-b296cff5c6e8
+2025-10-12 01:42:48,839 - sql_agent - INFO - Sending SQL query to database agent for individual execution...
+2025-10-12 01:42:48,839 - sql_agent - INFO - SQL query sent to database_agent: 89f49c22-824b-423a-b042-2040717dbb03
+2025-10-12 01:42:50 - INFO - ОПЕРАЦИЯ: [database_agent] -> EXECUTE_QUERY [from sql_agent]
+2025-10-12 01:42:50,473 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [database_agent] -> EXECUTE_QUERY [from sql_agent]
+2025-10-12 01:42:50,474 - database_agent - INFO - Executing individual SQL query for compound FeO: SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:42:50 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:42:50,474 - thermo_agents_session_20251012_013850 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 01:42:50,528 - database_agent - INFO - SQL executed successfully: 36 rows found
+2025-10-12 01:42:50,528 - database_agent - INFO - Applying temperature range filtering: 200.0-2000.0K...
+2025-10-12 01:42:50,528 - database_agent - INFO - Temperature filtering: 36 of 36 rows remain
+2025-10-12 01:42:50 - INFO - INFO: TEMPERATURE FILTER: Range=200.0-2000.0K, Matched=36, Excluded=0
+2025-10-12 01:42:50,528 - thermo_agents_session_20251012_013850 - INFO - INFO: TEMPERATURE FILTER: Range=200.0-2000.0K, Matched=36, Excluded=0
+2025-10-12 01:42:50 - INFO - INFO: QUERY RESULTS: 36 rows, columns: 23
+2025-10-12 01:42:50,529 - thermo_agents_session_20251012_013850 - INFO - INFO: QUERY RESULTS: 36 rows, columns: 23
+2025-10-12 01:42:50,529 - database_agent - INFO - Database result stored with key: db_result_89f49c22-824b-423a-b042-2040717dbb03
+2025-10-12 01:42:50,529 - database_agent - INFO - Sending results to filtering agent for analysis...
+2025-10-12 01:42:50,529 - database_agent - INFO - Individual results sent to filtering agent: 5c07f5ef-c359-4079-b3d4-095740d3fdb0
+2025-10-12 01:42:50,529 - database_agent - INFO - Response sent to sql_agent
+2025-10-12 01:42:50 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "execution_success": True, "row_count": 36, "result_key": "db_result_89f49c22-824b-423a-b042-2040717dbb03", "filtering_sent": True, ... }
+2025-10-12 01:42:50,532 - thermo_agents_session_20251012_013850 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "execution_success": True, "row_count": 36, "result_key": "db_result_89f49c22-824b-423a-b042-2040717dbb03", "filtering_sent": True, ... }
+2025-10-12 01:42:50 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 56.57ms
+2025-10-12 01:42:50,532 - thermo_agents_session_20251012_013850 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 56.57ms
+2025-10-12 01:42:50 - INFO - МАРШРУТ: FROM: sql_agent
+2025-10-12 01:42:50,533 - thermo_agents_session_20251012_013850 - INFO - МАРШРУТ: FROM: sql_agent
+2025-10-12 01:42:50 - INFO - CORRELATION ID: 89f49c22-824b-423a-b042-2040717dbb03
+2025-10-12 01:42:50,533 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: 89f49c22-824b-423a-b042-2040717dbb03
+2025-10-12 01:42:50 - INFO - AGENT STORAGE: 12 entries, 6 pending messages, 6 active sessions
+2025-10-12 01:42:50,533 - thermo_agents_session_20251012_013850 - INFO - AGENT STORAGE: 12 entries, 6 pending messages, 6 active sessions
+2025-10-12 01:42:50 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:42:50,534 - thermo_agents_session_20251012_013850 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:42:50,550 - sql_agent - INFO - Received database result: success
+2025-10-12 01:42:50,550 - sql_agent - INFO - Database execution successful: 36 rows
+2025-10-12 01:42:50,550 - sql_agent - INFO - Waiting for filtering agent results...
+2025-10-12 01:42:52 - INFO - ОПЕРАЦИЯ: [results_filtering_agent] -> INDIVIDUAL_FILTER [from database_agent]
+2025-10-12 01:42:52,050 - thermo_agents_session_20251012_013850 - INFO - ОПЕРАЦИЯ: [results_filtering_agent] -> INDIVIDUAL_FILTER [from database_agent]
+2025-10-12 01:42:52,050 - results_filtering_agent - INFO - Individual filtering for compound FeO: 36 records
+2025-10-12 01:42:52 - INFO - INFO: INDIVIDUAL FILTERING START: FeO, 36 records, target temp 298.15K
+2025-10-12 01:42:52,051 - thermo_agents_session_20251012_013850 - INFO - INFO: INDIVIDUAL FILTERING START: FeO, 36 records, target temp 298.15K
+2025-10-12 01:42:52,051 - results_filtering_agent - INFO - Temperature pre-filtering: 36 records remain
+2025-10-12 01:42:52,073 - results_filtering_agent - INFO - LLM filtering attempt 1/3 with 36 records
+2025-10-12 01:42:52,571 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 01:43:04,222 - results_filtering_agent - INFO - LLM filtering successful on attempt 1
+2025-10-12 01:43:04,222 - results_filtering_agent - INFO - Filtering result stored with key: filtered_result_5c07f5ef-c359-4079-b3d4-095740d3fdb0
+2025-10-12 01:43:04,222 - results_filtering_agent - INFO - Filtered results: 6 selected records
+2025-10-12 01:43:04,222 - results_filtering_agent - INFO - DEBUG: First record keys: ['Formula', 'Structure', 'FirstName', 'SecondName', 'Phase', 'CAS', 'MeltingPoint', 'BoilingPoint', 'Density', 'Solubility', 'Color', 'H298', 'S298', 'Tmin', 'Tmax', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'ReliabilityClass', 'Reference']
+2025-10-12 01:43:04,222 - results_filtering_agent - INFO - DEBUG: First record data: {'Formula': 'FeO', 'Structure': None, 'FirstName': 'Iron(II) oxide', 'SecondName': 'Wuestite', 'Phase': 's', 'CAS': '1345-25-1', 'MeltingPoint': 1650.0, 'BoilingPoint': 3687.0, 'Density': 6.0, 'Solubility': 0.0, 'Color': 19, 'H298': -265.05301096, 'S298': 59.8070005808, 'Tmin': 298.15, 'Tmax': 600.0, 'f1': 50.27824936, 'f2': 3.651039988, 'f3': -1.941079923424, 'f4': 8.23385983032, 'f5': 0.0, 'f6': 0.0, 'ReliabilityClass': 1, 'Reference': 'Fabri 10; Patnaik 03; Landolt 99; Sa'}
+2025-10-12 01:43:04 - INFO - INFO: FILTERED RESULTS TABLE (6 records):
+2025-10-12 01:43:04,228 - thermo_agents_session_20251012_013850 - INFO - INFO: FILTERED RESULTS TABLE (6 records):
+2025-10-12 01:43:04 - INFO - INFO: REASONING: From 36 found records, selected 6: solid phase FeO for optimal coverage of 200.0-2000.0K temperature range.
+2025-10-12 01:43:04,228 - thermo_agents_session_20251012_013850 - INFO - INFO: REASONING: From 36 found records, selected 6: solid phase FeO for optimal coverage of 200.0-2000.0K temperature range.
+2025-10-12 01:43:04 - INFO - INFO: SELECTED RECORDS:
+2025-10-12 01:43:04,229 - thermo_agents_session_20251012_013850 - INFO - INFO: SELECTED RECORDS:
+2025-10-12 01:43:04 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04,229 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04 - INFO - INFO: | Formula   | FirstName       | Phase   |   H298 |   S298 |    f1 |    f2 |     f3 |    f4 |   f5 |   f6 |   Tmin |   Tmax |
+2025-10-12 01:43:04,229 - thermo_agents_session_20251012_013850 - INFO - INFO: | Formula   | FirstName       | Phase   |   H298 |   S298 |    f1 |    f2 |     f3 |    f4 |   f5 |   f6 |   Tmin |   Tmax |
+2025-10-12 01:43:04 - INFO - INFO: +===========+=================+=========+========+========+=======+=======+========+=======+======+======+========+========+
+2025-10-12 01:43:04,230 - thermo_agents_session_20251012_013850 - INFO - INFO: +===========+=================+=========+========+========+=======+=======+========+=======+======+======+========+========+
+2025-10-12 01:43:04 - INFO - INFO: | FeO       | Iron(II) oxide  | s       | -265.1 |  59.81 | 50.28 | 3.651 | -1.941 | 8.234 |    0 |    0 |  298.1 |    600 |
+2025-10-12 01:43:04,230 - thermo_agents_session_20251012_013850 - INFO - INFO: | FeO       | Iron(II) oxide  | s       | -265.1 |  59.81 | 50.28 | 3.651 | -1.941 | 8.234 |    0 |    0 |  298.1 |    600 |
+2025-10-12 01:43:04 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04,230 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04 - INFO - INFO: | FeO       | Iron(II) oxide  | s       | -267.3 |  57.59 | 50.8  | 8.615 | -3.31  | 0     |    0 |    0 |  298.1 |   1650 |
+2025-10-12 01:43:04,230 - thermo_agents_session_20251012_013850 - INFO - INFO: | FeO       | Iron(II) oxide  | s       | -267.3 |  57.59 | 50.8  | 8.615 | -3.31  | 0     |    0 |    0 |  298.1 |   1650 |
+2025-10-12 01:43:04 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04,231 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04 - INFO - INFO: | FeO       | Iron(II) oxide  | s       | -267.3 |  57.59 | 50.28 | 3.651 | -1.941 | 8.234 |    0 |    0 |  298.1 |    600 |
+2025-10-12 01:43:04,231 - thermo_agents_session_20251012_013850 - INFO - INFO: | FeO       | Iron(II) oxide  | s       | -267.3 |  57.59 | 50.28 | 3.651 | -1.941 | 8.234 |    0 |    0 |  298.1 |    600 |
+2025-10-12 01:43:04 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04,231 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04 - INFO - INFO: | FeO       | Iron(II) oxide  | s       | -267.3 |  57.59 | 50.28 | 3.651 | -1.941 | 8.234 |    0 |    0 |  298.1 |    600 |
+2025-10-12 01:43:04,231 - thermo_agents_session_20251012_013850 - INFO - INFO: | FeO       | Iron(II) oxide  | s       | -267.3 |  57.59 | 50.28 | 3.651 | -1.941 | 8.234 |    0 |    0 |  298.1 |    600 |
+2025-10-12 01:43:04 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04,231 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04 - INFO - INFO: | FeO       | Iron (ii) oxide | s       | -267.3 |  57.59 | 50.8  | 8.615 | -3.31  | 0     |    0 |    0 |  298.1 |   1650 |
+2025-10-12 01:43:04,231 - thermo_agents_session_20251012_013850 - INFO - INFO: | FeO       | Iron (ii) oxide | s       | -267.3 |  57.59 | 50.8  | 8.615 | -3.31  | 0     |    0 |    0 |  298.1 |   1650 |
+2025-10-12 01:43:04 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04,232 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04 - INFO - INFO: | FeO       | Iron(II) oxide  | s       | -272.1 |  57.59 | 50.28 | 3.651 | -1.941 | 8.234 |    0 |    0 |  298.1 |    600 |
+2025-10-12 01:43:04,232 - thermo_agents_session_20251012_013850 - INFO - INFO: | FeO       | Iron(II) oxide  | s       | -272.1 |  57.59 | 50.28 | 3.651 | -1.941 | 8.234 |    0 |    0 |  298.1 |    600 |
+2025-10-12 01:43:04 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04,232 - thermo_agents_session_20251012_013850 - INFO - INFO: +-----------+-----------------+---------+--------+--------+-------+-------+--------+-------+------+------+--------+--------+
+2025-10-12 01:43:04,232 - results_filtering_agent - INFO - Filtering response sent to individual_search_agent
+2025-10-12 01:43:04 - INFO - РЕЗУЛЬТАТ: { "message_type": "filter_individual_results", "input_records": 36, "temp_filtered_records": 36, "final_records": 6, "result_key": "filtered_result_5c07f5ef-c359-4079-b3d4-095740d3fdb0", ... }
+2025-10-12 01:43:04,234 - thermo_agents_session_20251012_013850 - INFO - РЕЗУЛЬТАТ: { "message_type": "filter_individual_results", "input_records": 36, "temp_filtered_records": 36, "final_records": 6, "result_key": "filtered_result_5c07f5ef-c359-4079-b3d4-095740d3fdb0", ... }
+2025-10-12 01:43:04 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 12183.01ms
+2025-10-12 01:43:04,235 - thermo_agents_session_20251012_013850 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 12183.01ms
+2025-10-12 01:43:04 - INFO - МАРШРУТ: FROM: database_agent
+2025-10-12 01:43:04,235 - thermo_agents_session_20251012_013850 - INFO - МАРШРУТ: FROM: database_agent
+2025-10-12 01:43:04 - INFO - CORRELATION ID: 028169ea-4d67-4347-a305-b296cff5c6e8
+2025-10-12 01:43:04,235 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: 028169ea-4d67-4347-a305-b296cff5c6e8
+2025-10-12 01:43:04 - INFO - AGENT STORAGE: 13 entries, 5 pending messages, 6 active sessions
+2025-10-12 01:43:04,235 - thermo_agents_session_20251012_013850 - INFO - AGENT STORAGE: 13 entries, 5 pending messages, 6 active sessions
+2025-10-12 01:43:04 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:43:04,235 - thermo_agents_session_20251012_013850 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:43:30,567 - individual_search_agent - ERROR - DEBUG: Filtering Agent timeout after 180.2s for search search_CaO_ddcd5e58-d023-412a-8083-361ddbb2a314_d75971fb
+2025-10-12 01:43:30,568 - individual_search_agent - ERROR - DEBUG: Error searching compound CaO: Filtering Agent response timeout for search search_CaO_ddcd5e58-d023-412a-8083-361ddbb2a314_d75971fb after 180.2s
+2025-10-12 01:43:50,591 - sql_agent - WARNING - Filtering agent did not respond in time, using raw database results
+2025-10-12 01:43:50,591 - sql_agent - INFO - Storing result with key: sql_result_028169ea-4d67-4347-a305-b296cff5c6e8
+2025-10-12 01:43:50,592 - sql_agent - INFO - Result stored successfully
+2025-10-12 01:43:50,592 - sql_agent - INFO - Sending individual_sql_complete to individual_search_agent
+2025-10-12 01:43:50 - INFO - INFO: SENDING INDIVIDUAL_SQL_COMPLETE: To individual_search_agent, key=sql_result_028169ea-4d67-4347-a305-b296cff5c6e8
+2025-10-12 01:43:50,593 - thermo_agents_session_20251012_013850 - INFO - INFO: SENDING INDIVIDUAL_SQL_COMPLETE: To individual_search_agent, key=sql_result_028169ea-4d67-4347-a305-b296cff5c6e8
+2025-10-12 01:43:50,594 - sql_agent - INFO - individual_sql_complete sent successfully to individual_search_agent
+2025-10-12 01:43:50 - INFO - INFO: SQL GENERATED: 191 chars, 0 columns expected
+2025-10-12 01:43:50,594 - thermo_agents_session_20251012_013850 - INFO - INFO: SQL GENERATED: 191 chars, 0 columns expected
+2025-10-12 01:43:50,594 - sql_agent - INFO - Message processing completed successfully
+2025-10-12 01:43:50 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "sql_query_length": 191, "expected_columns": 0, "result_key": "sql_result_028169ea-4d67-4347-a305-b296cff5c6e8", "database_execution": True, ... }
+2025-10-12 01:43:50,597 - thermo_agents_session_20251012_013850 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "sql_query_length": 191, "expected_columns": 0, "result_key": "sql_result_028169ea-4d67-4347-a305-b296cff5c6e8", "database_execution": True, ... }
+2025-10-12 01:43:50 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 66244.28ms
+2025-10-12 01:43:50,597 - thermo_agents_session_20251012_013850 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 66244.28ms
+2025-10-12 01:43:50 - INFO - МАРШРУТ: FROM: individual_search_agent
+2025-10-12 01:43:50,597 - thermo_agents_session_20251012_013850 - INFO - МАРШРУТ: FROM: individual_search_agent
+2025-10-12 01:43:50 - INFO - CORRELATION ID: 028169ea-4d67-4347-a305-b296cff5c6e8
+2025-10-12 01:43:50,598 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: 028169ea-4d67-4347-a305-b296cff5c6e8
+2025-10-12 01:43:50 - INFO - AGENT STORAGE: 14 entries, 6 pending messages, 6 active sessions
+2025-10-12 01:43:50,598 - thermo_agents_session_20251012_013850 - INFO - AGENT STORAGE: 14 entries, 6 pending messages, 6 active sessions
+2025-10-12 01:43:50 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:43:50,598 - thermo_agents_session_20251012_013850 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 01:44:38,585 - individual_search_agent - ERROR - DEBUG: Filtering Agent timeout after 180.0s for search search_FeS_ddcd5e58-d023-412a-8083-361ddbb2a314_40c65fd5
+2025-10-12 01:44:38,585 - individual_search_agent - ERROR - DEBUG: Error searching compound FeS: Filtering Agent response timeout for search search_FeS_ddcd5e58-d023-412a-8083-361ddbb2a314_40c65fd5 after 180.0s
+2025-10-12 01:44:38,587 - individual_search_agent - INFO - Individual search completed: 4 compounds processed
+2025-10-12 01:45:21 - ERROR - ERROR: Individual Search Agent did not complete processing in time
+2025-10-12 01:45:21,088 - thermo_agents_session_20251012_013850 - ERROR - ERROR: Individual Search Agent did not complete processing in time
+2025-10-12 01:45:21 - ERROR - ОПЕРАЦИЯ ЗАВЕРШИЛАСЬ С ОШИБКОЙ: ОПЕРАЦИЯ: [orchestrator] -> PROCESS_REQUEST
+2025-10-12 01:45:21,090 - thermo_agents_session_20251012_013850 - ERROR - ОПЕРАЦИЯ ЗАВЕРШИЛАСЬ С ОШИБКОЙ: ОПЕРАЦИЯ: [orchestrator] -> PROCESS_REQUEST
+2025-10-12 01:45:21 - ERROR - ПОЛНЫЕ ВХОДНЫЕ ДАННЫЕ:
+2025-10-12 01:45:21,091 - thermo_agents_session_20251012_013850 - ERROR - ПОЛНЫЕ ВХОДНЫЕ ДАННЫЕ:
+2025-10-12 01:45:21 - ERROR - {
+  "user_query": "При какой температуре провзаимодействует оксид кальция и сульфид железа?",
+  "request_type": "thermodynamic"
+}
+2025-10-12 01:45:21,091 - thermo_agents_session_20251012_013850 - ERROR - {
+  "user_query": "При какой температуре провзаимодействует оксид кальция и сульфид железа?",
+  "request_type": "thermodynamic"
+}
+2025-10-12 01:45:21 - ERROR - ДЕТАЛИ ОШИБКИ:
+2025-10-12 01:45:21,092 - thermo_agents_session_20251012_013850 - ERROR - ДЕТАЛИ ОШИБКИ:
+2025-10-12 01:45:21 - ERROR - {
+  "exception_type": "TimeoutError",
+  "exception_message": "Individual Search Agent timeout"
+}
+2025-10-12 01:45:21,092 - thermo_agents_session_20251012_013850 - ERROR - {
+  "exception_type": "TimeoutError",
+  "exception_message": "Individual Search Agent timeout"
+}
+2025-10-12 01:45:21 - ERROR - ВРЕМЯ ВЫПОЛНЕНИЯ ДО ОШИБКИ: 367201.49ms
+2025-10-12 01:45:21,092 - thermo_agents_session_20251012_013850 - ERROR - ВРЕМЯ ВЫПОЛНЕНИЯ ДО ОШИБКИ: 367201.49ms
+2025-10-12 01:45:21 - INFO - CORRELATION ID: orch_req_2594392808160
+2025-10-12 01:45:21,093 - thermo_agents_session_20251012_013850 - INFO - CORRELATION ID: orch_req_2594392808160
+2025-10-12 01:45:21 - ERROR - ПОЛНОЕ СОСТОЯНИЕ ХРАНИЛИЩА НА МОМЕНТ ОШИБКИ:
+2025-10-12 01:45:21,093 - thermo_agents_session_20251012_013850 - ERROR - ПОЛНОЕ СОСТОЯНИЕ ХРАНИЛИЩА НА МОМЕНТ ОШИБКИ:
+2025-10-12 01:45:21 - ERROR - {
+  "timestamp": "2025-10-12T01:45:21.088231",
+  "stats": {
+    "storage_entries": 15,
+    "message_queue_size": 7,
+    "message_history_size": 21,
+    "active_sessions": 6,
+    "agents": [
+      "thermo_agent",
+      "sql_agent",
+      "database_agent",
+      "results_filtering_agent",
+      "individual_search_agent",
+      "orchestrator"
+    ]
+  },
+  "storage_entries": {
+    "orchestrator_request_2594392808160": {
+      "created_at": "2025-10-12T01:39:13.887907",
+      "updated_at": "2025-10-12T01:39:13.887907",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'user_query': 'При какой температуре провзаимодействует оксид кальция и сульфид железа?', 'request_type': 'thermodynamic', 'options': {}}"
+    },
+    "thermo_result_4ba4d876-bfe3-4ef6-b71e-8a029586a1d3": {
+      "created_at": "2025-10-12T01:39:21.037611",
+      "updated_at": "2025-10-12T01:39:21.037611",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'intent': 'reaction', 'compounds': ['CaO', 'FeS', 'CaS', 'FeO'], 'temperature_k': 298.15, 'temperature_range_k': [200.0, 2000.0], 'phases': ['s', 's', 's', 's'], 'properties': ['all'], 'sql_query_hin"
+    },
+    "db_result_f78e853f-9c28-4f8d-b0e5-cf6f5510c539": {
+      "created_at": "2025-10-12T01:39:29.982021",
+      "updated_at": "2025-10-12T01:39:29.982021",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "filtered_result_27cf1a29-5fc4-48d6-b8e5-41ee218ed05e": {
+      "created_at": "2025-10-12T01:39:36.777417",
+      "updated_at": "2025-10-12T01:39:36.777417",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'filtered_result': {'selected_entries': [{'compound': 'CaO', 'selected_id': 31, 'reasoning': 'Selected record ID=31: solid state at 298.15K, temperature range 298.15-3200K covers full target range 20"
+    },
+    "sql_result_f27956cb-62a9-419c-afdf-86f39e15cd71": {
+      "created_at": "2025-10-12T01:40:30.172984",
+      "updated_at": "2025-10-12T01:40:30.172984",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "db_result_78f291c6-cbe9-4c51-a72f-2cf8c0009d1b": {
+      "created_at": "2025-10-12T01:40:38.244135",
+      "updated_at": "2025-10-12T01:40:38.244135",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "filtered_result_1cba8abb-ad28-4ce7-a1fa-57ebc8c96d78": {
+      "created_at": "2025-10-12T01:40:46.244836",
+      "updated_at": "2025-10-12T01:40:46.244836",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'filtered_result': {'selected_entries': [{'compound': 'FeS', 'selected_id': 0, 'reasoning': 'Selected record ID=0: solid state at 298.15K, temperature range 100.0-298.15K covers target temperature, c"
+    },
+    "sql_result_e2884837-5bbb-4f95-8c59-f47c16ebda2e": {
+      "created_at": "2025-10-12T01:41:38.382458",
+      "updated_at": "2025-10-12T01:41:38.382458",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "db_result_d8453c8e-8ceb-4d48-8e19-817abb7e8415": {
+      "created_at": "2025-10-12T01:41:44.352793",
+      "updated_at": "2025-10-12T01:41:44.352793",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "filtered_result_af1916ed-1bd8-44e5-b124-f1947d7132f9": {
+      "created_at": "2025-10-12T01:41:51.854257",
+      "updated_at": "2025-10-12T01:41:51.854257",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'filtered_result': {'selected_entries': [{'compound': 'CaS', 'selected_id': 2, 'reasoning': 'Selected record ID=2: solid state at 298.15K, temperature range 298.15-2800.0K covers entire target range "
+    },
+    "sql_result_00560798-828c-4c11-9345-67e469ab909e": {
+      "created_at": "2025-10-12T01:42:44.346555",
+      "updated_at": "2025-10-12T01:42:44.346555",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "db_result_89f49c22-824b-423a-b042-2040717dbb03": {
+      "created_at": "2025-10-12T01:42:50.529853",
+      "updated_at": "2025-10-12T01:42:50.529853",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "filtered_result_5c07f5ef-c359-4079-b3d4-095740d3fdb0": {
+      "created_at": "2025-10-12T01:43:04.222542",
+      "updated_at": "2025-10-12T01:43:04.222542",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'filtered_result': {'selected_entries': [{'compound': 'FeO', 'selected_id': 0, 'reasoning': 'Selected record ID=0: solid phase at 298.15K, temperature range 298.15-600K with complete physicochemical "
+    },
+    "sql_result_028169ea-4d67-4347-a305-b296cff5c6e8": {
+      "created_at": "2025-10-12T01:43:50.592536",
+      "updated_at": "2025-10-12T01:43:50.592536",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "individual_search_result_ddcd5e58-d023-412a-8083-361ddbb2a314": {
+      "created_at": "2025-10-12T01:44:38.587214",
+      "updated_at": "2025-10-12T01:44:38.587214",
+      "ttl_seconds": 1800,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'individual_results': [{'compound': 'CaO', 'search_results': [], 'selected_records': [], 'confidence': 0.0, 'errors': ['Filtering Agent response timeout for search search_CaO_ddcd5e58-d023-412a-8083-"
+    }
+  },
+  "message_queue": [
+    {
+      "id": "71707b23-4de7-4d51-aec6-ec6ecfe0059f",
+      "timestamp": "2025-10-12T01:39:36.779439",
+      "source_agent": "results_filtering_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_filter_complete",
+      "correlation_id": "f27956cb-62a9-419c-afdf-86f39e15cd71",
+      "payload_preview": "{'status': 'success', 'result_key': 'filtered_result_27cf1a29-5fc4-48d6-b8e5-41ee218ed05e', 'filtered_result': {'selected_entries': [{'compound': 'CaO', 'selected_id': 31, 'reasoning': 'Selected recor"
+    },
+    {
+      "id": "8967e868-3c25-4bec-9c80-d2a69391856a",
+      "timestamp": "2025-10-12T01:40:46.247980",
+      "source_agent": "results_filtering_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_filter_complete",
+      "correlation_id": "e2884837-5bbb-4f95-8c59-f47c16ebda2e",
+      "payload_preview": "{'status': 'success', 'result_key': 'filtered_result_1cba8abb-ad28-4ce7-a1fa-57ebc8c96d78', 'filtered_result': {'selected_entries': [{'compound': 'FeS', 'selected_id': 0, 'reasoning': 'Selected record"
+    },
+    {
+      "id": "fd7b72ef-d2a2-4646-a743-3c11fadca7ab",
+      "timestamp": "2025-10-12T01:41:51.859056",
+      "source_agent": "results_filtering_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_filter_complete",
+      "correlation_id": "00560798-828c-4c11-9345-67e469ab909e",
+      "payload_preview": "{'status': 'success', 'result_key': 'filtered_result_af1916ed-1bd8-44e5-b124-f1947d7132f9', 'filtered_result': {'selected_entries': [{'compound': 'CaS', 'selected_id': 2, 'reasoning': 'Selected record"
+    },
+    {
+      "id": "69dcbb91-6457-4fc7-8ccc-59f4292c3dee",
+      "timestamp": "2025-10-12T01:42:44.346555",
+      "source_agent": "sql_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_sql_complete",
+      "correlation_id": "00560798-828c-4c11-9345-67e469ab909e",
+      "payload_preview": "{'status': 'success', 'result_key': 'sql_result_00560798-828c-4c11-9345-67e469ab909e', 'sql_result': {'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%') AND (T"
+    },
+    {
+      "id": "2c67b84c-da02-486e-b3fc-cc93be7d033d",
+      "timestamp": "2025-10-12T01:43:04.232702",
+      "source_agent": "results_filtering_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_filter_complete",
+      "correlation_id": "028169ea-4d67-4347-a305-b296cff5c6e8",
+      "payload_preview": "{'status': 'success', 'result_key': 'filtered_result_5c07f5ef-c359-4079-b3d4-095740d3fdb0', 'filtered_result': {'selected_entries': [{'compound': 'FeO', 'selected_id': 0, 'reasoning': 'Selected record"
+    },
+    {
+      "id": "5a2343d4-614d-4153-ad55-033ea227c31b",
+      "timestamp": "2025-10-12T01:43:50.593183",
+      "source_agent": "sql_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_sql_complete",
+      "correlation_id": "028169ea-4d67-4347-a305-b296cff5c6e8",
+      "payload_preview": "{'status': 'success', 'result_key': 'sql_result_028169ea-4d67-4347-a305-b296cff5c6e8', 'sql_result': {'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') AND (T"
+    },
+    {
+      "id": "abb20e0c-a42a-4798-befb-40f6b753b709",
+      "timestamp": "2025-10-12T01:44:38.587214",
+      "source_agent": "individual_search_agent",
+      "target_agent": "thermo_agent",
+      "message_type": "individual_search_complete",
+      "correlation_id": "ddcd5e58-d023-412a-8083-361ddbb2a314",
+      "payload_preview": "{'status': 'success', 'result_key': 'individual_search_result_ddcd5e58-d023-412a-8083-361ddbb2a314', 'aggregated_results': {'individual_results': [{'compound': 'CaO', 'search_results': [], 'selected_r"
+    }
+  ],
+  "recent_history": [
+    {
+      "id": "78f291c6-cbe9-4c51-a72f-2cf8c0009d1b",
+      "timestamp": "2025-10-12T01:40:36.416704",
+      "source_agent": "sql_agent",
+      "target_agent": "database_agent",
+      "message_type": "execute_individual_sql",
+      "correlation_id": "e2884837-5bbb-4f95-8c59-f47c16ebda2e"
+    },
+    {
+      "id": "0bffae01-0786-4e19-bd28-ab916a905348",
+      "timestamp": "2025-10-12T01:40:38.244135",
+      "source_agent": "database_agent",
+      "target_agent": "sql_agent",
+      "message_type": "sql_executed",
+      "correlation_id": "78f291c6-cbe9-4c51-a72f-2cf8c0009d1b"
+    },
+    {
+      "id": "1cba8abb-ad28-4ce7-a1fa-57ebc8c96d78",
+      "timestamp": "2025-10-12T01:40:38.244135",
+      "source_agent": "database_agent",
+      "target_agent": "results_filtering_agent",
+      "message_type": "filter_individual_results",
+      "correlation_id": "e2884837-5bbb-4f95-8c59-f47c16ebda2e"
+    },
+    {
+      "id": "39259702-388f-4a3c-85ce-cd976df87794",
+      "timestamp": "2025-10-12T01:41:38.383484",
+      "source_agent": "sql_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_sql_complete",
+      "correlation_id": "e2884837-5bbb-4f95-8c59-f47c16ebda2e"
+    },
+    {
+      "id": "d8453c8e-8ceb-4d48-8e19-817abb7e8415",
+      "timestamp": "2025-10-12T01:41:43.786047",
+      "source_agent": "sql_agent",
+      "target_agent": "database_agent",
+      "message_type": "execute_individual_sql",
+      "correlation_id": "00560798-828c-4c11-9345-67e469ab909e"
+    },
+    {
+      "id": "62a709c8-afef-4d70-8bbc-c817a4943ca4",
+      "timestamp": "2025-10-12T01:41:44.353312",
+      "source_agent": "database_agent",
+      "target_agent": "sql_agent",
+      "message_type": "sql_executed",
+      "correlation_id": "d8453c8e-8ceb-4d48-8e19-817abb7e8415"
+    },
+    {
+      "id": "af1916ed-1bd8-44e5-b124-f1947d7132f9",
+      "timestamp": "2025-10-12T01:41:44.353312",
+      "source_agent": "database_agent",
+      "target_agent": "results_filtering_agent",
+      "message_type": "filter_individual_results",
+      "correlation_id": "00560798-828c-4c11-9345-67e469ab909e"
+    },
+    {
+      "id": "89f49c22-824b-423a-b042-2040717dbb03",
+      "timestamp": "2025-10-12T01:42:48.839592",
+      "source_agent": "sql_agent",
+      "target_agent": "database_agent",
+      "message_type": "execute_individual_sql",
+      "correlation_id": "028169ea-4d67-4347-a305-b296cff5c6e8"
+    },
+    {
+      "id": "768f5f62-6663-4259-992a-4b85c0bc2990",
+      "timestamp": "2025-10-12T01:42:50.529853",
+      "source_agent": "database_agent",
+      "target_agent": "sql_agent",
+      "message_type": "sql_executed",
+      "correlation_id": "89f49c22-824b-423a-b042-2040717dbb03"
+    },
+    {
+      "id": "5c07f5ef-c359-4079-b3d4-095740d3fdb0",
+      "timestamp": "2025-10-12T01:42:50.529853",
+      "source_agent": "database_agent",
+      "target_agent": "results_filtering_agent",
+      "message_type": "filter_individual_results",
+      "correlation_id": "028169ea-4d67-4347-a305-b296cff5c6e8"
+    }
+  ],
+  "agent_sessions": {
+    "thermo_agent": {
+      "status": "running",
+      "capabilities": [
+        "extract_parameters",
+        "normalize_formulas",
+        "convert_temperature"
+      ],
+      "metadata": {}
+    },
+    "sql_agent": {
+      "status": "running",
+      "capabilities": [
+        "generate_sql",
+        "execute_query",
+        "explain_query"
+      ],
+      "metadata": {
+        "database": "data/thermo_data.db"
+      }
+    },
+    "database_agent": {
+      "status": "running",
+      "capabilities": [
+        "execute_sql",
+        "filter_results",
+        "query_database"
+      ],
+      "metadata": {
+        "database": "data/thermo_data.db"
+      }
+    },
+    "results_filtering_agent": {
+      "status": "running",
+      "capabilities": [
+        "filter_results",
+        "temperature_analysis",
+        "compound_selection"
+      ],
+      "metadata": {}
+    },
+    "individual_search_agent": {
+      "status": "running",
+      "capabilities": [
+        "coordinate_individual_search",
+        "aggregate_results",
+        "handle_parallel_searches"
+      ],
+      "metadata": {}
+    },
+    "orchestrator": {
+      "status": "ready",
+      "capabilities": [],
+      "metadata": {}
+    }
+  }
+}
+2025-10-12 01:45:21,094 - thermo_agents_session_20251012_013850 - ERROR - {
+  "timestamp": "2025-10-12T01:45:21.088231",
+  "stats": {
+    "storage_entries": 15,
+    "message_queue_size": 7,
+    "message_history_size": 21,
+    "active_sessions": 6,
+    "agents": [
+      "thermo_agent",
+      "sql_agent",
+      "database_agent",
+      "results_filtering_agent",
+      "individual_search_agent",
+      "orchestrator"
+    ]
+  },
+  "storage_entries": {
+    "orchestrator_request_2594392808160": {
+      "created_at": "2025-10-12T01:39:13.887907",
+      "updated_at": "2025-10-12T01:39:13.887907",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'user_query': 'При какой температуре провзаимодействует оксид кальция и сульфид железа?', 'request_type': 'thermodynamic', 'options': {}}"
+    },
+    "thermo_result_4ba4d876-bfe3-4ef6-b71e-8a029586a1d3": {
+      "created_at": "2025-10-12T01:39:21.037611",
+      "updated_at": "2025-10-12T01:39:21.037611",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'intent': 'reaction', 'compounds': ['CaO', 'FeS', 'CaS', 'FeO'], 'temperature_k': 298.15, 'temperature_range_k': [200.0, 2000.0], 'phases': ['s', 's', 's', 's'], 'properties': ['all'], 'sql_query_hin"
+    },
+    "db_result_f78e853f-9c28-4f8d-b0e5-cf6f5510c539": {
+      "created_at": "2025-10-12T01:39:29.982021",
+      "updated_at": "2025-10-12T01:39:29.982021",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "filtered_result_27cf1a29-5fc4-48d6-b8e5-41ee218ed05e": {
+      "created_at": "2025-10-12T01:39:36.777417",
+      "updated_at": "2025-10-12T01:39:36.777417",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'filtered_result': {'selected_entries': [{'compound': 'CaO', 'selected_id': 31, 'reasoning': 'Selected record ID=31: solid state at 298.15K, temperature range 298.15-3200K covers full target range 20"
+    },
+    "sql_result_f27956cb-62a9-419c-afdf-86f39e15cd71": {
+      "created_at": "2025-10-12T01:40:30.172984",
+      "updated_at": "2025-10-12T01:40:30.172984",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaO' OR Formula LIKE 'CaO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "db_result_78f291c6-cbe9-4c51-a72f-2cf8c0009d1b": {
+      "created_at": "2025-10-12T01:40:38.244135",
+      "updated_at": "2025-10-12T01:40:38.244135",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "filtered_result_1cba8abb-ad28-4ce7-a1fa-57ebc8c96d78": {
+      "created_at": "2025-10-12T01:40:46.244836",
+      "updated_at": "2025-10-12T01:40:46.244836",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'filtered_result': {'selected_entries': [{'compound': 'FeS', 'selected_id': 0, 'reasoning': 'Selected record ID=0: solid state at 298.15K, temperature range 100.0-298.15K covers target temperature, c"
+    },
+    "sql_result_e2884837-5bbb-4f95-8c59-f47c16ebda2e": {
+      "created_at": "2025-10-12T01:41:38.382458",
+      "updated_at": "2025-10-12T01:41:38.382458",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeS' OR Formula LIKE 'FeS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "db_result_d8453c8e-8ceb-4d48-8e19-817abb7e8415": {
+      "created_at": "2025-10-12T01:41:44.352793",
+      "updated_at": "2025-10-12T01:41:44.352793",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "filtered_result_af1916ed-1bd8-44e5-b124-f1947d7132f9": {
+      "created_at": "2025-10-12T01:41:51.854257",
+      "updated_at": "2025-10-12T01:41:51.854257",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'filtered_result': {'selected_entries': [{'compound': 'CaS', 'selected_id': 2, 'reasoning': 'Selected record ID=2: solid state at 298.15K, temperature range 298.15-2800.0K covers entire target range "
+    },
+    "sql_result_00560798-828c-4c11-9345-67e469ab909e": {
+      "created_at": "2025-10-12T01:42:44.346555",
+      "updated_at": "2025-10-12T01:42:44.346555",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "db_result_89f49c22-824b-423a-b042-2040717dbb03": {
+      "created_at": "2025-10-12T01:42:50.529853",
+      "updated_at": "2025-10-12T01:42:50.529853",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "filtered_result_5c07f5ef-c359-4079-b3d4-095740d3fdb0": {
+      "created_at": "2025-10-12T01:43:04.222542",
+      "updated_at": "2025-10-12T01:43:04.222542",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'filtered_result': {'selected_entries': [{'compound': 'FeO', 'selected_id': 0, 'reasoning': 'Selected record ID=0: solid phase at 298.15K, temperature range 298.15-600K with complete physicochemical "
+    },
+    "sql_result_028169ea-4d67-4347-a305-b296cff5c6e8": {
+      "created_at": "2025-10-12T01:43:50.592536",
+      "updated_at": "2025-10-12T01:43:50.592536",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') AND (Tmin IS NULL OR Tmax IS NULL OR (298.15 >= Tmin AND 298.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIM"
+    },
+    "individual_search_result_ddcd5e58-d023-412a-8083-361ddbb2a314": {
+      "created_at": "2025-10-12T01:44:38.587214",
+      "updated_at": "2025-10-12T01:44:38.587214",
+      "ttl_seconds": 1800,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'individual_results': [{'compound': 'CaO', 'search_results': [], 'selected_records': [], 'confidence': 0.0, 'errors': ['Filtering Agent response timeout for search search_CaO_ddcd5e58-d023-412a-8083-"
+    }
+  },
+  "message_queue": [
+    {
+      "id": "71707b23-4de7-4d51-aec6-ec6ecfe0059f",
+      "timestamp": "2025-10-12T01:39:36.779439",
+      "source_agent": "results_filtering_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_filter_complete",
+      "correlation_id": "f27956cb-62a9-419c-afdf-86f39e15cd71",
+      "payload_preview": "{'status': 'success', 'result_key': 'filtered_result_27cf1a29-5fc4-48d6-b8e5-41ee218ed05e', 'filtered_result': {'selected_entries': [{'compound': 'CaO', 'selected_id': 31, 'reasoning': 'Selected recor"
+    },
+    {
+      "id": "8967e868-3c25-4bec-9c80-d2a69391856a",
+      "timestamp": "2025-10-12T01:40:46.247980",
+      "source_agent": "results_filtering_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_filter_complete",
+      "correlation_id": "e2884837-5bbb-4f95-8c59-f47c16ebda2e",
+      "payload_preview": "{'status': 'success', 'result_key': 'filtered_result_1cba8abb-ad28-4ce7-a1fa-57ebc8c96d78', 'filtered_result': {'selected_entries': [{'compound': 'FeS', 'selected_id': 0, 'reasoning': 'Selected record"
+    },
+    {
+      "id": "fd7b72ef-d2a2-4646-a743-3c11fadca7ab",
+      "timestamp": "2025-10-12T01:41:51.859056",
+      "source_agent": "results_filtering_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_filter_complete",
+      "correlation_id": "00560798-828c-4c11-9345-67e469ab909e",
+      "payload_preview": "{'status': 'success', 'result_key': 'filtered_result_af1916ed-1bd8-44e5-b124-f1947d7132f9', 'filtered_result': {'selected_entries': [{'compound': 'CaS', 'selected_id': 2, 'reasoning': 'Selected record"
+    },
+    {
+      "id": "69dcbb91-6457-4fc7-8ccc-59f4292c3dee",
+      "timestamp": "2025-10-12T01:42:44.346555",
+      "source_agent": "sql_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_sql_complete",
+      "correlation_id": "00560798-828c-4c11-9345-67e469ab909e",
+      "payload_preview": "{'status': 'success', 'result_key': 'sql_result_00560798-828c-4c11-9345-67e469ab909e', 'sql_result': {'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CaS' OR Formula LIKE 'CaS(%') AND (T"
+    },
+    {
+      "id": "2c67b84c-da02-486e-b3fc-cc93be7d033d",
+      "timestamp": "2025-10-12T01:43:04.232702",
+      "source_agent": "results_filtering_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_filter_complete",
+      "correlation_id": "028169ea-4d67-4347-a305-b296cff5c6e8",
+      "payload_preview": "{'status': 'success', 'result_key': 'filtered_result_5c07f5ef-c359-4079-b3d4-095740d3fdb0', 'filtered_result': {'selected_entries': [{'compound': 'FeO', 'selected_id': 0, 'reasoning': 'Selected record"
+    },
+    {
+      "id": "5a2343d4-614d-4153-ad55-033ea227c31b",
+      "timestamp": "2025-10-12T01:43:50.593183",
+      "source_agent": "sql_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_sql_complete",
+      "correlation_id": "028169ea-4d67-4347-a305-b296cff5c6e8",
+      "payload_preview": "{'status': 'success', 'result_key': 'sql_result_028169ea-4d67-4347-a305-b296cff5c6e8', 'sql_result': {'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'FeO' OR Formula LIKE 'FeO(%') AND (T"
+    },
+    {
+      "id": "abb20e0c-a42a-4798-befb-40f6b753b709",
+      "timestamp": "2025-10-12T01:44:38.587214",
+      "source_agent": "individual_search_agent",
+      "target_agent": "thermo_agent",
+      "message_type": "individual_search_complete",
+      "correlation_id": "ddcd5e58-d023-412a-8083-361ddbb2a314",
+      "payload_preview": "{'status': 'success', 'result_key': 'individual_search_result_ddcd5e58-d023-412a-8083-361ddbb2a314', 'aggregated_results': {'individual_results': [{'compound': 'CaO', 'search_results': [], 'selected_r"
+    }
+  ],
+  "recent_history": [
+    {
+      "id": "78f291c6-cbe9-4c51-a72f-2cf8c0009d1b",
+      "timestamp": "2025-10-12T01:40:36.416704",
+      "source_agent": "sql_agent",
+      "target_agent": "database_agent",
+      "message_type": "execute_individual_sql",
+      "correlation_id": "e2884837-5bbb-4f95-8c59-f47c16ebda2e"
+    },
+    {
+      "id": "0bffae01-0786-4e19-bd28-ab916a905348",
+      "timestamp": "2025-10-12T01:40:38.244135",
+      "source_agent": "database_agent",
+      "target_agent": "sql_agent",
+      "message_type": "sql_executed",
+      "correlation_id": "78f291c6-cbe9-4c51-a72f-2cf8c0009d1b"
+    },
+    {
+      "id": "1cba8abb-ad28-4ce7-a1fa-57ebc8c96d78",
+      "timestamp": "2025-10-12T01:40:38.244135",
+      "source_agent": "database_agent",
+      "target_agent": "results_filtering_agent",
+      "message_type": "filter_individual_results",
+      "correlation_id": "e2884837-5bbb-4f95-8c59-f47c16ebda2e"
+    },
+    {
+      "id": "39259702-388f-4a3c-85ce-cd976df87794",
+      "timestamp": "2025-10-12T01:41:38.383484",
+      "source_agent": "sql_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_sql_complete",
+      "correlation_id": "e2884837-5bbb-4f95-8c59-f47c16ebda2e"
+    },
+    {
+      "id": "d8453c8e-8ceb-4d48-8e19-817abb7e8415",
+      "timestamp": "2025-10-12T01:41:43.786047",
+      "source_agent": "sql_agent",
+      "target_agent": "database_agent",
+      "message_type": "execute_individual_sql",
+      "correlation_id": "00560798-828c-4c11-9345-67e469ab909e"
+    },
+    {
+      "id": "62a709c8-afef-4d70-8bbc-c817a4943ca4",
+      "timestamp": "2025-10-12T01:41:44.353312",
+      "source_agent": "database_agent",
+      "target_agent": "sql_agent",
+      "message_type": "sql_executed",
+      "correlation_id": "d8453c8e-8ceb-4d48-8e19-817abb7e8415"
+    },
+    {
+      "id": "af1916ed-1bd8-44e5-b124-f1947d7132f9",
+      "timestamp": "2025-10-12T01:41:44.353312",
+      "source_agent": "database_agent",
+      "target_agent": "results_filtering_agent",
+      "message_type": "filter_individual_results",
+      "correlation_id": "00560798-828c-4c11-9345-67e469ab909e"
+    },
+    {
+      "id": "89f49c22-824b-423a-b042-2040717dbb03",
+      "timestamp": "2025-10-12T01:42:48.839592",
+      "source_agent": "sql_agent",
+      "target_agent": "database_agent",
+      "message_type": "execute_individual_sql",
+      "correlation_id": "028169ea-4d67-4347-a305-b296cff5c6e8"
+    },
+    {
+      "id": "768f5f62-6663-4259-992a-4b85c0bc2990",
+      "timestamp": "2025-10-12T01:42:50.529853",
+      "source_agent": "database_agent",
+      "target_agent": "sql_agent",
+      "message_type": "sql_executed",
+      "correlation_id": "89f49c22-824b-423a-b042-2040717dbb03"
+    },
+    {
+      "id": "5c07f5ef-c359-4079-b3d4-095740d3fdb0",
+      "timestamp": "2025-10-12T01:42:50.529853",
+      "source_agent": "database_agent",
+      "target_agent": "results_filtering_agent",
+      "message_type": "filter_individual_results",
+      "correlation_id": "028169ea-4d67-4347-a305-b296cff5c6e8"
+    }
+  ],
+  "agent_sessions": {
+    "thermo_agent": {
+      "status": "running",
+      "capabilities": [
+        "extract_parameters",
+        "normalize_formulas",
+        "convert_temperature"
+      ],
+      "metadata": {}
+    },
+    "sql_agent": {
+      "status": "running",
+      "capabilities": [
+        "generate_sql",
+        "execute_query",
+        "explain_query"
+      ],
+      "metadata": {
+        "database": "data/thermo_data.db"
+      }
+    },
+    "database_agent": {
+      "status": "running",
+      "capabilities": [
+        "execute_sql",
+        "filter_results",
+        "query_database"
+      ],
+      "metadata": {
+        "database": "data/thermo_data.db"
+      }
+    },
+    "results_filtering_agent": {
+      "status": "running",
+      "capabilities": [
+        "filter_results",
+        "temperature_analysis",
+        "compound_selection"
+      ],
+      "metadata": {}
+    },
+    "individual_search_agent": {
+      "status": "running",
+      "capabilities": [
+        "coordinate_individual_search",
+        "aggregate_results",
+        "handle_parallel_searches"
+      ],
+      "metadata": {}
+    },
+    "orchestrator": {
+      "status": "ready",
+      "capabilities": [],
+      "metadata": {}
+    }
+  }
+}
+2025-10-12 01:45:25,015 - __main__ - ERROR - Interactive mode error: 
+Traceback (most recent call last):
+  File "c:\IDE\repository\agents_for_david\main.py", line 403, in interactive_mode
+    user_input = input("Query> ").strip()
+                 ^^^^^^^^^^^^^^^^
+EOFError
+2025-10-12 01:45:25,176 - __main__ - INFO - Stopping agents...
+2025-10-12 01:45:25,177 - thermo_agent - INFO - Agent 'thermo_agent' stopped
+2025-10-12 01:45:25,177 - sql_agent - INFO - Agent 'sql_agent' stopped
+2025-10-12 01:45:25,177 - database_agent - INFO - Agent 'database_agent' stopped
+2025-10-12 01:45:25,177 - results_filtering_agent - INFO - Agent 'results_filtering_agent' stopped
+2025-10-12 01:45:25,177 - individual_search_agent - INFO - Agent 'individual_search_agent' stopped
+2025-10-12 01:45:25,177 - orchestrator - INFO - Shutting down orchestrator

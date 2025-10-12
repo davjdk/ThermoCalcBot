@@ -56,7 +56,7 @@ class ResultsFilteringAgentConfig:
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     session_logger: Optional[SessionLogger] = None
     poll_interval: float = 0.2  # Оптимизировано с 1.0 до 0.2с
-    max_retries: int = 3  # Увеличено с 2 до 3 для улучшенной надежности
+    max_retries: int = 4  # Увеличено с 3 до 4 для улучшенной надежности
 
 
 class ResultsFilteringAgent:
@@ -485,7 +485,7 @@ class ResultsFilteringAgent:
         target_temperature: float
     ) -> FilteredResult:
         """
-        Использование LLM для выбора наиболее релевантных записей.
+        Использование LLM для выбора наиболее релевантных записей с retry механизмом.
 
         Args:
             records: Предварительно отфильтрованные записи
@@ -497,27 +497,43 @@ class ResultsFilteringAgent:
 
         Returns:
             Результат LLM-фильтрации
+
+        Raises:
+            ValueError: Если не удалось выполнить LLM фильтрацию после всех попыток
         """
-        # Подготавливаем данные для LLM в YAML формате с ID записей
-        records_with_ids = []
-        for i, record in enumerate(records[:50]):  # Ограничиваем для LLM
-            record_with_id = record.copy()
-            record_with_id["record_id"] = i
-            records_with_ids.append(record_with_id)
+        max_llm_retries = 3
+        base_timeout = 90.0  # Увеличено с 30 до 90 секунд
 
-        analysis_data = {
-            "requested_compounds": compounds,
-            "requested_phases": phases,
-            "temperature_range_k": temperature_range,
-            "target_temperature_k": target_temperature,
-            "available_records": records_with_ids,
-            "total_records_count": len(records),
-        }
+        last_error = None
 
-        # Конвертируем в YAML для лучшей читаемости LLM
-        yaml_data = yaml.dump(analysis_data, default_flow_style=False, allow_unicode=True)
+        for attempt in range(max_llm_retries):
+            try:
+                # Увеличиваем таймаут с каждой попыткой
+                current_timeout = base_timeout * (attempt + 1)
 
-        prompt = f"""Analyze the following thermodynamic database records and select the most relevant ones for the requested compounds and conditions:
+                # Уменьшаем объем данных для LLM при каждой попытке
+                records_subset = records[:max(5, 50 - attempt * 15)]
+
+                # Обновляем данные для LLM
+                records_with_ids = []
+                for i, record in enumerate(records_subset):
+                    record_with_id = record.copy()
+                    record_with_id["record_id"] = i
+                    records_with_ids.append(record_with_id)
+
+                analysis_data = {
+                    "requested_compounds": compounds,
+                    "requested_phases": phases,
+                    "temperature_range_k": temperature_range,
+                    "target_temperature_k": target_temperature,
+                    "available_records": records_with_ids,
+                    "total_records_count": len(records),
+                    "attempt": attempt + 1,
+                }
+
+                yaml_data = yaml.dump(analysis_data, default_flow_style=False, allow_unicode=True)
+
+                retry_prompt = f"""Analyze the following thermodynamic database records and select the most relevant ones for the requested compounds and conditions:
 
 {yaml_data}
 
@@ -528,37 +544,77 @@ Your task is to select the optimal set of records that:
 
 Consider that multiple records per compound may be needed for full temperature range coverage."""
 
-        try:
-            # Генерируем фильтрацию с уменьшенным тайм-аутом
-            result = await asyncio.wait_for(
-                self.agent.run(prompt, deps=self.config),
-                timeout=30.0  # Уменьшено с 45 до 30 секунд для ускорения
-            )
+                if attempt > 0:
+                    retry_prompt += f"\n\nThis is retry attempt {attempt + 1}/{max_llm_retries}. Please focus on the most critical selections."
 
-            # Проверяем результат на finish_reason=None и другие проблемы OpenAI API
-            if hasattr(result, 'usage') and result.usage is None:
-                self.logger.warning("OpenAI API returned None usage - using fallback filtering")
-                return self._fallback_filter(records, compounds, phases)
+                self.logger.info(f"LLM filtering attempt {attempt + 1}/{max_llm_retries} with {len(records_subset)} records")
 
-            # Проверяем на пустой результат
-            if result.output is None:
-                self.logger.warning("OpenAI API returned None output - using fallback filtering")
-                return self._fallback_filter(records, compounds, phases)
+                # Генерируем фильтрацию с увеличенным таймаутом
+                result = await asyncio.wait_for(
+                    self.agent.run(retry_prompt, deps=self.config),
+                    timeout=current_timeout
+                )
 
-            return result.output
+                # Проверяем результат на finish_reason=None и другие проблемы OpenAI API
+                if hasattr(result, 'usage') and result.usage is None:
+                    raise ValueError("OpenAI API returned None usage")
 
-        except asyncio.TimeoutError:
-            self.logger.error("LLM filtering timeout - using fallback filtering")
-            return self._fallback_filter(records, compounds, phases)
-        except Exception as e:
-            # Обрабатываем конкретную ошибку finish_reason=None
-            error_str = str(e)
-            if "finish_reason" in error_str and "None" in error_str:
-                self.logger.error("OpenAI API finish_reason=None error - using fallback filtering")
-            else:
-                self.logger.error(f"Error in LLM filtering: {e}")
-            # Возвращаем базовую фильтрацию по формулам с улучшенной логикой
-            return self._fallback_filter(records, compounds, phases)
+                # Проверяем на пустой результат
+                if result.output is None:
+                    raise ValueError("OpenAI API returned None output")
+
+                self.logger.info(f"LLM filtering successful on attempt {attempt + 1}")
+                return result.output
+
+            except asyncio.TimeoutError:
+                last_error = f"LLM filtering timeout on attempt {attempt + 1}/{max_llm_retries}"
+                self.logger.error(last_error)
+                if attempt < max_llm_retries - 1:
+                    await asyncio.sleep(2)  # Задержка перед повторной попыткой
+
+            except Exception as e:
+                error_str = str(e)
+                last_error = f"LLM filtering error on attempt {attempt + 1}/{max_llm_retries}: {error_str}"
+
+                # Обрабатываем конкретную ошибку finish_reason=None
+                if "finish_reason" in error_str and "None" in error_str:
+                    self.logger.error("OpenAI API finish_reason=None error")
+                elif "status_code: 401" in error_str or "No auth credentials" in error_str:
+                    raise ValueError("Ошибка аутентификации: проверьте API ключ для доступа к модели.")
+                elif "status_code: 429" in error_str or "rate limit" in error_str.lower():
+                    self.logger.error("Rate limit error detected")
+                    if attempt < max_llm_retries - 1:
+                        await asyncio.sleep(5)  # Ждем перед повторной попыткой
+                else:
+                    self.logger.error(last_error)
+
+                if attempt < max_llm_retries - 1:
+                    await asyncio.sleep(1)  # Задержка перед повторной попыткой
+
+        # Если все попытки неудачны, используем базовую температурную фильтрацию без fallback
+        self.logger.error(f"All LLM filtering attempts failed: {last_error}")
+
+        # Создаем минимальный результат на основе температурной фильтрации
+        selected_entries = []
+        for i, record in enumerate(records[:10]):  # Берем первые 10 записей
+            selected_entries.append(SelectedEntry(
+                compound=record.get("Formula", ""),
+                selected_id=i,
+                reasoning=f"Temperature filtered record (LLM unavailable)"
+            ))
+
+        missing_compounds = [c for c in compounds if c not in [r.get("Formula", "") for r in records[:10]]]
+
+        return FilteredResult(
+            selected_entries=selected_entries,
+            phase_determinations={},
+            missing_compounds=missing_compounds,
+            excluded_entries_count=len(records) - len(selected_entries),
+            overall_confidence=0.3,  # Низкая уверенность без LLM
+            warnings=[f"LLM filtering failed after {max_llm_retries} attempts: {last_error}"] +
+                     [f"Missing compounds: {missing_compounds}"] if missing_compounds else [],
+            filter_summary="Basic temperature filtering applied (LLM unavailable)"
+        )
 
     def _convert_ids_to_records(self, selected_entries: List[SelectedEntry], all_records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -621,87 +677,7 @@ Consider that multiple records per compound may be needed for full temperature r
 
         return min(1.0, max(0.0, final_confidence))
 
-    def _fallback_filter(self, records: List[Dict[str, Any]], compounds: List[str], phases: List[str]) -> FilteredResult:
-        """Улучшенная резервная фильтрация без LLM."""
-        selected = []
-        reasoning = "Fallback filtering: selected records matching requested formulas and phases"
-
-        # Улучшенный отбор по формулам и фазам
-        if phases and len(phases) == len(compounds):
-            # Если фазы указаны для каждого соединения
-            for compound, phase in zip(compounds, phases):
-                best_match = None
-                best_score = -1
-
-                for record in records:
-                    formula = record.get("Formula", "")
-                    record_phase = record.get("Phase", "")
-
-                    # Проверяем точное совпадение формулы и фазы
-                    if formula == compound and record_phase == phase:
-                        # Проверяем качество записи (наличие всех необходимых полей)
-                        score = 0
-                        if record.get("H298") is not None: score += 1
-                        if record.get("S298") is not None: score += 1
-                        if record.get("Tmin") is not None and record.get("Tmax") is not None: score += 1
-
-                        # Выбираем запись с максимальным количеством данных
-                        if score > best_score:
-                            best_score = score
-                            best_match = record
-
-                if best_match:
-                    selected.append(best_match)
-        else:
-            # Если фазы не указаны или их количество не совпадает
-            for compound in compounds:
-                best_match = None
-                best_score = -1
-
-                for record in records:
-                    formula = record.get("Formula", "")
-                    record_phase = record.get("Phase", "")
-
-                    # Проверяем совпадение формулы (любая фаза)
-                    if formula == compound:
-                        score = 0
-                        if record.get("H298") is not None: score += 1
-                        if record.get("S298") is not None: score += 1
-                        if record.get("Tmin") is not None and record.get("Tmax") is not None: score += 1
-
-                        if score > best_score:
-                            best_score = score
-                            best_match = record
-
-                if best_match:
-                    selected.append(best_match)
-
-        # Создаем SelectedEntry объекты для fallback
-        selected_entries = []
-        for record in selected:
-            # Находим оригинальный ID записи в исходном массиве
-            original_id = records.index(record) if record in records else len(selected_entries)
-            selected_entries.append(SelectedEntry(
-                compound=record.get("Formula", ""),
-                selected_id=original_id,
-                reasoning=f"Fallback selected: {record.get('Formula', '')} ({record.get('Phase', '')})"
-            ))
-
-        # Определяем отсутствующие соединения
-        found_compounds = [record.get("Formula", "") for record in selected]
-        missing_compounds = [c for c in compounds if c not in found_compounds]
-
-        return FilteredResult(
-            selected_entries=selected_entries,
-            phase_determinations={},
-            missing_compounds=missing_compounds,
-            excluded_entries_count=len(records) - len(selected),
-            overall_confidence=0.6 if missing_compounds else 0.8,  # Выше уверенность если все найдены
-            warnings=["Used enhanced fallback filtering due to LLM error"] +
-                     [f"Missing compounds: {missing_compounds}"] if missing_compounds else [],
-            filter_summary=reasoning
-        )
-
+    
     def _log_filtered_table(self, selected_records: List[Dict[str, Any]], reasoning: str):
         """Логирует финальную отфильтрованную таблицу с выбранными записями."""
         if not selected_records:

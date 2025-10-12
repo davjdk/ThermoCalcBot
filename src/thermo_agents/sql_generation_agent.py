@@ -48,7 +48,7 @@ class SQLAgentConfig:
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     session_logger: Optional[SessionLogger] = None
     poll_interval: float = 0.5  # Уменьшено с 1.0 до 0.5с для ускорения реакции
-    max_retries: int = 3  # Увеличено с 2 до 3 для улучшенной надежности
+    max_retries: int = 4  # Увеличено с 3 до 4 для улучшенной надежности
 
 
 class SQLGenerationAgent:
@@ -337,11 +337,11 @@ class SQLGenerationAgent:
             if operation:
                 operation.set_input_data(input_data)
 
-            # Генерируем SQL запрос используя PydanticAI агента с тайм-аутом
+            # Генерируем SQL запрос используя PydanticAI агента с увеличенным тайм-аутом
             self.logger.info("Starting SQL query generation...")
             result = await asyncio.wait_for(
                 self.agent.run(sql_hint, deps=self.config),
-                timeout=60.0  # 60 секунд тайм-аут для генерации
+                timeout=120.0  # Увеличено с 60 до 120 секунд для генерации
             )
             sql_result = result.output
 
@@ -613,17 +613,60 @@ class SQLGenerationAgent:
 
         Returns:
             Результат генерации SQL
+
+        Raises:
+            ValueError: Если не удалось сгенерировать SQL запрос после повторных попыток
         """
-        try:
-            result = await self.agent.run(sql_hint, deps=self.config)
-            return result.output
-        except Exception as e:
-            self.logger.error(f"Error in single query processing: {e}")
-            return SQLQueryResult(
-                sql_query="SELECT * FROM compounds LIMIT 1",
-                explanation="Error occurred during SQL generation",
-                expected_columns=[],
-            )
+        max_retries = 3
+        base_timeout = 60.0
+
+        for attempt in range(max_retries):
+            try:
+                import asyncio
+                timeout = base_timeout * (attempt + 1)  # Увеличиваем таймаут с каждой попыткой
+
+                result = await asyncio.wait_for(
+                    self.agent.run(sql_hint, deps=self.config),
+                    timeout=timeout
+                )
+                return result.output
+
+            except asyncio.TimeoutError:
+                self.logger.error(f"Timeout in SQL generation (attempt {attempt + 1}/{max_retries})")
+                if attempt == max_retries - 1:
+                    raise ValueError(f"Не удалось сгенерировать SQL запрос: превышено время ожидания ответа от модели после {max_retries} попыток. Попробуйте упростить запрос.")
+                await asyncio.sleep(1)
+
+            except Exception as e:
+                self.logger.error(f"Error in SQL generation (attempt {attempt + 1}/{max_retries}): {e}")
+                error_msg = str(e)
+
+                # Дополнительное логирование для трассировки
+                if self.config.session_logger:
+                    self.config.session_logger.log_error(f"SQL GENERATION FAILED (attempt {attempt + 1}): {error_msg[:200]}")
+
+                # Определяем тип ошибки для более понятного сообщения
+                if "status_code: 401" in error_msg or "No auth credentials" in error_msg:
+                    raise ValueError("Ошибка аутентификации: проверьте API ключ для доступа к модели.")
+                elif "status_code: 429" in error_msg or "rate limit" in error_msg.lower():
+                    if attempt == max_retries - 1:
+                        raise ValueError("Превышен лимит запросов к модели. Попробуйте повторить запрос позже.")
+                    await asyncio.sleep(5)
+                elif "network" in error_msg.lower() or "connection" in error_msg.lower():
+                    if attempt == max_retries - 1:
+                        raise ValueError("Сетевая ошибка: проверьте подключение к интернету.")
+                    await asyncio.sleep(2)
+                elif "timeout" in error_msg.lower():
+                    if attempt == max_retries - 1:
+                        raise ValueError("Превышено время ожидания ответа от модели. Попробуйте упростить запрос.")
+                    await asyncio.sleep(1)
+                else:
+                    if attempt == max_retries - 1:
+                        raise ValueError(f"Не удалось сгенерировать SQL запрос после {max_retries} попыток: {error_msg[:100]}...")
+                    await asyncio.sleep(1)
+
+        # Этот код не должен быть достигнут, так как все ошибки обрабатываются выше
+        raise ValueError(f"Не удалось сгенерировать SQL запрос после {max_retries} попыток.")
 
     def get_status(self) -> Dict:
         """Получить статус агента."""
