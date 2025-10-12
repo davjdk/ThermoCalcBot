@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from .agent_storage import AgentStorage, get_storage
+from .graceful_degradation import GracefulDegradationManager, ComponentStatus, DegradationLevel
+from .message_validator import MessageValidator, ValidationResult
 from .operations import OperationType
 from .thermo_agents_logger import SessionLogger
 
@@ -50,6 +52,21 @@ class DatabaseAgent:
         self.logger = config.logger
         self.running = False
 
+        # Инициализация валидатора сообщений
+        self.message_validator = MessageValidator(logger=self.logger)
+
+        # Инициализация graceful degradation менеджера
+        self.degradation_manager = GracefulDegradationManager(
+            agent_id=self.agent_id,
+            storage=self.storage,
+            logger=self.logger
+        )
+
+        # Регистрация компонентов для мониторинга
+        self.degradation_manager.register_component("database", max_retries=3)
+        self.degradation_manager.register_component("sql_execution", max_retries=2)
+        self.degradation_manager.register_component("temperature_filtering", max_retries=2)
+
         # Регистрация в хранилище
         self.storage.start_session(
             self.agent_id,
@@ -60,7 +77,7 @@ class DatabaseAgent:
             },
         )
 
-        self.logger.info(f"DatabaseAgent '{self.agent_id}' initialized")
+        self.logger.info(f"DatabaseAgent '{self.agent_id}' initialized with message validation and graceful degradation")
 
     async def start(self):
         """Запустить агента в режиме прослушивания сообщений."""
@@ -115,8 +132,32 @@ class DatabaseAgent:
             operation = None
 
         try:
+            # Валидация сообщения с использованием универсального валидатора
+            validation_report = self.message_validator.validate_message(message)
+            if not validation_report.is_valid:
+                error_messages = [error.message for error in validation_report.errors]
+                raise ValueError(f"Message validation failed: {'; '.join(error_messages)}")
+
+            # Логируем предупреждения валидации
+            if validation_report.warnings:
+                warning_messages = [warning.message for warning in validation_report.warnings]
+                self.logger.warning(f"Message validation warnings: {'; '.join(warning_messages)}")
+
             # Извлекаем SQL запрос и параметры
             sql_query = message.payload.get("sql_query")
+
+            # Валидация наличия и корректности SQL запроса
+            if not sql_query:
+                raise ValueError("No sql_query in message payload")
+
+            # Дополнительная валидация SQL запроса
+            sql_query = sql_query.strip()
+            if not sql_query:
+                raise ValueError("Empty sql_query in message payload")
+
+            # Проверка на минимальную длину SQL запроса
+            if len(sql_query) < 10:
+                raise ValueError(f"SQL query too short: {sql_query}")
 
             # Определяем тип сообщения
             is_individual = message.message_type == "execute_individual_sql"
@@ -125,6 +166,11 @@ class DatabaseAgent:
                 # Индивидуальный запрос
                 compound = message.payload.get("compound")
                 common_params = message.payload.get("common_params", {})
+
+                # Валидация обязательных полей для индивидуального запроса
+                if not compound:
+                    raise ValueError("No compound in individual search message payload")
+
                 extracted_params = {
                     "compounds": [compound],
                     "temperature_k": common_params.get("temperature_k", 298.15),
@@ -142,10 +188,14 @@ class DatabaseAgent:
                     "sql_query_preview": sql_query[:100] if sql_query else "None",
                 }
 
-                self.logger.info(f"Executing individual SQL query for compound {compound}: {sql_query}")
+                self.logger.info(f"Executing individual SQL query for compound {compound}: {sql_query[:100]}...")
             else:
                 # Стандартный запрос
                 extracted_params = message.payload.get("extracted_params", {})
+
+                # Валидация обязательных полей для стандартного запроса
+                if not extracted_params:
+                    raise ValueError("No extracted_params in message payload")
 
                 # Устанавливаем входные данные для операции
                 input_data = {
@@ -155,10 +205,10 @@ class DatabaseAgent:
                     "sql_query_preview": sql_query[:100] if sql_query else "None",
                 }
 
-                self.logger.info(f"Executing standard SQL query: {sql_query}")
+                self.logger.info(f"Executing standard SQL query: {sql_query[:100]}...")
 
-            if not sql_query:
-                raise ValueError("No sql_query in message payload")
+            # Логируем успешную валидацию
+            self.logger.debug(f"SQL query validation passed: {len(sql_query)} characters")
 
             # Устанавливаем входные данные для операции
             if operation:
@@ -183,40 +233,77 @@ class DatabaseAgent:
 
             # Отправляем результаты агенту фильтрации для интеллектуального отбора
             filtering_sent = False
-            if execution_result.get("success") and execution_result.get("row_count", 0) > 0:
-                self.logger.info("Sending results to filtering agent for analysis...")
+            if execution_result.get("success"):
+                if execution_result.get("row_count", 0) > 0:
+                    self.logger.info(f"Sending {execution_result.get('row_count')} results to filtering agent for analysis...")
 
-                if is_individual:
-                    # Индивидуальная фильтрация
-                    filtering_message_id = self.storage.send_message(
-                        source_agent=self.agent_id,
-                        target_agent="results_filtering_agent",
-                        message_type="filter_individual_results",
-                        correlation_id=message.correlation_id,  # Используем correlation_id от SQL агента
-                        payload={
-                            "execution_result": execution_result,
-                            "compound": compound,
-                            "common_params": common_params,
-                            "sql_query": sql_query,
-                        },
-                    )
-                    self.logger.info(f"Individual results sent to filtering agent: {filtering_message_id}")
-                    filtering_sent = True
+                    if is_individual:
+                        # Индивидуальная фильтрация
+                        filtering_message_id = self.storage.send_message(
+                            source_agent=self.agent_id,
+                            target_agent="results_filtering_agent",
+                            message_type="filter_individual_results",
+                            correlation_id=message.correlation_id,  # Используем correlation_id от SQL агента
+                            payload={
+                                "execution_result": execution_result,
+                                "compound": compound,
+                                "common_params": common_params,
+                                "sql_query": sql_query,
+                            },
+                        )
+                        self.logger.info(f"Individual results sent to filtering agent: {filtering_message_id}")
+                        filtering_sent = True
+                    else:
+                        # Стандартная фильтрация
+                        filtering_message_id = self.storage.send_message(
+                            source_agent=self.agent_id,
+                            target_agent="results_filtering_agent",
+                            message_type="filter_results",
+                            correlation_id=message.correlation_id,  # Используем исходный correlation_id от SQL агента
+                            payload={
+                                "execution_result": execution_result,
+                                "extracted_params": extracted_params,
+                                "sql_query": sql_query,
+                            },
+                        )
+                        self.logger.info(f"Results sent to filtering agent: {filtering_message_id}")
+                        filtering_sent = True
                 else:
-                    # Стандартная фильтрация
-                    filtering_message_id = self.storage.send_message(
-                        source_agent=self.agent_id,
-                        target_agent="results_filtering_agent",
-                        message_type="filter_results",
-                        correlation_id=message.correlation_id,  # Используем исходный correlation_id от SQL агента
-                        payload={
-                            "execution_result": execution_result,
-                            "extracted_params": extracted_params,
-                            "sql_query": sql_query,
-                        },
+                    # Обработка нулевых результатов с graceful degradation
+                    self.logger.warning(f"No records found in database for {compound if is_individual else str(extracted_params.get('compounds', []))}")
+
+                    # Обновляем статус компонента database
+                    self.degradation_manager.update_component_status(
+                        "database",
+                        ComponentStatus.NO_DATA,
+                        f"No data found for {compound if is_individual else str(extracted_params.get('compounds', []))}"
                     )
-                    self.logger.info(f"Results sent to filtering agent: {filtering_message_id}")
-                    filtering_sent = True
+
+                    # Создаем информативное сообщение об отсутствии данных
+                    if is_individual:
+                        missing_compound = compound
+                        self.logger.info(f"Individual search: No data found for compound '{missing_compound}'")
+                        missing_data = {"compounds": [missing_compound]}
+                    else:
+                        missing_compounds = extracted_params.get("compounds", [])
+                        self.logger.info(f"Standard search: No data found for compounds {missing_compounds}")
+                        missing_data = {"compounds": missing_compounds}
+
+                    # Оцениваем уровень деградации
+                    degradation_report = self.degradation_manager.assess_system_degradation(
+                        available_data={},
+                        missing_data=missing_data
+                    )
+
+                    # Отправляем сообщение об отсутствии данных, но продолжаем обработку
+                    if self.config.session_logger:
+                        self.config.session_logger.log_info(
+                            f"NO DATA FOUND: {compound if is_individual else str(extracted_params.get('compounds', []))} "
+                            f"at temperature {extracted_params.get('temperature_k', 298.15)}K"
+                        )
+                        self.config.session_logger.log_info(
+                            f"DEGRADATION LEVEL: {degradation_report.degradation_level.value}"
+                        )
 
             # Отправляем ответ SQL агенту
             self.storage.send_message(

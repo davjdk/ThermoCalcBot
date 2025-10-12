@@ -19,6 +19,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from .agent_storage import AgentStorage, get_storage
+from .message_validator import MessageValidator, ValidationResult
 from .operations import OperationType
 from .prompts import SQL_GENERATION_PROMPT
 from .thermo_agents_logger import SessionLogger
@@ -76,6 +77,9 @@ class SQLGenerationAgent:
         self.logger = config.logger
         self.running = False
 
+        # Инициализация валидатора сообщений
+        self.message_validator = MessageValidator(logger=self.logger)
+
         # Инициализация PydanticAI агента
         self.agent = self._initialize_agent()
 
@@ -89,7 +93,7 @@ class SQLGenerationAgent:
             },
         )
 
-        self.logger.info(f"SQLGenerationAgent '{self.agent_id}' initialized")
+        self.logger.info(f"SQLGenerationAgent '{self.agent_id}' initialized with message validation")
 
     def _initialize_agent(self) -> Agent:
         """Создание PydanticAI агента для генерации SQL."""
@@ -282,6 +286,17 @@ class SQLGenerationAgent:
             operation = None
 
         try:
+            # Валидация сообщения с использованием универсального валидатора
+            validation_report = self.message_validator.validate_message(message)
+            if not validation_report.is_valid:
+                error_messages = [error.message for error in validation_report.errors]
+                raise ValueError(f"Message validation failed: {'; '.join(error_messages)}")
+
+            # Логируем предупреждения валидации
+            if validation_report.warnings:
+                warning_messages = [warning.message for warning in validation_report.warnings]
+                self.logger.warning(f"Message validation warnings: {'; '.join(warning_messages)}")
+
             # Определяем тип сообщения
             message_type = message.payload.get("compound") and "individual" or "standard"
 
@@ -352,6 +367,20 @@ class SQLGenerationAgent:
             # Дополнительная очистка запроса перед выполнением
             sql_result.sql_query = self._clean_sql_query(sql_result.sql_query)
             self.logger.info("SQL query cleaned")
+
+            # Валидация сгенерированного SQL запроса
+            if not sql_result.sql_query or not sql_result.sql_query.strip():
+                raise ValueError("Generated SQL query is empty after cleaning")
+
+            if len(sql_result.sql_query.strip()) < 10:
+                raise ValueError(f"Generated SQL query too short: {sql_result.sql_query}")
+
+            # Проверка на наличие базовых SQL конструкций
+            sql_upper = sql_result.sql_query.upper()
+            if not any(keyword in sql_upper for keyword in ['SELECT', 'FROM']):
+                raise ValueError(f"Generated SQL query lacks basic SQL structure: {sql_result.sql_query[:100]}...")
+
+            self.logger.info(f"SQL query validation passed: {len(sql_result.sql_query)} characters")
 
             # Сохраняем результат в хранилище
             result_key = f"sql_result_{message.id}"

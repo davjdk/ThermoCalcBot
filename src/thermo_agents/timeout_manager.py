@@ -42,7 +42,6 @@ class TimeoutConfig:
     jitter: bool = True
 
 
-@dataclass
 class RetryableError(BaseModel):
     """Описание ошибки, для которой возможен retry."""
     error_type: str
@@ -61,41 +60,41 @@ class TimeoutManager:
     - Ранняя диагностика проблем
     """
 
-    # Базовые конфигурации таймаутов
+    # Базовые конфигурации таймаутов (оптимизированные для сложных запросов)
     DEFAULT_TIMEOUTS = {
         OperationType.LLM_REQUEST: TimeoutConfig(
-            base_timeout=30.0,
-            max_timeout=60.0,
+            base_timeout=45.0,  # Увеличено с 30.0
+            max_timeout=120.0,  # Увеличено с 60.0
             retry_multiplier=1.5,
-            max_retries=1
+            max_retries=2  # Увеличено с 1
         ),
         OperationType.SQL_GENERATION: TimeoutConfig(
-            base_timeout=45.0,
-            max_timeout=90.0,
+            base_timeout=90.0,  # Увеличено с 45.0
+            max_timeout=180.0,  # Увеличено с 90.0
             retry_multiplier=1.5,
-            max_retries=1
+            max_retries=2  # Увеличено с 1
         ),
         OperationType.TEMPERATURE_FILTER: TimeoutConfig(
-            base_timeout=10.0,
-            max_timeout=20.0,
+            base_timeout=15.0,  # Увеличено с 10.0
+            max_timeout=30.0,  # Увеличено с 20.0
             retry_multiplier=1.5,
             max_retries=1
         ),
         OperationType.LLM_FILTERING: TimeoutConfig(
-            base_timeout=60.0,
-            max_timeout=120.0,
+            base_timeout=120.0,  # Увеличено с 60.0
+            max_timeout=300.0,  # Увеличено с 120.0
             retry_multiplier=1.5,
-            max_retries=1
+            max_retries=2  # Увеличено с 1
         ),
         OperationType.COMPOUND_SEARCH: TimeoutConfig(
-            base_timeout=90.0,
-            max_timeout=180.0,
+            base_timeout=180.0,  # Увеличено с 90.0
+            max_timeout=600.0,  # Увеличено с 180.0
             retry_multiplier=1.5,
-            max_retries=1
+            max_retries=2  # Увеличено с 1
         ),
         OperationType.TOTAL_REQUEST: TimeoutConfig(
-            base_timeout=120.0,
-            max_timeout=240.0,
+            base_timeout=300.0,  # Увеличено с 120.0
+            max_timeout=900.0,  # Увеличено с 240.0
             retry_multiplier=1.5,
             max_retries=1
         ),
@@ -181,15 +180,34 @@ class TimeoutManager:
         # Текущие адаптированные таймауты
         self.adaptive_timeouts = self.DEFAULT_TIMEOUTS.copy()
 
+        # Circuit breaker состояние для каждого типа операции
+        self.circuit_breaker_state: Dict[OperationType, Dict] = {
+            op_type: {
+                "failures": 0,
+                "last_failure_time": None,
+                "state": "closed",  # closed, open, half_open
+                "success_count": 0
+            }
+            for op_type in OperationType
+        }
+
+        # Circuit breaker настройки
+        self.circuit_breaker_config = {
+            "failure_threshold": 3,  # Количество отказов для открытия circuit
+            "recovery_timeout": 60,  # Секунды до попытки восстановления
+            "success_threshold": 2,  # Количество успехов для закрытия circuit
+        }
+
         # Статистика
         self.stats = {
             "total_operations": 0,
             "successful_operations": 0,
             "retries_performed": 0,
             "timeouts_avoided": 0,
+            "circuit_breaker_activations": 0,
         }
 
-        self.logger.info("TimeoutManager initialized with adaptive timeouts")
+        self.logger.info("TimeoutManager initialized with adaptive timeouts and circuit breaker")
 
     def get_timeout(self, operation_type: OperationType, retry_count: int = 0) -> float:
         """
@@ -236,16 +254,107 @@ class TimeoutManager:
         error_message = str(error).lower()
         error_type = type(error).__name__.lower()
 
+        # Немедленно не retryable критические ошибки
+        critical_errors = [
+            "attributeerror", "typeerror", "valueerror", "keyerror",
+            "syntaxerror", "importerror", "memoryerror"
+        ]
+
+        if any(critical_error in error_type for critical_error in critical_errors):
+            self.logger.debug(f"Critical non-retryable error: {error_type}")
+            return False
+
+        # Проверяем по списку retryable ошибок
         for retryable_error in self.RETRYABLE_ERRORS:
             if (retryable_error.message_pattern.lower() in error_message or
                 retryable_error.error_type.lower() in error_type):
                 return retryable_error.retryable
 
-        # По умолчанию считаем network/timeout ошибки retryable
-        if any(keyword in error_message for keyword in ["timeout", "connection", "network"]):
+        # Дополнительные non-retryable паттерны
+        non_retryable_patterns = [
+            "total_duration", "attribute", "type", "syntax", "validation",
+            "authentication", "authorization", "forbidden", "not found"
+        ]
+
+        if any(pattern in error_message for pattern in non_retryable_patterns):
+            self.logger.debug(f"Non-retryable error pattern: {error_message[:50]}...")
+            return False
+
+        # Retryable сетевые ошибки
+        retryable_keywords = ["timeout", "connection", "network", "unreachable", "rate limit"]
+        if any(keyword in error_message for keyword in retryable_keywords):
+            self.logger.debug(f"Retryable network error: {error_message[:50]}...")
+            return True
+
+        # По умолчанию для неизвестных ошибок - не retryable для безопасности
+        self.logger.debug(f"Unknown error type, treating as non-retryable: {error_type}")
+        return False
+
+    def _check_circuit_breaker(self, operation_type: OperationType) -> bool:
+        """
+        Проверить состояние circuit breaker для операции.
+
+        Args:
+            operation_type: Тип операции
+
+        Returns:
+            True если операция разрешена (circuit closed или half_open)
+        """
+        circuit_state = self.circuit_breaker_state[operation_type]
+        config = self.circuit_breaker_config
+
+        if circuit_state["state"] == "closed":
+            return True
+        elif circuit_state["state"] == "open":
+            # Проверяем, прошло ли достаточно времени для попытки восстановления
+            if (circuit_state["last_failure_time"] and
+                time.time() - circuit_state["last_failure_time"] > config["recovery_timeout"]):
+                circuit_state["state"] = "half_open"
+                self.logger.info(f"Circuit breaker for {operation_type.value} transitioning to half-open")
+                return True
+            return False
+        elif circuit_state["state"] == "half_open":
             return True
 
         return False
+
+    def _record_circuit_breaker_success(self, operation_type: OperationType):
+        """
+        Записать успешное выполнение для circuit breaker.
+
+        Args:
+            operation_type: Тип операции
+        """
+        circuit_state = self.circuit_breaker_state[operation_type]
+        config = self.circuit_breaker_config
+
+        if circuit_state["state"] == "half_open":
+            circuit_state["success_count"] += 1
+            if circuit_state["success_count"] >= config["success_threshold"]:
+                circuit_state["state"] = "closed"
+                circuit_state["failures"] = 0
+                circuit_state["success_count"] = 0
+                self.logger.info(f"Circuit breaker for {operation_type.value} closed after successful recovery")
+
+    def _record_circuit_breaker_failure(self, operation_type: OperationType):
+        """
+        Записать отказ для circuit breaker.
+
+        Args:
+            operation_type: Тип операции
+        """
+        circuit_state = self.circuit_breaker_state[operation_type]
+        config = self.circuit_breaker_config
+
+        circuit_state["failures"] += 1
+        circuit_state["last_failure_time"] = time.time()
+
+        if (circuit_state["state"] == "half_open" or
+            circuit_state["failures"] >= config["failure_threshold"]):
+            circuit_state["state"] = "open"
+            circuit_state["success_count"] = 0
+            self.stats["circuit_breaker_activations"] += 1
+            self.logger.warning(f"Circuit breaker for {operation_type.value} opened after {circuit_state['failures']} failures")
 
     async def execute_with_retry(
         self,
@@ -255,7 +364,7 @@ class TimeoutManager:
         **kwargs
     ) -> Any:
         """
-        Выполнить операцию с retry механизмом.
+        Выполнить операцию с retry механизмом и circuit breaker.
 
         Args:
             operation: Асинхронная функция для выполнения
@@ -267,10 +376,16 @@ class TimeoutManager:
 
         Raises:
             Последняя ошибка если все попытки неудачны
+            CircuitBreakerOpenError если circuit breaker открыт
         """
         config = self.adaptive_timeouts.get(operation_type)
         if not config:
             config = TimeoutConfig(base_timeout=30.0, max_timeout=60.0, max_retries=1)
+
+        # Проверяем circuit breaker
+        if not self._check_circuit_breaker(operation_type):
+            circuit_state = self.circuit_breaker_state[operation_type]
+            raise Exception(f"Circuit breaker open for {operation_type.value}. Last failure: {circuit_state['last_failure_time']}")
 
         last_error = None
         start_time = time.time()
@@ -295,6 +410,7 @@ class TimeoutManager:
                 # Успешное выполнение
                 elapsed = time.time() - attempt_start
                 self._record_success(operation_type, elapsed)
+                self._record_circuit_breaker_success(operation_type)
 
                 self.logger.info(
                     f"{operation_type.value} completed successfully in {elapsed:.1f}s (attempt {attempt + 1})"
@@ -319,6 +435,14 @@ class TimeoutManager:
                     self.session_logger.log_error(
                         f"OPERATION FAILED: {operation_type.value}, attempt {attempt + 1}, error: {str(e)[:100]}"
                     )
+
+                # Записываем отказ в circuit breaker
+                self._record_circuit_breaker_failure(operation_type)
+
+                # Если circuit breaker открыт, прекращаем попытки
+                if self.circuit_breaker_state[operation_type]["state"] == "open":
+                    self.logger.error(f"Circuit breaker opened for {operation_type.value}, aborting retries")
+                    break
 
                 # Проверяем, можно ли retry
                 if attempt < config.max_retries and self.is_retryable_error(e):
@@ -358,7 +482,7 @@ class TimeoutManager:
 
     def _calculate_retry_delay(self, config: TimeoutConfig, attempt: int) -> float:
         """
-        Рассчитать задержку перед retry с exponential backoff и jitter.
+        Рассчитать задержку перед retry с улучшенным exponential backoff и jitter.
 
         Args:
             config: Конфигурация таймаута
@@ -367,18 +491,35 @@ class TimeoutManager:
         Returns:
             Задержка в секундах
         """
-        # Exponential backoff
-        delay = config.backoff_base ** attempt
+        # Улучшенный exponential backoff с учетом контекста операции
+        base_delay = config.backoff_base ** attempt
 
-        # Добавляем jitter для избежания race conditions
+        # Добавляем небольшой linear компонент для первых попыток
+        if attempt == 0:
+            base_delay = 0.5  # Минимальная задержка для первой retry
+        elif attempt == 1:
+            base_delay = max(base_delay, 1.0)  # Минимальная задержка для второй retry
+
+        # Умный jitter - меньше для быстрых операций, больше для долгих
         if config.jitter:
-            jitter = random.uniform(0.8, 1.2)
-            delay *= jitter
+            if config.base_timeout < 30:
+                jitter = random.uniform(0.9, 1.1)  # Меньший jitter для быстрых операций
+            else:
+                jitter = random.uniform(0.7, 1.3)  # Больший jitter для долгих операций
+            delay = base_delay * jitter
+        else:
+            delay = base_delay
 
-        # Ограничиваем максимальную задержку
-        max_delay = min(30.0, config.base_timeout * 0.5)
+        # Адаптивное ограничение максимальной задержки
+        max_delay = min(
+            60.0,  # Абсолютный максимум
+            config.base_timeout * 0.3,  # Не более 30% от базового таймаута
+            max(10.0, config.base_timeout * 0.1)  # Минимум 10 секунд или 10% от таймаута
+        )
+
         delay = min(delay, max_delay)
 
+        self.logger.debug(f"Calculated retry delay: {delay:.2f}s (attempt {attempt}, base_timeout: {config.base_timeout}s)")
         return delay
 
     def _record_success(self, operation_type: OperationType, elapsed: float):

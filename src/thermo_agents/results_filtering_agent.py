@@ -727,6 +727,8 @@ class ResultsFilteringAgent:
                 self.config.session_logger.log_info(f"SQL FILTER GENERATION START: {compound}")
 
             # Используем TimeoutManager для выполнения с retry механизмом
+            sql_start_time = asyncio.get_event_loop().time()
+
             async def generate_sql_filters():
                 return await sql_filter_agent.run(prompt, deps=self.config)
 
@@ -735,7 +737,32 @@ class ResultsFilteringAgent:
                 TimeoutOperationType.SQL_GENERATION
             )
 
-            sql_elapsed = result.usage.total_duration / 1_000_000_000 if hasattr(result, 'usage') else 0
+            # Безопасное извлечение времени выполнения из различных типов ответов PydanticAI
+            sql_elapsed = 0
+            if hasattr(result, 'usage'):
+                try:
+                    # Попытка получить total_duration из объекта usage
+                    if hasattr(result.usage, 'total_duration') and callable(result.usage.total_duration):
+                        # Если total_duration - это метод
+                        usage_data = result.usage()
+                        sql_elapsed = usage_data.get('total_duration', 0) / 1_000_000_000
+                    elif hasattr(result.usage, 'total_duration'):
+                        # Если total_duration - это атрибут
+                        sql_elapsed = result.usage.total_duration / 1_000_000_000
+                    elif callable(result.usage):
+                        # Если usage - это функция, возвращающая данные
+                        usage_data = result.usage()
+                        if isinstance(usage_data, dict):
+                            sql_elapsed = usage_data.get('total_duration', 0) / 1_000_000_000
+                        elif hasattr(usage_data, 'total_duration'):
+                            sql_elapsed = usage_data.total_duration / 1_000_000_000
+                    else:
+                        # Если usage имеет непредвиденную структуру
+                        self.logger.warning(f"Unexpected usage structure: {type(result.usage)}")
+                        sql_elapsed = 0
+                except Exception as e:
+                    self.logger.warning(f"Error extracting usage duration: {e}")
+                    sql_elapsed = 0
             self.logger.info(f"SQL filters generated for {compound} in {sql_elapsed:.2f}s: {len(result.output.sql_where_conditions)} conditions")
 
             if self.config.session_logger:
