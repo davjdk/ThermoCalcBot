@@ -166,27 +166,46 @@ class SQLGenerationAgent:
             Оптимизированная SQL подсказка
         """
         temperature = common_params.get("temperature_k", 298.15)
+        temperature_range = common_params.get("temperature_range_k", [298.15, 2000.0])  # Дефолтный диапазон
         phases = common_params.get("phases", [])
         properties = common_params.get("properties", ["basic"])
 
-        # Создаем специфичную подсказку для одного соединения
+        # Если температурный диапазон не задан, используем стандартный
+        if len(temperature_range) < 2:
+            temperature_range = [298.15, 2000.0]
+
+        # Создаем специфичную подсказку для одного соединения с интеллектуальным фильтром
         sql_hint = f"""
-        Сгенерируй SQL запрос для поиска одного химического соединения {compound} в таблице compounds.
+        Сгенерируй точный SQL запрос для поиска химического соединения {compound} в таблице compounds.
 
-        Требования:
-        1. Используй TRIM(Formula) = '{compound}' для точного совпадения
-        2. Добавь Formula LIKE '{compound}(%' для фазовых/ионных вариантов
-        3. Примени температурную фильтрацию: температура {temperature}K должна быть в диапазоне [Tmin, Tmax]
-        4. Сортируй по ReliabilityClass ASC (1 = самые надежные данные)
-        5. Используй LIMIT 100 для контроля результатов
-        6. Приоритизуй фазы: {', '.join(phases) if phases else 'любые'}
+        КРИТИЧЕСКИЕ ТРЕБОВАНИЯ:
+        1. Точное совпадение формулы: TRIM(Formula) = '{compound}'
+        2. Варианты формулы: Formula LIKE '{compound}(%' (для фазовых модификаторов)
+        3. Строгая температурная фильтрация: температура {temperature}K в диапазоне [Tmin, Tmax]
+        4. Температурный диапазон поиска: {temperature_range[0]}K - {temperature_range[1]}K
+        5. Сортировка по надежности: ReliabilityClass ASC (1 = самые надежные)
+        6. Фазовый приоритет: {', '.join(phases) if phases else 'автоматический'}
 
-        Пример структуры:
+        УСЛОВИЯ ТЕМПЕРАТУРНОЙ ФИЛЬТРАЦИИ:
+        - Основное условие: ({temperature} >= Tmin AND {temperature} <= Tmax)
+        - Расширенное условие: (Tmin <= {temperature_range[1]} AND Tmax >= {temperature_range[0]})
+        - Обработка NULL значений: Tmin IS NULL OR Tmax IS NULL
+
+        ИНТЕЛЛЕКТУАЛЬНЫЙ ФИЛЬТР ФАЗ:
+        - Автоматически определяй фазу на основе температуры плавления/кипения
+        - Твердая (s): T < MeltingPoint
+        - Жидкая (l): MeltingPoint <= T <= BoilingPoint
+        - Газообразная (g): T > BoilingPoint
+        - Если температурный диапазон покрывает все фазы - включай все
+
+        СТРУКТУРА ЗАПРОСА:
         SELECT * FROM compounds WHERE
         (TRIM(Formula) = '{compound}' OR Formula LIKE '{compound}(%')
-        AND (Tmin IS NULL OR Tmax IS NULL OR ({temperature} >= Tmin AND {temperature} <= Tmax)))
-        ORDER BY ReliabilityClass ASC
-        LIMIT 100
+        AND (Tmin IS NULL OR Tmax IS NULL OR (Tmin <= {temperature_range[1]} AND Tmax >= {temperature_range[0]})))
+        ORDER BY ReliabilityClass ASC, Phase ASC, ABS({temperature} - COALESCE(Tmin, {temperature})) ASC
+        LIMIT 50
+
+        ВЕРНИ ТОЛЬКО SQL ЗАПРОС БЕЗ ДОПОЛНИТЕЛЬНЫХ ПОЯСНЕНИЙ.
         """
         return sql_hint.strip()
 
@@ -201,7 +220,6 @@ class SQLGenerationAgent:
             Уверенность от 0.0 до 1.0
         """
         execution_result = result_data.get("execution_result", {})
-        filtered_result = result_data.get("filtered_result", {})
 
         if not execution_result.get("success", False):
             return 0.0
@@ -211,13 +229,12 @@ class SQLGenerationAgent:
             return 0.0
 
         # Базовая уверенность на основе количества найденных записей
-        base_confidence = min(1.0, row_count / 10.0)  # 10+ записей = 1.0
+        # Теперь используем более строгую оценку без дополнительной фильтрации
+        base_confidence = min(1.0, row_count / 20.0)  # 20+ записей = 1.0 (более строгий критерий)
 
-        # Учитываем наличие отфильтрованных результатов
-        if filtered_result.get("selected_records"):
-            filtered_count = len(filtered_result["selected_records"])
-            filter_confidence = min(1.0, filtered_count / 3.0)  # 3+ записи = 1.0
-            return (base_confidence + filter_confidence) / 2.0
+        # Дополнительная уверенность если количество записей оптимально
+        if 1 <= row_count <= 10:
+            return min(1.0, base_confidence + 0.2)  # Небольшое количество записей - более высокий приоритет
 
         return base_confidence
 
@@ -395,7 +412,7 @@ class SQLGenerationAgent:
 
             # Определяем тип обработки результатов
             if message_type == "individual":
-                # Для индивидуального запроса отправляем напрямую к Results Filtering Agent
+                # Для индивидуального запроса отправляем напрямую к Database Agent
                 self.logger.info("Sending SQL query to database agent for individual execution...")
                 db_message_id = self.storage.send_message(
                     source_agent=self.agent_id,
@@ -450,49 +467,8 @@ class SQLGenerationAgent:
                 result_data["execution_result"] = db_result
                 self.logger.info(f"Database execution successful: {db_result.get('row_count', 0)} rows")
 
-                # Ждем результат фильтрации от агента фильтрации результатов
-                if db_result.get("success") and db_result.get("row_count", 0) > 0:
-                    self.logger.info("Waiting for filtering agent results...")
-                    filtering_result = None
-                    filtering_start_time = asyncio.get_event_loop().time()
-                    filtering_timeout = 60  # Увеличено с 30 до 60 секунд на фильтрацию
-
-                    while (asyncio.get_event_loop().time() - filtering_start_time) < filtering_timeout:
-                        # Получаем сообщения от агента фильтрации
-                        filtering_messages = self.storage.receive_messages(
-                            self.agent_id, message_type="results_filtered"
-                        )
-
-                        if filtering_messages:
-                            self.logger.debug(f"DEBUG: Found {len(filtering_messages)} filtering messages")
-
-                        for filter_msg in filtering_messages:
-                            # Проверяем correlation_id (должен соответствовать исходному message ID)
-                            if (filter_msg.source_agent == "results_filtering_agent" and
-                                filter_msg.correlation_id == message.id):
-                                status = filter_msg.payload.get("status")
-                                self.logger.info(f"Received filtering result: {status}")
-                                if status == "success":
-                                    filtering_result = filter_msg.payload.get("filtered_result")
-                                    break
-                                elif status == "no_results":
-                                    self.logger.warning("No records found after filtering")
-                                    break
-                                elif status == "error":
-                                    self.logger.error(f"Filtering agent error: {filter_msg.payload.get('error')}")
-                                    break
-
-                        if filtering_result:
-                            break
-                        # Уменьшаем задержку для ускорения реакции
-                        await asyncio.sleep(0.2)
-
-                    # Добавляем результат фильтрации к данным
-                    if filtering_result:
-                        result_data["filtered_result"] = filtering_result
-                        self.logger.info(f"Filtering successful: {len(filtering_result.get('selected_records', []))} relevant records")
-                    else:
-                        self.logger.warning("Filtering agent did not respond in time, using raw database results")
+                # Результаты готовы для отправки в Individual Search Agent (без дополнительной фильтрации)
+                self.logger.info("Database results ready for individual search agent processing")
             else:
                 self.logger.warning("Database agent did not respond in time")
                 result_data["execution_result"] = {
@@ -531,7 +507,7 @@ class SQLGenerationAgent:
                         "result_key": result_key,
                         "sql_result": result_data,
                         "search_results": result_data.get("execution_result", {}).get("rows", []),
-                        "filtered_data": result_data.get("filtered_result", {}).get("selected_records", []),
+                        "filtered_data": result_data.get("execution_result", {}).get("rows", []),
                         "confidence": self._calculate_confidence(result_data),
                     },
                 )
@@ -577,8 +553,8 @@ class SQLGenerationAgent:
                 operation_result["row_count"] = db_result.get("row_count", 0)
                 operation_result["execution_success"] = db_result.get("success", False)
 
-            if result_data.get("filtered_result"):
-                operation_result["filtered_records"] = len(result_data["filtered_result"].get("selected_records", []))
+            if result_data.get("execution_result"):
+                operation_result["filtered_records"] = len(result_data["execution_result"].get("rows", []))
 
             # Добавляем информацию о маршрутизации
             if message_type == "individual":

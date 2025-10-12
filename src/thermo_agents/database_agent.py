@@ -231,43 +231,10 @@ class DatabaseAgent:
             self.storage.set(result_key, result_data, ttl_seconds=600)
             self.logger.info(f"Database result stored with key: {result_key}")
 
-            # Отправляем результаты агенту фильтрации для интеллектуального отбора
-            filtering_sent = False
+            # Результаты готовы для отправки обратно в SQL Agent (без дополнительной фильтрации)
             if execution_result.get("success"):
                 if execution_result.get("row_count", 0) > 0:
-                    self.logger.info(f"Sending {execution_result.get('row_count')} results to filtering agent for analysis...")
-
-                    if is_individual:
-                        # Индивидуальная фильтрация
-                        filtering_message_id = self.storage.send_message(
-                            source_agent=self.agent_id,
-                            target_agent="results_filtering_agent",
-                            message_type="filter_individual_results",
-                            correlation_id=message.correlation_id,  # Используем correlation_id от SQL агента
-                            payload={
-                                "execution_result": execution_result,
-                                "compound": compound,
-                                "common_params": common_params,
-                                "sql_query": sql_query,
-                            },
-                        )
-                        self.logger.info(f"Individual results sent to filtering agent: {filtering_message_id}")
-                        filtering_sent = True
-                    else:
-                        # Стандартная фильтрация
-                        filtering_message_id = self.storage.send_message(
-                            source_agent=self.agent_id,
-                            target_agent="results_filtering_agent",
-                            message_type="filter_results",
-                            correlation_id=message.correlation_id,  # Используем исходный correlation_id от SQL агента
-                            payload={
-                                "execution_result": execution_result,
-                                "extracted_params": extracted_params,
-                                "sql_query": sql_query,
-                            },
-                        )
-                        self.logger.info(f"Results sent to filtering agent: {filtering_message_id}")
-                        filtering_sent = True
+                    self.logger.info(f"Database execution successful: {execution_result.get('row_count')} results found")
                 else:
                     # Обработка нулевых результатов с graceful degradation
                     self.logger.warning(f"No records found in database for {compound if is_individual else str(extracted_params.get('compounds', []))}")
@@ -324,7 +291,7 @@ class DatabaseAgent:
                 "execution_success": execution_result.get("success", False),
                 "row_count": execution_result.get("row_count", 0),
                 "result_key": result_key,
-                "filtering_sent": filtering_sent,
+                "direct_processing": True,  # Обработка без Results Filtering Agent
             }
 
             if execution_result.get("success"):
@@ -387,8 +354,10 @@ class DatabaseAgent:
 
             # Выполнение запроса
             cursor.execute(cleaned_query)
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
+
+            # Получаем данные с сохранением имен колонок
             rows = cursor.fetchall()
+            columns = [description[0] for description in cursor.description] if cursor.description else []
             data_rows = [list(row) for row in rows] if rows else []
 
             conn.close()

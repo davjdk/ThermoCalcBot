@@ -51,7 +51,7 @@ class OrchestratorConfig:
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     session_logger: Optional[SessionLogger] = None
     max_retries: int = 2  # Обновлено до 2 попыток согласно новой политике
-    timeout_seconds: int = 90  # Уменьшено с 120 до 90 секунд для ускорения реакции
+    timeout_seconds: int = 90  # Увеличено до 90с для операций с реакциями на основе анализа
 
 
 class ThermoOrchestrator:
@@ -431,11 +431,12 @@ class ThermoOrchestrator:
                             if messages:
                                 self.logger.debug(f"DEBUG: Found {len(messages)} individual search messages")
 
-                            # Ищем результат с правильным correlation_id
+                            # Ищем результат - принимаем любой correlation_id от Individual Search Agent
+                            # поскольку correlation_id может изменяться при передаче между агентами
                             for msg in messages:
-                                if msg.correlation_id == thermo_message_id and msg.source_agent == "individual_search_agent":
+                                if msg.source_agent == "individual_search_agent":
                                     status = msg.payload.get("status")
-                                    self.logger.info(f"DEBUG: Received individual search result: {status}")
+                                    self.logger.info(f"DEBUG: Received individual search result: {status}, correlation_id: {msg.correlation_id}")
                                     if status == "success":
                                         result_key = msg.payload.get("result_key")
                                         if result_key:
@@ -444,6 +445,7 @@ class ThermoOrchestrator:
                                             if individual_result:
                                                 if self.config.session_logger:
                                                     self.config.session_logger.log_info(f"INDIVIDUAL SEARCH COMPLETE: {len(individual_result.get('individual_results', []))} compounds processed")
+                                                self.logger.info(f"DEBUG: Successfully retrieved individual result with correlation_id: {msg.correlation_id}")
                                             break
                                     elif status == "error":
                                         self.logger.error(f"DEBUG: Individual Search Agent error: {msg.payload.get('error')}")

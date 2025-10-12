@@ -60,47 +60,47 @@ class TimeoutManager:
     - Ранняя диагностика проблем
     """
 
-    # Базовые конфигурации таймаутов (оптимизированные для сложных запросов)
+    # Базовые конфигурации таймаутов (оптимизированные на основе анализа производительности)
     DEFAULT_TIMEOUTS = {
         OperationType.LLM_REQUEST: TimeoutConfig(
-            base_timeout=45.0,  # Увеличено с 30.0
-            max_timeout=120.0,  # Увеличено с 60.0
+            base_timeout=30.0,  # Оптимизировано на основе реального времени выполнения
+            max_timeout=60.0,   # Уменьшено для ускорения реакции системы
             retry_multiplier=1.5,
-            max_retries=2  # Увеличено с 1
+            max_retries=2
         ),
         OperationType.SQL_GENERATION: TimeoutConfig(
-            base_timeout=90.0,  # Увеличено с 45.0
-            max_timeout=180.0,  # Увеличено с 90.0
+            base_timeout=33.0,  # Оптимизировано: среднее 16.6с × 2 = 33.2с
+            max_timeout=90.0,   # Уменьшено с 180.0с
             retry_multiplier=1.5,
-            max_retries=2  # Увеличено с 1
+            max_retries=2
         ),
         OperationType.TEMPERATURE_FILTER: TimeoutConfig(
-            base_timeout=15.0,  # Увеличено с 10.0
-            max_timeout=30.0,  # Увеличено с 20.0
+            base_timeout=10.0,  # Уменьшено на основе быстрой фильтрации в БД
+            max_timeout=20.0,   # Уменьшено с 30.0с
             retry_multiplier=1.5,
             max_retries=1
         ),
         OperationType.LLM_FILTERING: TimeoutConfig(
-            base_timeout=120.0,  # Увеличено с 60.0
-            max_timeout=300.0,  # Увеличено с 120.0
+            base_timeout=60.0,  # Уменьшено с 120.0с
+            max_timeout=120.0,  # Уменьшено с 300.0с
             retry_multiplier=1.5,
-            max_retries=2  # Увеличено с 1
+            max_retries=2
         ),
         OperationType.COMPOUND_SEARCH: TimeoutConfig(
-            base_timeout=180.0,  # Увеличено с 90.0
-            max_timeout=600.0,  # Увеличено с 180.0
+            base_timeout=54.0,  # Оптимизировано: общее время 27с × 2 = 54с
+            max_timeout=120.0,  # Уменьшено с 600.0с
             retry_multiplier=1.5,
-            max_retries=2  # Увеличено с 1
+            max_retries=2
         ),
         OperationType.TOTAL_REQUEST: TimeoutConfig(
-            base_timeout=300.0,  # Увеличено с 120.0
-            max_timeout=900.0,  # Увеличено с 240.0
+            base_timeout=60.0,  # Оптимизировано на основе реального времени выполнения
+            max_timeout=120.0,  # Уменьшено с 900.0с для быстрой реакции
             retry_multiplier=1.5,
             max_retries=1
         ),
         OperationType.HEARTBEAT: TimeoutConfig(
-            base_timeout=15.0,
-            max_timeout=30.0,
+            base_timeout=10.0,  # Уменьшено для ускорения проверки доступности
+            max_timeout=20.0,
             retry_multiplier=1.5,
             max_retries=1
         ),

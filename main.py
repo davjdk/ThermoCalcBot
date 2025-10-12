@@ -28,7 +28,7 @@ from thermo_agents.orchestrator import (
 )
 from thermo_agents.database_agent import DatabaseAgentConfig, DatabaseAgent
 from thermo_agents.sql_generation_agent import SQLAgentConfig, SQLGenerationAgent
-from thermo_agents.results_filtering_agent import ResultsFilteringAgentConfig, ResultsFilteringAgent
+# Results Filtering Agent удален - функциональность перенесена в Individual Search Agent
 from thermo_agents.individual_search_agent import IndividualSearchAgentConfig, IndividualSearchAgent
 from thermo_agents.thermo_agents_logger import create_session_logger
 from thermo_agents.thermodynamic_agent import ThermoAgentConfig, ThermodynamicAgent
@@ -63,7 +63,7 @@ class ThermoSystem:
         self.thermo_agent = None
         self.sql_agent = None
         self.database_agent = None
-        self.results_filtering_agent = None
+        # Results Filtering Agent удален - функциональность перенесена в Individual Search Agent
         self.individual_search_agent = None
         self.orchestrator = None
 
@@ -155,23 +155,8 @@ class ThermoSystem:
         )
         self.database_agent = DatabaseAgent(database_config)
 
-        # Агент фильтрации результатов (оптимизированная конфигурация v2.0)
-        results_filtering_config = ResultsFilteringAgentConfig(
-            agent_id="results_filtering_agent",
-            llm_api_key=self.config["llm_api_key"],
-            llm_base_url=self.config["llm_base_url"],
-            llm_model=self.config["llm_model"],
-            storage=self.storage,
-            logger=logging.getLogger("results_filtering_agent"),
-            session_logger=self.session_logger,
-            poll_interval=0.05,  # Оптимизировано до 0.05с для немедленной обработки
-            max_retries=2,  # Обновлено до 2 попыток согласно новой политике
-            filtering_timeout=60,  # Уменьшено с 240 до 60 секунд
-            sql_generation_timeout=30,  # Уменьшено с 45 до 30 секунд
-            llm_filtering_timeout=45,  # Уменьшено с 60 до 45 секунд
-            max_retry_attempts=1,  # Максимальное количество повторных запросов (1 retry = 2 попытки)
-        )
-        self.results_filtering_agent = ResultsFilteringAgent(results_filtering_config)
+        # Results Filtering Agent удален - функциональность перенесена в Individual Search Agent
+        # Интеллектуальный фильтр фаз теперь встроен в Individual Search Agent
 
         # Individual Search Agent (оптимизированная конфигурация v2.0)
         individual_search_config = IndividualSearchAgentConfig(
@@ -181,7 +166,7 @@ class ThermoSystem:
             session_logger=self.session_logger,
             poll_interval=0.05,  # Оптимизировано до 0.05с для немедленной обработки
             max_retries=2,  # Обновлено до 2 попыток согласно новой политике
-            timeout_seconds=180,  # Оптимизировано до 180 секунд
+            timeout_seconds=54,  # Оптимизировано на основе анализа: 27с × 2 = 54с
             max_parallel_searches=4,  # Оптимизировано для баланса производительности
         )
         self.individual_search_agent = IndividualSearchAgent(individual_search_config)
@@ -195,7 +180,7 @@ class ThermoSystem:
             logger=logging.getLogger("orchestrator"),
             session_logger=self.session_logger,
             max_retries=2,  # Обновлено до 2 попыток согласно новой политике
-            timeout_seconds=90,  # Уменьшено с 180 до 90 секунд для ускорения реакции
+            timeout_seconds=60,  # Оптимизировано на основе анализа: общий таймаут 60с
         )
         self.orchestrator = ThermoOrchestrator(orchestrator_config)
 
@@ -205,12 +190,11 @@ class ThermoSystem:
         """Запуск всех агентов в отдельных задачах."""
         self.logger.info("Starting agents...")
 
-        # Создаем задачи для каждого агента
+        # Создаем задачи для каждого агента (Results Filtering Agent удален)
         self.agent_tasks = [
             asyncio.create_task(self.thermo_agent.start(), name="thermo_agent_task"),
             asyncio.create_task(self.sql_agent.start(), name="sql_agent_task"),
             asyncio.create_task(self.database_agent.start(), name="database_agent_task"),
-            asyncio.create_task(self.results_filtering_agent.start(), name="results_filtering_agent_task"),
             asyncio.create_task(self.individual_search_agent.start(), name="individual_search_agent_task"),
         ]
 
@@ -224,15 +208,14 @@ class ThermoSystem:
         """Остановка всех агентов."""
         self.logger.info("Stopping agents...")
 
-        # Останавливаем агентов
+        # Останавливаем агентов (Results Filtering Agent удален)
         if self.thermo_agent:
             await self.thermo_agent.stop()
         if self.sql_agent:
             await self.sql_agent.stop()
         if self.database_agent:
             await self.database_agent.stop()
-        if self.results_filtering_agent:
-            await self.results_filtering_agent.stop()
+        # Results Filtering Agent был удален - функциональность перенесена в Individual Search Agent
         if self.individual_search_agent:
             await self.individual_search_agent.stop()
         if self.orchestrator:

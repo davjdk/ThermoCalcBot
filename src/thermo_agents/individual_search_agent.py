@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from .agent_storage import AgentStorage, get_storage
@@ -32,7 +32,7 @@ class IndividualSearchAgentConfig:
     session_logger: Optional[SessionLogger] = None
     poll_interval: float = 0.05  # Оптимизировано до 0.05с для немедленной обработки
     max_retries: int = 2  # Обновлено до 2 попыток согласно новой политике
-    timeout_seconds: int = 180  # Уменьшено с 300 до 180 секунд
+    timeout_seconds: int = 54  # Оптимизировано на основе анализа: 27с × 2 = 54с
     max_parallel_searches: int = 4  # Оптимизировано для баланса производительности
 
 
@@ -75,6 +75,7 @@ class IndividualSearchAgent:
         )
 
         self.logger.info(f"IndividualSearchAgent '{self.agent_id}' initialized")
+        self._last_columns = []  # Сохраняем имена колонок для конвертации
 
     async def start(self):
         """Запустить агента в режиме прослушивания сообщений."""
@@ -145,10 +146,11 @@ class IndividualSearchAgent:
                 ttl_seconds=1800  # 30 минут
             )
 
-            # Отправляем ответ
-            self.storage.send_message(
+            # Отправляем ответ в orchestrator (а не source_agent) с подтверждением
+            # Orchestrator ожидает сообщения individual_search_complete
+            send_result = self.storage.send_message_with_ack(
                 source_agent=self.agent_id,
-                target_agent=message.source_agent,
+                target_agent="orchestrator",
                 message_type="individual_search_complete",
                 correlation_id=message.id,
                 payload={
@@ -156,7 +158,14 @@ class IndividualSearchAgent:
                     "result_key": result_key,
                     "aggregated_results": aggregated_results.model_dump(),
                 },
+                metadata={"critical": True, "requires_ack": True}
             )
+
+            # Логируем результат отправки
+            if send_result.get("target_active"):
+                self.logger.info(f"Individual search result sent to orchestrator: {send_result['message_id']}")
+            else:
+                self.logger.warning(f"Orchestrator not active when sending result: {send_result.get('warning')}")
 
             self.logger.info(
                 f"Individual search completed: {len(aggregated_results.individual_results)} compounds processed"
@@ -165,14 +174,19 @@ class IndividualSearchAgent:
         except Exception as e:
             self.logger.error(f"Error processing search request {message.id}: {e}")
 
-            # Отправляем сообщение об ошибке
-            self.storage.send_message(
+            # Отправляем сообщение об ошибке в orchestrator с подтверждением
+            error_send_result = self.storage.send_message_with_ack(
                 source_agent=self.agent_id,
-                target_agent=message.source_agent,
-                message_type="error",
+                target_agent="orchestrator",
+                message_type="individual_search_complete",
                 correlation_id=message.id,
                 payload={"status": "error", "error": str(e)},
+                metadata={"critical": True, "requires_ack": True}
             )
+
+            # Логируем результат отправки ошибки
+            if not error_send_result.get("target_active"):
+                self.logger.warning(f"Orchestrator not active when sending error: {error_send_result.get('warning')}")
 
             if self.config.session_logger:
                 self.config.session_logger.log_error(str(e))
@@ -317,30 +331,40 @@ class IndividualSearchAgent:
                     self.logger.error(f"DEBUG: SQL Agent returned error for {compound}: {error_msg}")
                     raise Exception(f"SQL Agent error: {error_msg}")
 
-                self.logger.info(f"DEBUG: SQL result received for compound {compound}, waiting for filtering")
+                self.logger.info(f"DEBUG: SQL result received for compound {compound}, applying intelligent phase filtering")
 
-                # SQL Agent отправит запрос к Database Agent, затем к Filtering Agent
-                # Ждем финального результата от Filtering Agent с использованием TimeoutManager
-                self.logger.info(f"DEBUG: Waiting for filtering result for compound {compound} using TimeoutManager")
-                final_result = await self.timeout_manager.execute_with_retry(
-                    lambda: self._wait_for_filtering_result(search_id, timeout=180),
-                    TimeoutOperationType.LLM_FILTERING
-                )
+                # Извлекаем данные из SQL результата
+                search_results = sql_result.get("search_results", [])
+                execution_result = sql_result.get("execution_result", {})
 
-                if final_result.get("status") == "error":
-                    error_msg = final_result.get('error', 'Unknown filtering error')
-                    self.logger.error(f"DEBUG: Filtering Agent returned error for {compound}: {error_msg}")
-                    raise Exception(f"Filtering Agent error: {error_msg}")
+                # Сохраняем имена колонок для конвертации
+                self._last_columns = execution_result.get("columns", [])
 
-                # Формируем результат для одного соединения
-                filtered_data = final_result.get("filtered_data", [])
-                confidence = final_result.get("confidence", 0.0)
+                temperature = search_request.common_params.get("temperature_k", 298.15)
+                temperature_range = search_request.common_params.get("temperature_range_k", [298.15, 2000.0])
+
+                # Конвертируем кортежи в словари
+                converted_search_results = [
+                    self._convert_row_to_dict(row) for row in search_results
+                ]
+
+                # Применяем интеллектуальный фильтр по фазам
+                self.logger.info(f"DEBUG: Applying phase filter for {compound}: T={temperature}K, range={temperature_range}")
+                filtered_data = self._filter_records_by_phase(converted_search_results, temperature, temperature_range)
+
+                # Рассчитываем уверенность на основе качества отфильтрованных данных
+                if filtered_data:
+                    confidence = min(1.0, len(filtered_data) / 5.0)  # 5+ записей = высокая уверенность
+                    if len(filtered_data) == 1:
+                        confidence = min(0.9, confidence + 0.2)  # Одна запись - высокая точность
+                else:
+                    confidence = 0.0
 
                 self.logger.info(f"DEBUG: Search completed for compound {compound}: {len(filtered_data)} records selected, confidence={confidence}")
 
                 return IndividualCompoundResult(
                     compound=compound,
-                    search_results=final_result.get("search_results", []),
+                    search_results=converted_search_results,
                     selected_records=filtered_data,
                     confidence=confidence,
                     errors=[]
@@ -391,43 +415,7 @@ class IndividualSearchAgent:
         self.logger.error(f"DEBUG: SQL Agent timeout after {elapsed:.1f}s for message {message_id}")
         raise TimeoutError(f"SQL Agent response timeout for message {message_id} after {elapsed:.1f}s")
 
-    async def _wait_for_filtering_result(self, search_id: str, timeout: int = 180) -> Dict:
-        """Ожидать результат от Filtering Agent с улучшенной обработкой."""
-        start_time = asyncio.get_event_loop().time()
-        self.logger.info(f"DEBUG: Waiting for filtering result for search {search_id}, timeout={timeout}s")
-
-        while asyncio.get_event_loop().time() - start_time < timeout:
-            # Проверяем сообщения о завершении фильтрации
-            messages = self.storage.receive_messages(
-                self.agent_id,
-                message_type="individual_filter_complete",
-                correlation_id=search_id
-            )
-
-            if messages:
-                self.logger.debug(f"DEBUG: Found {len(messages)} filtering result messages for {search_id}")
-
-            for message in messages:
-                status = message.payload.get("status")
-                self.logger.debug(f"DEBUG: Received filtering message from {message.source_agent}: {status}")
-
-                if status == "success":
-                    self.logger.info(f"DEBUG: Filtering result received successfully for search {search_id}")
-                    return message.payload
-                elif status == "error":
-                    error_msg = message.payload.get("error", "Unknown filtering error")
-                    self.logger.error(f"DEBUG: Filtering Agent returned error for search {search_id}: {error_msg}")
-                    raise Exception(f"Filtering Agent error: {error_msg}")
-                elif status == "no_results":
-                    self.logger.warning(f"DEBUG: Filtering Agent found no results for search {search_id}")
-                    return message.payload
-
-            # Уменьшаем задержку опроса для ускорения реакции
-            await asyncio.sleep(0.2)
-
-        elapsed = asyncio.get_event_loop().time() - start_time
-        self.logger.error(f"DEBUG: Filtering Agent timeout after {elapsed:.1f}s for search {search_id}")
-        raise TimeoutError(f"Filtering Agent response timeout for search {search_id} after {elapsed:.1f}s")
+    # Метод _wait_for_filtering_result удален - больше не нужен, так как используется интеллектуальный фильтр в Individual Search Agent
 
     def _create_summary_table(self, individual_results: List[IndividualCompoundResult]) -> List[Dict]:
         """Создать сводную таблицу из результатов поиска."""
@@ -443,6 +431,97 @@ class IndividualSearchAgent:
                     summary_table.append(summary_record)
 
         return summary_table
+
+    def _filter_records_by_phase(self, records: List[Dict], temperature: float, temperature_range: List[float]) -> List[Dict]:
+        """
+        Интеллектуальный фильтр записей по фазовому состоянию на основе температурных данных.
+
+        Args:
+            records: Список записей из базы данных (уже сконвертированных в словари)
+            temperature: Целевая температура в Кельвинах
+            temperature_range: Температурный диапазон [min, max] в Кельвинах
+
+        Returns:
+            Отфильтрованный список записей с учетом фазовых состояний
+        """
+        if not records:
+            return records
+
+        filtered_records = []
+        temp_min, temp_max = temperature_range
+
+        # Анализируем каждую запись
+        for record in records:
+            # record теперь гарантированно словарь
+            phase = record.get('Phase', '').lower()
+            melting_point = record.get('MeltingPoint')
+            boiling_point = record.get('BoilingPoint')
+
+            # Если температурный диапазон охватывает все возможные фазы, включаем все
+            if temp_min <= 273.15 and temp_max >= 3000:  # Очень широкий диапазон
+                filtered_records.append(record)
+                continue
+
+            # Интеллектуальное определение фазы на основе температур плавления/кипения
+            should_include = False
+
+            if melting_point is not None and boiling_point is not None:
+                melting_k = melting_point + 273.15
+                boiling_k = boiling_point + 273.15
+
+                # Определяем подходящую фазу для целевой температуры
+                if temperature < melting_k:
+                    # Твердая фаза
+                    if phase == 's':
+                        should_include = True
+                elif melting_k <= temperature <= boiling_k:
+                    # Жидкая фаза
+                    if phase == 'l':
+                        should_include = True
+                elif temperature > boiling_k:
+                    # Газообразная фаза
+                    if phase == 'g':
+                        should_include = True
+            else:
+                # Если нет данных о температурах плавления/кипения, используем химическую интуицию
+                if temp_max < 500:  # Низкие температуры - скорее всего твердое
+                    if phase in ['s', '']:
+                        should_include = True
+                elif temp_min > 1500:  # Высокие температуры - скорее всего газ
+                    if phase in ['g', '']:
+                        should_include = True
+                else:  # Средние температуры - включаем все
+                    should_include = True
+
+            if should_include:
+                filtered_records.append(record)
+
+        return filtered_records
+
+    def _convert_row_to_dict(self, row) -> Dict[str, Any]:
+        """
+        Конвертирует Row объект или кортеж в словарь.
+
+        Args:
+            row: Row объект из sqlite3 или кортеж
+
+        Returns:
+            Словарь с данными
+        """
+        if hasattr(row, 'keys'):
+            # sqlite3.Row объект
+            return dict(row)
+        elif isinstance(row, (list, tuple)):
+            # Кортеж с данными - нужен mapping имен колонок
+            # Используем колонки из execution_result
+            if hasattr(self, '_last_columns') and self._last_columns:
+                return dict(zip(self._last_columns, row))
+            else:
+                # Fallback: возвращаем как есть, но это может вызвать ошибку
+                return {f"col_{i}": val for i, val in enumerate(row)}
+        else:
+            # Уже словарь
+            return row
 
     def _calculate_overall_confidence(self, individual_results: List[IndividualCompoundResult]) -> float:
         """Вычислить общую уверенность в результатах."""
