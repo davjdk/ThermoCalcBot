@@ -20,6 +20,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from .agent_storage import AgentStorage, get_storage
 from .operations import OperationType
 from .thermo_agents_logger import SessionLogger
+from .timeout_manager import get_timeout_manager, OperationType as TimeoutOperationType
 
 
 class OrchestratorRequest(BaseModel):
@@ -49,8 +50,8 @@ class OrchestratorConfig:
     storage: AgentStorage = field(default_factory=get_storage)
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     session_logger: Optional[SessionLogger] = None
-    max_retries: int = 3  # Увеличено с 2 до 3 для улучшенной надежности
-    timeout_seconds: int = 120  # Увеличено с 60 до 120 секунд для синхронизации с другими агентами
+    max_retries: int = 2  # Обновлено до 2 попыток согласно новой политике
+    timeout_seconds: int = 90  # Уменьшено с 120 до 90 секунд для ускорения реакции
 
 
 class ThermoOrchestrator:
@@ -75,6 +76,13 @@ class ThermoOrchestrator:
         self.storage = config.storage
         self.logger = config.logger
         self.agent = self._initialize_agent()
+
+        # Инициализация TimeoutManager
+        self.timeout_manager = get_timeout_manager(
+            logger=self.config.logger,
+            session_logger=self.config.session_logger,
+            llm_base_url=self.config.llm_base_url
+        )
 
         # Регистрация в хранилище
         self.agent_id = "orchestrator"
@@ -404,46 +412,60 @@ class ThermoOrchestrator:
                     # Для реакций используем Individual Search Agent
                     trace.append("Processing reaction via Individual Search Agent")
 
-                    # Ждем результата от Individual Search Agent с улучшенным логированием
-                    individual_result = None
-                    individual_start_time = asyncio.get_event_loop().time()
-                    timeout_seconds = self.config.timeout_seconds * 2  # Увеличенный таймаут для индивидуального поиска
-                    self.logger.info(f"DEBUG: Waiting for Individual Search Agent, timeout={timeout_seconds}s, correlation_id={thermo_message_id}")
+                    # Ждем результата от Individual Search Agent с использованием TimeoutManager
+                    self.logger.info(f"DEBUG: Waiting for Individual Search Agent using TimeoutManager, correlation_id={thermo_message_id}")
 
-                    while (
-                        asyncio.get_event_loop().time() - individual_start_time
-                    ) < timeout_seconds:
-                        # Получаем сообщения от Individual Search Agent
-                        messages = self.storage.receive_messages(
-                            self.agent_id, message_type="individual_search_complete"
-                        )
+                    async def wait_for_individual_search():
+                        individual_result = None
+                        individual_start_time = asyncio.get_event_loop().time()
+                        timeout_seconds = self.timeout_manager.get_timeout(TimeoutOperationType.TOTAL_REQUEST)
 
-                        if messages:
-                            self.logger.debug(f"DEBUG: Found {len(messages)} individual search messages")
+                        while (
+                            asyncio.get_event_loop().time() - individual_start_time
+                        ) < timeout_seconds:
+                            # Получаем сообщения от Individual Search Agent
+                            messages = self.storage.receive_messages(
+                                self.agent_id, message_type="individual_search_complete"
+                            )
 
-                        # Ищем результат с правильным correlation_id
-                        for msg in messages:
-                            if msg.correlation_id == thermo_message_id and msg.source_agent == "individual_search_agent":
-                                status = msg.payload.get("status")
-                                self.logger.info(f"DEBUG: Received individual search result: {status}")
-                                if status == "success":
-                                    result_key = msg.payload.get("result_key")
-                                    if result_key:
-                                        # Получаем полный результат из хранилища
-                                        individual_result = self.storage.get(result_key)
-                                        if individual_result:
-                                            if self.config.session_logger:
-                                                self.config.session_logger.log_info(f"INDIVIDUAL SEARCH COMPLETE: {len(individual_result.get('individual_results', []))} compounds processed")
+                            if messages:
+                                self.logger.debug(f"DEBUG: Found {len(messages)} individual search messages")
+
+                            # Ищем результат с правильным correlation_id
+                            for msg in messages:
+                                if msg.correlation_id == thermo_message_id and msg.source_agent == "individual_search_agent":
+                                    status = msg.payload.get("status")
+                                    self.logger.info(f"DEBUG: Received individual search result: {status}")
+                                    if status == "success":
+                                        result_key = msg.payload.get("result_key")
+                                        if result_key:
+                                            # Получаем полный результат из хранилища
+                                            individual_result = self.storage.get(result_key)
+                                            if individual_result:
+                                                if self.config.session_logger:
+                                                    self.config.session_logger.log_info(f"INDIVIDUAL SEARCH COMPLETE: {len(individual_result.get('individual_results', []))} compounds processed")
+                                            break
+                                    elif status == "error":
+                                        self.logger.error(f"DEBUG: Individual Search Agent error: {msg.payload.get('error')}")
+                                        trace.append(f"Individual Search Agent error: {msg.payload.get('error')}")
                                         break
-                                elif status == "error":
-                                    self.logger.error(f"DEBUG: Individual Search Agent error: {msg.payload.get('error')}")
-                                    trace.append(f"Individual Search Agent error: {msg.payload.get('error')}")
-                                    break
 
-                        if individual_result:
-                            break
-                        # Уменьшаем задержку для ускорения реакции
-                        await asyncio.sleep(0.05)  # Уменьшено с 0.1 до 0.05 секунд
+                            if individual_result:
+                                break
+                            # Уменьшаем задержку для ускорения реакции
+                            await asyncio.sleep(0.05)  # Уменьшено с 0.1 до 0.05 секунд
+
+                        return individual_result
+
+                    # Используем TimeoutManager для выполнения с retry механизмом
+                    try:
+                        individual_result = await self.timeout_manager.execute_with_retry(
+                            wait_for_individual_search,
+                            TimeoutOperationType.TOTAL_REQUEST
+                        )
+                    except Exception as e:
+                        self.logger.error(f"Individual search failed with TimeoutManager: {e}")
+                        individual_result = None
 
                     if individual_result:
                         trace.append("Received aggregated results from Individual Search Agent")

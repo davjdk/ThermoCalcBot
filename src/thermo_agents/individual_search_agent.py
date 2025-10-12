@@ -19,6 +19,7 @@ from .thermodynamic_agent import (
     IndividualCompoundResult,
     IndividualSearchRequest,
 )
+from .timeout_manager import get_timeout_manager, OperationType as TimeoutOperationType
 
 
 @dataclass
@@ -29,10 +30,10 @@ class IndividualSearchAgentConfig:
     storage: AgentStorage = field(default_factory=get_storage)
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     session_logger: Optional[SessionLogger] = None
-    poll_interval: float = 0.5  # Уменьшено с 1.0 до 0.5с для ускорения реакции
-    max_retries: int = 3  # Увеличено с 2 до 3 для улучшенной надежности
-    timeout_seconds: int = 300  # Увеличено с 90 до 300 секунд для обработки сложных запросов
-    max_parallel_searches: int = 6  # Увеличено с 4 до 6 для улучшения производительности
+    poll_interval: float = 0.05  # Оптимизировано до 0.05с для немедленной обработки
+    max_retries: int = 2  # Обновлено до 2 попыток согласно новой политике
+    timeout_seconds: int = 180  # Уменьшено с 300 до 180 секунд
+    max_parallel_searches: int = 4  # Оптимизировано для баланса производительности
 
 
 class IndividualSearchAgent:
@@ -53,6 +54,12 @@ class IndividualSearchAgent:
         self.storage = config.storage
         self.logger = config.logger
         self.running = False
+
+        # Инициализация TimeoutManager
+        self.timeout_manager = get_timeout_manager(
+            logger=self.config.logger,
+            session_logger=self.config.session_logger
+        )
 
         # Регистрация в хранилище
         self.storage.start_session(
@@ -298,9 +305,12 @@ class IndividualSearchAgent:
                 )
                 self.logger.info(f"DEBUG: SQL request sent with message ID: {sql_message_id}")
 
-                # Ожидаем ответа от SQL Agent
-                self.logger.info(f"DEBUG: Waiting for SQL result for compound {compound}")
-                sql_result = await self._wait_for_sql_result(sql_message_id, timeout=180)  # Используем фиксированный таймаут 180 секунд
+                # Ожидаем ответа от SQL Agent с использованием TimeoutManager
+                self.logger.info(f"DEBUG: Waiting for SQL result for compound {compound} using TimeoutManager")
+                sql_result = await self.timeout_manager.execute_with_retry(
+                    lambda: self._wait_for_sql_result(sql_message_id, timeout=180),
+                    TimeoutOperationType.SQL_GENERATION
+                )
 
                 if sql_result.get("status") == "error":
                     error_msg = sql_result.get('error', 'Unknown SQL error')
@@ -310,9 +320,12 @@ class IndividualSearchAgent:
                 self.logger.info(f"DEBUG: SQL result received for compound {compound}, waiting for filtering")
 
                 # SQL Agent отправит запрос к Database Agent, затем к Filtering Agent
-                # Ждем финального результата от Filtering Agent
-                self.logger.info(f"DEBUG: Waiting for filtering result for compound {compound}")
-                final_result = await self._wait_for_filtering_result(search_id, timeout=180)  # Используем фиксированный таймаут 180 секунд
+                # Ждем финального результата от Filtering Agent с использованием TimeoutManager
+                self.logger.info(f"DEBUG: Waiting for filtering result for compound {compound} using TimeoutManager")
+                final_result = await self.timeout_manager.execute_with_retry(
+                    lambda: self._wait_for_filtering_result(search_id, timeout=180),
+                    TimeoutOperationType.LLM_FILTERING
+                )
 
                 if final_result.get("status") == "error":
                     error_msg = final_result.get('error', 'Unknown filtering error')

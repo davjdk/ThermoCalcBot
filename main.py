@@ -155,7 +155,7 @@ class ThermoSystem:
         )
         self.database_agent = DatabaseAgent(database_config)
 
-        # Агент фильтрации результатов
+        # Агент фильтрации результатов (оптимизированная конфигурация v2.0)
         results_filtering_config = ResultsFilteringAgentConfig(
             agent_id="results_filtering_agent",
             llm_api_key=self.config["llm_api_key"],
@@ -164,24 +164,29 @@ class ThermoSystem:
             storage=self.storage,
             logger=logging.getLogger("results_filtering_agent"),
             session_logger=self.session_logger,
-            poll_interval=2.0,  # Увеличенный интервал
+            poll_interval=0.05,  # Оптимизировано до 0.05с для немедленной обработки
+            max_retries=2,  # Обновлено до 2 попыток согласно новой политике
+            filtering_timeout=60,  # Уменьшено с 240 до 60 секунд
+            sql_generation_timeout=30,  # Уменьшено с 45 до 30 секунд
+            llm_filtering_timeout=45,  # Уменьшено с 60 до 45 секунд
+            max_retry_attempts=1,  # Максимальное количество повторных запросов (1 retry = 2 попытки)
         )
         self.results_filtering_agent = ResultsFilteringAgent(results_filtering_config)
 
-        # Individual Search Agent (новый агент для индивидуального поиска)
+        # Individual Search Agent (оптимизированная конфигурация v2.0)
         individual_search_config = IndividualSearchAgentConfig(
             agent_id="individual_search_agent",
             storage=self.storage,
             logger=logging.getLogger("individual_search_agent"),
             session_logger=self.session_logger,
-            poll_interval=2.0,  # Увеличенный интервал
-            max_retries=3,  # Увеличенное количество попыток
-            timeout_seconds=180,  # 3 минуты на поиск одного вещества
-            max_parallel_searches=4,  # Максимум 4 параллельных поиска
+            poll_interval=0.05,  # Оптимизировано до 0.05с для немедленной обработки
+            max_retries=2,  # Обновлено до 2 попыток согласно новой политике
+            timeout_seconds=180,  # Оптимизировано до 180 секунд
+            max_parallel_searches=4,  # Оптимизировано для баланса производительности
         )
         self.individual_search_agent = IndividualSearchAgent(individual_search_config)
 
-        # Оркестратор
+        # Оркестратор (оптимизированная конфигурация v2.0)
         orchestrator_config = OrchestratorConfig(
             llm_api_key=self.config["llm_api_key"],
             llm_base_url=self.config["llm_base_url"],
@@ -189,7 +194,8 @@ class ThermoSystem:
             storage=self.storage,
             logger=logging.getLogger("orchestrator"),
             session_logger=self.session_logger,
-            timeout_seconds=180,  # Увеличенный таймаут для оркестратора
+            max_retries=2,  # Обновлено до 2 попыток согласно новой политике
+            timeout_seconds=90,  # Уменьшено с 180 до 90 секунд для ускорения реакции
         )
         self.orchestrator = ThermoOrchestrator(orchestrator_config)
 

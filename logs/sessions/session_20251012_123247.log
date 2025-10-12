@@ -1,0 +1,870 @@
+2025-10-12 12:32:47,721 - __main__ - INFO - ThermoSystem initialized
+2025-10-12 12:32:47,723 - __main__ - INFO - Initializing agents...
+2025-10-12 12:32:47,977 - thermo_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-10-12 12:32:47,978 - sql_agent - INFO - SQLGenerationAgent 'sql_agent' initialized
+2025-10-12 12:32:47,978 - database_agent - INFO - DatabaseAgent 'database_agent' initialized
+2025-10-12 12:32:47,979 - results_filtering_agent - INFO - ResultsFilteringAgent 'results_filtering_agent' initialized
+2025-10-12 12:32:47,979 - individual_search_agent - INFO - IndividualSearchAgent 'individual_search_agent' initialized
+2025-10-12 12:32:47,985 - __main__ - INFO - All agents initialized successfully
+2025-10-12 12:32:47,986 - __main__ - INFO - Starting agents...
+2025-10-12 12:32:47,986 - thermo_agent - INFO - Agent 'thermo_agent' started listening for messages
+2025-10-12 12:32:47,986 - sql_agent - INFO - Agent 'sql_agent' started listening for messages
+2025-10-12 12:32:47,987 - database_agent - INFO - Agent 'database_agent' started listening for messages
+2025-10-12 12:32:47,987 - results_filtering_agent - INFO - Agent 'results_filtering_agent' started listening for messages
+2025-10-12 12:32:47,987 - individual_search_agent - INFO - Agent 'individual_search_agent' started listening for messages
+2025-10-12 12:32:49,002 - __main__ - INFO - All agents started
+2025-10-12 12:33:25 - INFO - ОПЕРАЦИЯ: [orchestrator] -> PROCESS_REQUEST
+2025-10-12 12:33:25,818 - thermo_agents_session_20251012_123247 - INFO - ОПЕРАЦИЯ: [orchestrator] -> PROCESS_REQUEST
+2025-10-12 12:33:25,822 - orchestrator - INFO - DEBUG: Waiting for thermo_agent response, timeout=180s, message_id=1588123e-8479-44ac-97fa-2dc119064924
+2025-10-12 12:33:25 - INFO - ОПЕРАЦИЯ: [thermo_agent] -> EXTRACT_PARAMETERS [from orchestrator]
+2025-10-12 12:33:25,822 - thermo_agents_session_20251012_123247 - INFO - ОПЕРАЦИЯ: [thermo_agent] -> EXTRACT_PARAMETERS [from orchestrator]
+2025-10-12 12:33:25,822 - thermo_agent - INFO - Starting parameter extraction for query: Может ли провзаимодействовать оксид церия с хлоридом аммония при 400 цельсия?...
+2025-10-12 12:33:27,555 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 12:33:29,128 - thermo_agent - INFO - Successfully extracted parameters: reaction, compounds: ['CeO2', 'NH4Cl']
+2025-10-12 12:33:29 - INFO - INFO: EXTRACTED REACTION: CeO2 + 2NH4Cl → CeCl3 + 2H2O + 2NH3
+2025-10-12 12:33:29,129 - thermo_agents_session_20251012_123247 - INFO - INFO: EXTRACTED REACTION: CeO2 + 2NH4Cl → CeCl3 + 2H2O + 2NH3
+2025-10-12 12:33:29,129 - thermo_agent - INFO - Extracted reaction equation: CeO2 + 2NH4Cl → CeCl3 + 2H2O + 2NH3
+2025-10-12 12:33:29 - INFO - INFO: EXTRACTION COMPLETE: reaction, 2 compounds
+2025-10-12 12:33:29,130 - thermo_agents_session_20251012_123247 - INFO - INFO: EXTRACTION COMPLETE: reaction, 2 compounds
+2025-10-12 12:33:29,132 - thermo_agent - INFO - Forwarded to Individual Search Agent: 872a5b3f-5c0f-4bcf-adce-6eb0705e359a
+2025-10-12 12:33:29 - INFO - РЕЗУЛЬТАТ: { "intent": "reaction", "compounds_count": 2, "compounds": 2 items, "temperature_k": 673.15, "has_sql_hint": True, ... }
+2025-10-12 12:33:29,132 - thermo_agents_session_20251012_123247 - INFO - РЕЗУЛЬТАТ: { "intent": "reaction", "compounds_count": 2, "compounds": 2 items, "temperature_k": 673.15, "has_sql_hint": True, ... }
+2025-10-12 12:33:29 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 3310.26ms
+2025-10-12 12:33:29,133 - thermo_agents_session_20251012_123247 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 3310.26ms
+2025-10-12 12:33:29 - INFO - МАРШРУТ: FROM: orchestrator
+2025-10-12 12:33:29,133 - thermo_agents_session_20251012_123247 - INFO - МАРШРУТ: FROM: orchestrator
+2025-10-12 12:33:29 - INFO - CORRELATION ID: 1588123e-8479-44ac-97fa-2dc119064924
+2025-10-12 12:33:29,133 - thermo_agents_session_20251012_123247 - INFO - CORRELATION ID: 1588123e-8479-44ac-97fa-2dc119064924
+2025-10-12 12:33:29 - INFO - AGENT STORAGE: 2 entries, 2 pending messages, 6 active sessions
+2025-10-12 12:33:29,135 - thermo_agents_session_20251012_123247 - INFO - AGENT STORAGE: 2 entries, 2 pending messages, 6 active sessions
+2025-10-12 12:33:29 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:33:29,135 - thermo_agents_session_20251012_123247 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:33:29,136 - orchestrator - INFO - DEBUG: Received response from thermo_agent: success
+2025-10-12 12:33:29 - INFO - INFO: THERMO AGENT RESPONSE: Success with 2 compounds
+2025-10-12 12:33:29,136 - thermo_agents_session_20251012_123247 - INFO - INFO: THERMO AGENT RESPONSE: Success with 2 compounds
+2025-10-12 12:33:29,136 - orchestrator - INFO - DEBUG: Waiting for Individual Search Agent, timeout=360s, correlation_id=1588123e-8479-44ac-97fa-2dc119064924
+2025-10-12 12:33:29,851 - individual_search_agent - INFO - Processing search request: 872a5b3f-5c0f-4bcf-adce-6eb0705e359a from thermo_agent
+2025-10-12 12:33:29 - INFO - INFO: Starting individual search for 2 compounds
+2025-10-12 12:33:29,852 - thermo_agents_session_20251012_123247 - INFO - INFO: Starting individual search for 2 compounds
+2025-10-12 12:33:29,852 - individual_search_agent - INFO - DEBUG: Starting search for compound: CeO2
+2025-10-12 12:33:29,852 - individual_search_agent - INFO - DEBUG: Created search ID: search_CeO2_872a5b3f-5c0f-4bcf-adce-6eb0705e359a_6704b431
+2025-10-12 12:33:29,852 - individual_search_agent - INFO - DEBUG: Sending SQL generation request for compound CeO2
+2025-10-12 12:33:29,854 - individual_search_agent - INFO - DEBUG: SQL request sent with message ID: 82f13224-12ac-4390-ac37-5b304f805901
+2025-10-12 12:33:29,854 - individual_search_agent - INFO - DEBUG: Waiting for SQL result for compound CeO2
+2025-10-12 12:33:29,854 - individual_search_agent - INFO - DEBUG: Waiting for SQL result for message 82f13224-12ac-4390-ac37-5b304f805901, timeout=180s
+2025-10-12 12:33:29,854 - individual_search_agent - INFO - DEBUG: Starting search for compound: NH4Cl
+2025-10-12 12:33:29,854 - individual_search_agent - INFO - DEBUG: Created search ID: search_NH4Cl_872a5b3f-5c0f-4bcf-adce-6eb0705e359a_6f3ce5be
+2025-10-12 12:33:29,854 - individual_search_agent - INFO - DEBUG: Sending SQL generation request for compound NH4Cl
+2025-10-12 12:33:29,856 - individual_search_agent - INFO - DEBUG: SQL request sent with message ID: f17df2bc-7d0e-458b-bbab-5a2a294ca282
+2025-10-12 12:33:29,856 - individual_search_agent - INFO - DEBUG: Waiting for SQL result for compound NH4Cl
+2025-10-12 12:33:29,856 - individual_search_agent - INFO - DEBUG: Waiting for SQL result for message f17df2bc-7d0e-458b-bbab-5a2a294ca282, timeout=180s
+2025-10-12 12:33:31 - INFO - ОПЕРАЦИЯ: [sql_agent] -> GENERATE_QUERY [from individual_search_agent]
+2025-10-12 12:33:31,868 - thermo_agents_session_20251012_123247 - INFO - ОПЕРАЦИЯ: [sql_agent] -> GENERATE_QUERY [from individual_search_agent]
+2025-10-12 12:33:31,868 - sql_agent - INFO - Processing individual search for compound: CeO2
+2025-10-12 12:33:31,870 - sql_agent - INFO - Starting SQL query generation...
+2025-10-12 12:33:32,459 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 12:33:38,290 - sql_agent - INFO - Generated SQL query: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CeO2' OR Formula LIKE 'CeO2(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 12:33:38 - INFO - INFO: SQL GENERATION COMPLETE: Query length 193
+2025-10-12 12:33:38,290 - thermo_agents_session_20251012_123247 - INFO - INFO: SQL GENERATION COMPLETE: Query length 193
+2025-10-12 12:33:38,290 - sql_agent - INFO - SQL query cleaned
+2025-10-12 12:33:38,290 - sql_agent - INFO - Prepared result data with key: sql_result_82f13224-12ac-4390-ac37-5b304f805901
+2025-10-12 12:33:38,291 - sql_agent - INFO - Sending SQL query to database agent for individual execution...
+2025-10-12 12:33:38,291 - sql_agent - INFO - SQL query sent to database_agent: f5796efa-e9df-4f8b-9386-1ca8a104e6a3
+2025-10-12 12:33:39 - INFO - ОПЕРАЦИЯ: [database_agent] -> EXECUTE_QUERY [from sql_agent]
+2025-10-12 12:33:39,897 - thermo_agents_session_20251012_123247 - INFO - ОПЕРАЦИЯ: [database_agent] -> EXECUTE_QUERY [from sql_agent]
+2025-10-12 12:33:39,898 - database_agent - INFO - Executing individual SQL query for compound CeO2: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CeO2' OR Formula LIKE 'CeO2(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 12:33:39 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CeO2' OR Formula LIKE 'CeO2(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 12:33:39,898 - thermo_agents_session_20251012_123247 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CeO2' OR Formula LIKE 'CeO2(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 12:33:39,992 - database_agent - INFO - SQL executed successfully: 8 rows found
+2025-10-12 12:33:39,992 - database_agent - INFO - Applying temperature range filtering: 573.0-873.0K...
+2025-10-12 12:33:39,992 - database_agent - INFO - Temperature filtering: 8 of 8 rows remain
+2025-10-12 12:33:39 - INFO - INFO: TEMPERATURE FILTER: Range=573.0-873.0K, Matched=8, Excluded=0
+2025-10-12 12:33:39,992 - thermo_agents_session_20251012_123247 - INFO - INFO: TEMPERATURE FILTER: Range=573.0-873.0K, Matched=8, Excluded=0
+2025-10-12 12:33:39 - INFO - INFO: QUERY RESULTS: 8 rows, columns: 23
+2025-10-12 12:33:39,992 - thermo_agents_session_20251012_123247 - INFO - INFO: QUERY RESULTS: 8 rows, columns: 23
+2025-10-12 12:33:39,992 - database_agent - INFO - Database result stored with key: db_result_f5796efa-e9df-4f8b-9386-1ca8a104e6a3
+2025-10-12 12:33:39,992 - database_agent - INFO - Sending results to filtering agent for analysis...
+2025-10-12 12:33:39,992 - database_agent - INFO - Individual results sent to filtering agent: 8a2c4215-1d07-4f0b-9419-f1695edbd56b
+2025-10-12 12:33:39,992 - database_agent - INFO - Response sent to sql_agent
+2025-10-12 12:33:39 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "execution_success": True, "row_count": 8, "result_key": "db_result_f5796efa-e9df-4f8b-9386-1ca8a104e6a3", "filtering_sent": True, ... }
+2025-10-12 12:33:39,995 - thermo_agents_session_20251012_123247 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "execution_success": True, "row_count": 8, "result_key": "db_result_f5796efa-e9df-4f8b-9386-1ca8a104e6a3", "filtering_sent": True, ... }
+2025-10-12 12:33:39 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 97.13ms
+2025-10-12 12:33:39,995 - thermo_agents_session_20251012_123247 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 97.13ms
+2025-10-12 12:33:39 - INFO - МАРШРУТ: FROM: sql_agent
+2025-10-12 12:33:39,995 - thermo_agents_session_20251012_123247 - INFO - МАРШРУТ: FROM: sql_agent
+2025-10-12 12:33:39 - INFO - CORRELATION ID: f5796efa-e9df-4f8b-9386-1ca8a104e6a3
+2025-10-12 12:33:39,995 - thermo_agents_session_20251012_123247 - INFO - CORRELATION ID: f5796efa-e9df-4f8b-9386-1ca8a104e6a3
+2025-10-12 12:33:39 - INFO - AGENT STORAGE: 3 entries, 2 pending messages, 6 active sessions
+2025-10-12 12:33:39,995 - thermo_agents_session_20251012_123247 - INFO - AGENT STORAGE: 3 entries, 2 pending messages, 6 active sessions
+2025-10-12 12:33:39 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:33:39,995 - thermo_agents_session_20251012_123247 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:33:39,995 - sql_agent - INFO - Received database result: success
+2025-10-12 12:33:39,995 - sql_agent - INFO - Database execution successful: 8 rows
+2025-10-12 12:33:39,995 - sql_agent - INFO - Waiting for filtering agent results...
+2025-10-12 12:33:41 - INFO - ОПЕРАЦИЯ: [results_filtering_agent] -> INDIVIDUAL_FILTER [from database_agent]
+2025-10-12 12:33:41,898 - thermo_agents_session_20251012_123247 - INFO - ОПЕРАЦИЯ: [results_filtering_agent] -> INDIVIDUAL_FILTER [from database_agent]
+2025-10-12 12:33:41,898 - results_filtering_agent - INFO - Individual filtering for compound CeO2: 8 records
+2025-10-12 12:33:41 - INFO - INFO: INDIVIDUAL FILTERING START: CeO2, 8 records, target temp 673.15K
+2025-10-12 12:33:41,899 - thermo_agents_session_20251012_123247 - INFO - INFO: INDIVIDUAL FILTERING START: CeO2, 8 records, target temp 673.15K
+2025-10-12 12:33:41,900 - results_filtering_agent - INFO - Temperature pre-filtering: 8 records remain
+2025-10-12 12:33:41,900 - results_filtering_agent - INFO - Starting optimized SQL-based filtering for 1 compounds, 8 records
+2025-10-12 12:33:41,901 - results_filtering_agent - INFO - Processing compound CeO2 with SQL filter generation
+2025-10-12 12:33:41,901 - results_filtering_agent - INFO - Generating SQL filters for CeO2 with 1 available formulas
+2025-10-12 12:33:42,718 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 12:34:01,363 - results_filtering_agent - INFO - SQL filters generated successfully for CeO2: 3 conditions
+2025-10-12 12:34:01,365 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'CeO2' AND Phase = 's' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:34:01,366 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'CeO2' AND Phase = 's' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:34:01,367 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'CeO2' AND Phase = 's' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:34:01,368 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'CeO2' AND Phase = 's' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:34:01,368 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'CeO2' AND Phase = 's' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:34:01,369 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'CeO2' AND Phase = 's' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:34:01,370 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'CeO2' AND Phase = 's' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:34:01,371 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'CeO2' AND Phase = 's' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:34:01,371 - results_filtering_agent - INFO - Applied SQL filter 1: 5 records remain (condition: TRIM(Formula) = 'CeO2' AND Phase = 's' AND (673.15...)
+2025-10-12 12:34:01,372 - results_filtering_agent - INFO - SQL filtering completed: 5 total records selected
+2025-10-12 12:34:01,372 - results_filtering_agent - INFO - Filtering result stored with key: filtered_result_8a2c4215-1d07-4f0b-9419-f1695edbd56b
+2025-10-12 12:34:01,373 - results_filtering_agent - INFO - Filtered results: 1 selected records
+2025-10-12 12:34:01,373 - results_filtering_agent - INFO - DEBUG: First record keys: ['Formula', 'Structure', 'FirstName', 'SecondName', 'Phase', 'CAS', 'MeltingPoint', 'BoilingPoint', 'Density', 'Solubility', 'Color', 'H298', 'S298', 'Tmin', 'Tmax', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'ReliabilityClass', 'Reference']
+2025-10-12 12:34:01,373 - results_filtering_agent - INFO - DEBUG: First record data: {'Formula': 'CeO2', 'Structure': None, 'FirstName': 'Cerium(IV) oxide', 'SecondName': 'Ceria', 'Phase': 's', 'CAS': '1306-38-3', 'MeltingPoint': 2673.0, 'BoilingPoint': 0.0, 'Density': 7.65, 'Solubility': 0.0, 'Color': 14, 'H298': -1090.399967848, 'S298': 62.3000009984, 'Tmin': 298.15, 'Tmax': 2753.0, 'f1': 70.4962356648, 'f2': 9.484004596, 'f3': -10.3955806256, 'f4': -0.0002743164108088, 'f5': 0.0, 'f6': 0.0, 'ReliabilityClass': 1, 'Reference': 'Barin 89; Glushko 94; Landolt 99'}
+2025-10-12 12:34:01 - INFO - INFO: FILTERED RESULTS TABLE (1 records):
+2025-10-12 12:34:01,374 - thermo_agents_session_20251012_123247 - INFO - INFO: FILTERED RESULTS TABLE (1 records):
+2025-10-12 12:34:01 - INFO - INFO: REASONING: Applied optimized SQL WHERE filtering for 1 compounds, selected 1 best records
+2025-10-12 12:34:01,374 - thermo_agents_session_20251012_123247 - INFO - INFO: REASONING: Applied optimized SQL WHERE filtering for 1 compounds, selected 1 best records
+2025-10-12 12:34:01 - INFO - INFO: SELECTED RECORDS:
+2025-10-12 12:34:01,375 - thermo_agents_session_20251012_123247 - INFO - INFO: SELECTED RECORDS:
+2025-10-12 12:34:01 - INFO - INFO: +-----------+------------------+---------+--------+--------+------+-------+-------+-----------+------+------+--------+--------+
+2025-10-12 12:34:01,375 - thermo_agents_session_20251012_123247 - INFO - INFO: +-----------+------------------+---------+--------+--------+------+-------+-------+-----------+------+------+--------+--------+
+2025-10-12 12:34:01 - INFO - INFO: | Formula   | FirstName        | Phase   |   H298 |   S298 |   f1 |    f2 |    f3 |        f4 |   f5 |   f6 |   Tmin |   Tmax |
+2025-10-12 12:34:01,376 - thermo_agents_session_20251012_123247 - INFO - INFO: | Formula   | FirstName        | Phase   |   H298 |   S298 |   f1 |    f2 |    f3 |        f4 |   f5 |   f6 |   Tmin |   Tmax |
+2025-10-12 12:34:01 - INFO - INFO: +===========+==================+=========+========+========+======+=======+=======+===========+======+======+========+========+
+2025-10-12 12:34:01,376 - thermo_agents_session_20251012_123247 - INFO - INFO: +===========+==================+=========+========+========+======+=======+=======+===========+======+======+========+========+
+2025-10-12 12:34:01 - INFO - INFO: | CeO2      | Cerium(IV) oxide | s       |  -1090 |   62.3 | 70.5 | 9.484 | -10.4 | -0.000274 |    0 |    0 |  298.1 |   2753 |
+2025-10-12 12:34:01,376 - thermo_agents_session_20251012_123247 - INFO - INFO: | CeO2      | Cerium(IV) oxide | s       |  -1090 |   62.3 | 70.5 | 9.484 | -10.4 | -0.000274 |    0 |    0 |  298.1 |   2753 |
+2025-10-12 12:34:01 - INFO - INFO: +-----------+------------------+---------+--------+--------+------+-------+-------+-----------+------+------+--------+--------+
+2025-10-12 12:34:01,376 - thermo_agents_session_20251012_123247 - INFO - INFO: +-----------+------------------+---------+--------+--------+------+-------+-------+-----------+------+------+--------+--------+
+2025-10-12 12:34:01,376 - results_filtering_agent - INFO - Filtering response sent to individual_search_agent
+2025-10-12 12:34:01 - INFO - РЕЗУЛЬТАТ: { "message_type": "filter_individual_results", "input_records": 8, "temp_filtered_records": 8, "final_records": 1, "result_key": "filtered_result_8a2c4215-1d07-4f0b-9419-f1695edbd56b", ... }
+2025-10-12 12:34:01,376 - thermo_agents_session_20251012_123247 - INFO - РЕЗУЛЬТАТ: { "message_type": "filter_individual_results", "input_records": 8, "temp_filtered_records": 8, "final_records": 1, "result_key": "filtered_result_8a2c4215-1d07-4f0b-9419-f1695edbd56b", ... }
+2025-10-12 12:34:01 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 19478.51ms
+2025-10-12 12:34:01,376 - thermo_agents_session_20251012_123247 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 19478.51ms
+2025-10-12 12:34:01 - INFO - МАРШРУТ: FROM: database_agent
+2025-10-12 12:34:01,376 - thermo_agents_session_20251012_123247 - INFO - МАРШРУТ: FROM: database_agent
+2025-10-12 12:34:01 - INFO - CORRELATION ID: 82f13224-12ac-4390-ac37-5b304f805901
+2025-10-12 12:34:01,379 - thermo_agents_session_20251012_123247 - INFO - CORRELATION ID: 82f13224-12ac-4390-ac37-5b304f805901
+2025-10-12 12:34:01 - INFO - AGENT STORAGE: 4 entries, 1 pending messages, 6 active sessions
+2025-10-12 12:34:01,379 - thermo_agents_session_20251012_123247 - INFO - AGENT STORAGE: 4 entries, 1 pending messages, 6 active sessions
+2025-10-12 12:34:01 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:34:01,379 - thermo_agents_session_20251012_123247 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:34:40,158 - sql_agent - WARNING - Filtering agent did not respond in time, using raw database results
+2025-10-12 12:34:40,160 - sql_agent - INFO - Storing result with key: sql_result_82f13224-12ac-4390-ac37-5b304f805901
+2025-10-12 12:34:40,160 - sql_agent - INFO - Result stored successfully
+2025-10-12 12:34:40,161 - sql_agent - INFO - Sending individual_sql_complete to individual_search_agent
+2025-10-12 12:34:40 - INFO - INFO: SENDING INDIVIDUAL_SQL_COMPLETE: To individual_search_agent, key=sql_result_82f13224-12ac-4390-ac37-5b304f805901
+2025-10-12 12:34:40,161 - thermo_agents_session_20251012_123247 - INFO - INFO: SENDING INDIVIDUAL_SQL_COMPLETE: To individual_search_agent, key=sql_result_82f13224-12ac-4390-ac37-5b304f805901
+2025-10-12 12:34:40,161 - sql_agent - INFO - individual_sql_complete sent successfully to individual_search_agent
+2025-10-12 12:34:40 - INFO - INFO: SQL GENERATED: 193 chars, 14 columns expected
+2025-10-12 12:34:40,161 - thermo_agents_session_20251012_123247 - INFO - INFO: SQL GENERATED: 193 chars, 14 columns expected
+2025-10-12 12:34:40,161 - sql_agent - INFO - Message processing completed successfully
+2025-10-12 12:34:40 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "sql_query_length": 193, "expected_columns": 14, "result_key": "sql_result_82f13224-12ac-4390-ac37-5b304f805901", "database_execution": True, ... }
+2025-10-12 12:34:40,163 - thermo_agents_session_20251012_123247 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "sql_query_length": 193, "expected_columns": 14, "result_key": "sql_result_82f13224-12ac-4390-ac37-5b304f805901", "database_execution": True, ... }
+2025-10-12 12:34:40 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 68293.02ms
+2025-10-12 12:34:40,163 - thermo_agents_session_20251012_123247 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 68293.02ms
+2025-10-12 12:34:40 - INFO - МАРШРУТ: FROM: individual_search_agent
+2025-10-12 12:34:40,163 - thermo_agents_session_20251012_123247 - INFO - МАРШРУТ: FROM: individual_search_agent
+2025-10-12 12:34:40 - INFO - CORRELATION ID: 82f13224-12ac-4390-ac37-5b304f805901
+2025-10-12 12:34:40,163 - thermo_agents_session_20251012_123247 - INFO - CORRELATION ID: 82f13224-12ac-4390-ac37-5b304f805901
+2025-10-12 12:34:40 - INFO - AGENT STORAGE: 5 entries, 2 pending messages, 6 active sessions
+2025-10-12 12:34:40,163 - thermo_agents_session_20251012_123247 - INFO - AGENT STORAGE: 5 entries, 2 pending messages, 6 active sessions
+2025-10-12 12:34:40 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:34:40,163 - thermo_agents_session_20251012_123247 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:34:40 - INFO - ОПЕРАЦИЯ: [sql_agent] -> GENERATE_QUERY [from individual_search_agent]
+2025-10-12 12:34:40,163 - thermo_agents_session_20251012_123247 - INFO - ОПЕРАЦИЯ: [sql_agent] -> GENERATE_QUERY [from individual_search_agent]
+2025-10-12 12:34:40,163 - sql_agent - INFO - Processing individual search for compound: NH4Cl
+2025-10-12 12:34:40,163 - sql_agent - INFO - Starting SQL query generation...
+2025-10-12 12:34:40,361 - individual_search_agent - INFO - DEBUG: SQL result received successfully for message 82f13224-12ac-4390-ac37-5b304f805901
+2025-10-12 12:34:40,362 - individual_search_agent - INFO - DEBUG: SQL result received for compound CeO2, waiting for filtering
+2025-10-12 12:34:40,362 - individual_search_agent - INFO - DEBUG: Waiting for filtering result for compound CeO2
+2025-10-12 12:34:40,362 - individual_search_agent - INFO - DEBUG: Waiting for filtering result for search search_CeO2_872a5b3f-5c0f-4bcf-adce-6eb0705e359a_6704b431, timeout=180s
+2025-10-12 12:34:41,117 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 12:34:44,775 - sql_agent - INFO - Generated SQL query: SELECT * FROM compounds WHERE (TRIM(Formula) = 'NH4Cl' OR Formula LIKE 'NH4Cl(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 12:34:44 - INFO - INFO: SQL GENERATION COMPLETE: Query length 195
+2025-10-12 12:34:44,776 - thermo_agents_session_20251012_123247 - INFO - INFO: SQL GENERATION COMPLETE: Query length 195
+2025-10-12 12:34:44,776 - sql_agent - INFO - SQL query cleaned
+2025-10-12 12:34:44,776 - sql_agent - INFO - Prepared result data with key: sql_result_f17df2bc-7d0e-458b-bbab-5a2a294ca282
+2025-10-12 12:34:44,778 - sql_agent - INFO - Sending SQL query to database agent for individual execution...
+2025-10-12 12:34:44,778 - sql_agent - INFO - SQL query sent to database_agent: dcb6ea0f-8a8f-492e-99ae-a7f969ba74f7
+2025-10-12 12:34:46 - INFO - ОПЕРАЦИЯ: [database_agent] -> EXECUTE_QUERY [from sql_agent]
+2025-10-12 12:34:46,240 - thermo_agents_session_20251012_123247 - INFO - ОПЕРАЦИЯ: [database_agent] -> EXECUTE_QUERY [from sql_agent]
+2025-10-12 12:34:46,242 - database_agent - INFO - Executing individual SQL query for compound NH4Cl: SELECT * FROM compounds WHERE (TRIM(Formula) = 'NH4Cl' OR Formula LIKE 'NH4Cl(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 12:34:46 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'NH4Cl' OR Formula LIKE 'NH4Cl(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 12:34:46,242 - thermo_agents_session_20251012_123247 - INFO - INFO: DATABASE EXECUTION START: SELECT * FROM compounds WHERE (TRIM(Formula) = 'NH4Cl' OR Formula LIKE 'NH4Cl(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC LIMIT 100
+2025-10-12 12:34:46,302 - database_agent - INFO - SQL executed successfully: 8 rows found
+2025-10-12 12:34:46,303 - database_agent - INFO - Applying temperature range filtering: 573.0-873.0K...
+2025-10-12 12:34:46,303 - database_agent - INFO - Temperature filtering: 8 of 8 rows remain
+2025-10-12 12:34:46 - INFO - INFO: TEMPERATURE FILTER: Range=573.0-873.0K, Matched=8, Excluded=0
+2025-10-12 12:34:46,303 - thermo_agents_session_20251012_123247 - INFO - INFO: TEMPERATURE FILTER: Range=573.0-873.0K, Matched=8, Excluded=0
+2025-10-12 12:34:46 - INFO - INFO: QUERY RESULTS: 8 rows, columns: 23
+2025-10-12 12:34:46,303 - thermo_agents_session_20251012_123247 - INFO - INFO: QUERY RESULTS: 8 rows, columns: 23
+2025-10-12 12:34:46,305 - database_agent - INFO - Database result stored with key: db_result_dcb6ea0f-8a8f-492e-99ae-a7f969ba74f7
+2025-10-12 12:34:46,305 - database_agent - INFO - Sending results to filtering agent for analysis...
+2025-10-12 12:34:46,305 - database_agent - INFO - Individual results sent to filtering agent: cef84042-329a-418b-8435-3404eb562650
+2025-10-12 12:34:46,305 - database_agent - INFO - Response sent to sql_agent
+2025-10-12 12:34:46 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "execution_success": True, "row_count": 8, "result_key": "db_result_dcb6ea0f-8a8f-492e-99ae-a7f969ba74f7", "filtering_sent": True, ... }
+2025-10-12 12:34:46,306 - thermo_agents_session_20251012_123247 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "execution_success": True, "row_count": 8, "result_key": "db_result_dcb6ea0f-8a8f-492e-99ae-a7f969ba74f7", "filtering_sent": True, ... }
+2025-10-12 12:34:46 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 65.41ms
+2025-10-12 12:34:46,306 - thermo_agents_session_20251012_123247 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 65.41ms
+2025-10-12 12:34:46 - INFO - МАРШРУТ: FROM: sql_agent
+2025-10-12 12:34:46,307 - thermo_agents_session_20251012_123247 - INFO - МАРШРУТ: FROM: sql_agent
+2025-10-12 12:34:46 - INFO - CORRELATION ID: dcb6ea0f-8a8f-492e-99ae-a7f969ba74f7
+2025-10-12 12:34:46,307 - thermo_agents_session_20251012_123247 - INFO - CORRELATION ID: dcb6ea0f-8a8f-492e-99ae-a7f969ba74f7
+2025-10-12 12:34:46 - INFO - AGENT STORAGE: 6 entries, 3 pending messages, 6 active sessions
+2025-10-12 12:34:46,307 - thermo_agents_session_20251012_123247 - INFO - AGENT STORAGE: 6 entries, 3 pending messages, 6 active sessions
+2025-10-12 12:34:46 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:34:46,307 - thermo_agents_session_20251012_123247 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:34:46,307 - sql_agent - INFO - Received database result: success
+2025-10-12 12:34:46,307 - sql_agent - INFO - Database execution successful: 8 rows
+2025-10-12 12:34:46,307 - sql_agent - INFO - Waiting for filtering agent results...
+2025-10-12 12:34:47 - INFO - ОПЕРАЦИЯ: [results_filtering_agent] -> INDIVIDUAL_FILTER [from database_agent]
+2025-10-12 12:34:47,528 - thermo_agents_session_20251012_123247 - INFO - ОПЕРАЦИЯ: [results_filtering_agent] -> INDIVIDUAL_FILTER [from database_agent]
+2025-10-12 12:34:47,528 - results_filtering_agent - INFO - Individual filtering for compound NH4Cl: 8 records
+2025-10-12 12:34:47 - INFO - INFO: INDIVIDUAL FILTERING START: NH4Cl, 8 records, target temp 673.15K
+2025-10-12 12:34:47,529 - thermo_agents_session_20251012_123247 - INFO - INFO: INDIVIDUAL FILTERING START: NH4Cl, 8 records, target temp 673.15K
+2025-10-12 12:34:47,529 - results_filtering_agent - INFO - Temperature pre-filtering: 8 records remain
+2025-10-12 12:34:47,529 - results_filtering_agent - INFO - Starting optimized SQL-based filtering for 1 compounds, 8 records
+2025-10-12 12:34:47,529 - results_filtering_agent - INFO - Processing compound NH4Cl with SQL filter generation
+2025-10-12 12:34:47,529 - results_filtering_agent - INFO - Generating SQL filters for NH4Cl with 1 available formulas
+2025-10-12 12:34:48,332 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-12 12:35:17,505 - results_filtering_agent - ERROR - SQL filter generation timeout for NH4Cl
+2025-10-12 12:35:17,505 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'NH4Cl' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:35:17,506 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'NH4Cl' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:35:17,506 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'NH4Cl' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:35:17,506 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'NH4Cl' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:35:17,507 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'NH4Cl' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:35:17,507 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'NH4Cl' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:35:17,507 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'NH4Cl' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:35:17,507 - results_filtering_agent - WARNING - Error evaluating condition 'TRIM(Formula) = 'NH4Cl' AND (673.15 >= Tmin AND 673.15 <= Tmax) AND ReliabilityClass = 1': invalid syntax (<string>, line 1)
+2025-10-12 12:35:17,507 - results_filtering_agent - INFO - Applied SQL filter 1: 5 records remain (condition: TRIM(Formula) = 'NH4Cl' AND (673.15 >= Tmin AND 67...)
+2025-10-12 12:35:17,507 - results_filtering_agent - INFO - SQL filtering completed: 5 total records selected
+2025-10-12 12:35:17,507 - results_filtering_agent - INFO - Filtering result stored with key: filtered_result_cef84042-329a-418b-8435-3404eb562650
+2025-10-12 12:35:17,507 - results_filtering_agent - INFO - Filtered results: 1 selected records
+2025-10-12 12:35:17,507 - results_filtering_agent - INFO - DEBUG: First record keys: ['Formula', 'Structure', 'FirstName', 'SecondName', 'Phase', 'CAS', 'MeltingPoint', 'BoilingPoint', 'Density', 'Solubility', 'Color', 'H298', 'S298', 'Tmin', 'Tmax', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'ReliabilityClass', 'Reference']
+2025-10-12 12:35:17,507 - results_filtering_agent - INFO - DEBUG: First record data: {'Formula': 'NH4Cl', 'Structure': None, 'FirstName': 'Ammonium chloride', 'SecondName': 'Sal ammoniac; Salmiac', 'Phase': 's', 'CAS': '12125-02-9', 'MeltingPoint': 793.0, 'BoilingPoint': 611.0, 'Density': 0.0, 'Solubility': 0.0, 'Color': 0, 'H298': 3.949700012456, 'S298': 8.62741013384, 'Tmin': 457.85, 'Tmax': 800.0, 'f1': 34.64352, 'f2': 111.7127953976, 'f3': 0.0, 'f4': 0.0, 'f5': 0.0, 'f6': 0.0, 'ReliabilityClass': 1, 'Reference': 'Barin 93'}
+2025-10-12 12:35:17 - INFO - INFO: FILTERED RESULTS TABLE (1 records):
+2025-10-12 12:35:17,507 - thermo_agents_session_20251012_123247 - INFO - INFO: FILTERED RESULTS TABLE (1 records):
+2025-10-12 12:35:17 - INFO - INFO: REASONING: Applied optimized SQL WHERE filtering for 1 compounds, selected 1 best records
+2025-10-12 12:35:17,507 - thermo_agents_session_20251012_123247 - INFO - INFO: REASONING: Applied optimized SQL WHERE filtering for 1 compounds, selected 1 best records
+2025-10-12 12:35:17 - INFO - INFO: SELECTED RECORDS:
+2025-10-12 12:35:17,509 - thermo_agents_session_20251012_123247 - INFO - INFO: SELECTED RECORDS:
+2025-10-12 12:35:17 - INFO - INFO: +-----------+-------------------+---------+--------+--------+-------+-------+------+------+------+------+--------+--------+
+2025-10-12 12:35:17,509 - thermo_agents_session_20251012_123247 - INFO - INFO: +-----------+-------------------+---------+--------+--------+-------+-------+------+------+------+------+--------+--------+
+2025-10-12 12:35:17 - INFO - INFO: | Formula   | FirstName         | Phase   |   H298 |   S298 |    f1 |    f2 |   f3 |   f4 |   f5 |   f6 |   Tmin |   Tmax |
+2025-10-12 12:35:17,510 - thermo_agents_session_20251012_123247 - INFO - INFO: | Formula   | FirstName         | Phase   |   H298 |   S298 |    f1 |    f2 |   f3 |   f4 |   f5 |   f6 |   Tmin |   Tmax |
+2025-10-12 12:35:17 - INFO - INFO: +===========+===================+=========+========+========+=======+=======+======+======+======+======+========+========+
+2025-10-12 12:35:17,510 - thermo_agents_session_20251012_123247 - INFO - INFO: +===========+===================+=========+========+========+=======+=======+======+======+======+======+========+========+
+2025-10-12 12:35:17 - INFO - INFO: | NH4Cl     | Ammonium chloride | s       |   3.95 |  8.627 | 34.64 | 111.7 |    0 |    0 |    0 |    0 |  457.9 |    800 |
+2025-10-12 12:35:17,510 - thermo_agents_session_20251012_123247 - INFO - INFO: | NH4Cl     | Ammonium chloride | s       |   3.95 |  8.627 | 34.64 | 111.7 |    0 |    0 |    0 |    0 |  457.9 |    800 |
+2025-10-12 12:35:17 - INFO - INFO: +-----------+-------------------+---------+--------+--------+-------+-------+------+------+------+------+--------+--------+
+2025-10-12 12:35:17,510 - thermo_agents_session_20251012_123247 - INFO - INFO: +-----------+-------------------+---------+--------+--------+-------+-------+------+------+------+------+--------+--------+
+2025-10-12 12:35:17,510 - results_filtering_agent - INFO - Filtering response sent to individual_search_agent
+2025-10-12 12:35:17 - INFO - РЕЗУЛЬТАТ: { "message_type": "filter_individual_results", "input_records": 8, "temp_filtered_records": 8, "final_records": 1, "result_key": "filtered_result_cef84042-329a-418b-8435-3404eb562650", ... }
+2025-10-12 12:35:17,511 - thermo_agents_session_20251012_123247 - INFO - РЕЗУЛЬТАТ: { "message_type": "filter_individual_results", "input_records": 8, "temp_filtered_records": 8, "final_records": 1, "result_key": "filtered_result_cef84042-329a-418b-8435-3404eb562650", ... }
+2025-10-12 12:35:17 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 29982.04ms
+2025-10-12 12:35:17,511 - thermo_agents_session_20251012_123247 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 29982.04ms
+2025-10-12 12:35:17 - INFO - МАРШРУТ: FROM: database_agent
+2025-10-12 12:35:17,511 - thermo_agents_session_20251012_123247 - INFO - МАРШРУТ: FROM: database_agent
+2025-10-12 12:35:17 - INFO - CORRELATION ID: f17df2bc-7d0e-458b-bbab-5a2a294ca282
+2025-10-12 12:35:17,512 - thermo_agents_session_20251012_123247 - INFO - CORRELATION ID: f17df2bc-7d0e-458b-bbab-5a2a294ca282
+2025-10-12 12:35:17 - INFO - AGENT STORAGE: 7 entries, 2 pending messages, 6 active sessions
+2025-10-12 12:35:17,512 - thermo_agents_session_20251012_123247 - INFO - AGENT STORAGE: 7 entries, 2 pending messages, 6 active sessions
+2025-10-12 12:35:17 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:35:17,512 - thermo_agents_session_20251012_123247 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:35:46,402 - sql_agent - WARNING - Filtering agent did not respond in time, using raw database results
+2025-10-12 12:35:46,403 - sql_agent - INFO - Storing result with key: sql_result_f17df2bc-7d0e-458b-bbab-5a2a294ca282
+2025-10-12 12:35:46,403 - sql_agent - INFO - Result stored successfully
+2025-10-12 12:35:46,404 - sql_agent - INFO - Sending individual_sql_complete to individual_search_agent
+2025-10-12 12:35:46 - INFO - INFO: SENDING INDIVIDUAL_SQL_COMPLETE: To individual_search_agent, key=sql_result_f17df2bc-7d0e-458b-bbab-5a2a294ca282
+2025-10-12 12:35:46,404 - thermo_agents_session_20251012_123247 - INFO - INFO: SENDING INDIVIDUAL_SQL_COMPLETE: To individual_search_agent, key=sql_result_f17df2bc-7d0e-458b-bbab-5a2a294ca282
+2025-10-12 12:35:46,405 - sql_agent - INFO - individual_sql_complete sent successfully to individual_search_agent
+2025-10-12 12:35:46 - INFO - INFO: SQL GENERATED: 195 chars, 9 columns expected
+2025-10-12 12:35:46,405 - thermo_agents_session_20251012_123247 - INFO - INFO: SQL GENERATED: 195 chars, 9 columns expected
+2025-10-12 12:35:46,405 - sql_agent - INFO - Message processing completed successfully
+2025-10-12 12:35:46 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "sql_query_length": 195, "expected_columns": 9, "result_key": "sql_result_f17df2bc-7d0e-458b-bbab-5a2a294ca282", "database_execution": True, ... }
+2025-10-12 12:35:46,406 - thermo_agents_session_20251012_123247 - INFO - РЕЗУЛЬТАТ: { "message_type": "individual", "sql_query_length": 195, "expected_columns": 9, "result_key": "sql_result_f17df2bc-7d0e-458b-bbab-5a2a294ca282", "database_execution": True, ... }
+2025-10-12 12:35:46 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 66243.85ms
+2025-10-12 12:35:46,408 - thermo_agents_session_20251012_123247 - INFO - ВРЕМЯ ВЫПОЛНЕНИЯ: 66243.85ms
+2025-10-12 12:35:46 - INFO - МАРШРУТ: FROM: individual_search_agent
+2025-10-12 12:35:46,409 - thermo_agents_session_20251012_123247 - INFO - МАРШРУТ: FROM: individual_search_agent
+2025-10-12 12:35:46 - INFO - CORRELATION ID: f17df2bc-7d0e-458b-bbab-5a2a294ca282
+2025-10-12 12:35:46,409 - thermo_agents_session_20251012_123247 - INFO - CORRELATION ID: f17df2bc-7d0e-458b-bbab-5a2a294ca282
+2025-10-12 12:35:46 - INFO - AGENT STORAGE: 8 entries, 3 pending messages, 6 active sessions
+2025-10-12 12:35:46,410 - thermo_agents_session_20251012_123247 - INFO - AGENT STORAGE: 8 entries, 3 pending messages, 6 active sessions
+2025-10-12 12:35:46 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:35:46,410 - thermo_agents_session_20251012_123247 - INFO - ACTIVE AGENTS: thermo_agent, sql_agent, database_agent, results_filtering_agent, individual_search_agent, orchestrator
+2025-10-12 12:35:46,604 - individual_search_agent - INFO - DEBUG: SQL result received successfully for message f17df2bc-7d0e-458b-bbab-5a2a294ca282
+2025-10-12 12:35:46,606 - individual_search_agent - INFO - DEBUG: SQL result received for compound NH4Cl, waiting for filtering
+2025-10-12 12:35:46,606 - individual_search_agent - INFO - DEBUG: Waiting for filtering result for compound NH4Cl
+2025-10-12 12:35:46,606 - individual_search_agent - INFO - DEBUG: Waiting for filtering result for search search_NH4Cl_872a5b3f-5c0f-4bcf-adce-6eb0705e359a_6f3ce5be, timeout=180s
+2025-10-12 12:37:40,416 - individual_search_agent - ERROR - DEBUG: Filtering Agent timeout after 180.0s for search search_CeO2_872a5b3f-5c0f-4bcf-adce-6eb0705e359a_6704b431
+2025-10-12 12:37:40,417 - individual_search_agent - ERROR - DEBUG: Error searching compound CeO2: Filtering Agent response timeout for search search_CeO2_872a5b3f-5c0f-4bcf-adce-6eb0705e359a_6704b431 after 180.0s
+2025-10-12 12:38:46,752 - individual_search_agent - ERROR - DEBUG: Filtering Agent timeout after 180.2s for search search_NH4Cl_872a5b3f-5c0f-4bcf-adce-6eb0705e359a_6f3ce5be
+2025-10-12 12:38:46,753 - individual_search_agent - ERROR - DEBUG: Error searching compound NH4Cl: Filtering Agent response timeout for search search_NH4Cl_872a5b3f-5c0f-4bcf-adce-6eb0705e359a_6f3ce5be after 180.2s
+2025-10-12 12:38:46,754 - individual_search_agent - INFO - Individual search completed: 2 compounds processed
+2025-10-12 12:39:29 - ERROR - ERROR: Individual Search Agent did not complete processing in time
+2025-10-12 12:39:29,132 - thermo_agents_session_20251012_123247 - ERROR - ERROR: Individual Search Agent did not complete processing in time
+2025-10-12 12:39:29 - ERROR - ОПЕРАЦИЯ ЗАВЕРШИЛАСЬ С ОШИБКОЙ: ОПЕРАЦИЯ: [orchestrator] -> PROCESS_REQUEST
+2025-10-12 12:39:29,134 - thermo_agents_session_20251012_123247 - ERROR - ОПЕРАЦИЯ ЗАВЕРШИЛАСЬ С ОШИБКОЙ: ОПЕРАЦИЯ: [orchestrator] -> PROCESS_REQUEST
+2025-10-12 12:39:29 - ERROR - ПОЛНЫЕ ВХОДНЫЕ ДАННЫЕ:
+2025-10-12 12:39:29,135 - thermo_agents_session_20251012_123247 - ERROR - ПОЛНЫЕ ВХОДНЫЕ ДАННЫЕ:
+2025-10-12 12:39:29 - ERROR - {
+  "user_query": "Может ли провзаимодействовать оксид церия с хлоридом аммония при 400 цельсия?",
+  "request_type": "thermodynamic"
+}
+2025-10-12 12:39:29,135 - thermo_agents_session_20251012_123247 - ERROR - {
+  "user_query": "Может ли провзаимодействовать оксид церия с хлоридом аммония при 400 цельсия?",
+  "request_type": "thermodynamic"
+}
+2025-10-12 12:39:29 - ERROR - ДЕТАЛИ ОШИБКИ:
+2025-10-12 12:39:29,135 - thermo_agents_session_20251012_123247 - ERROR - ДЕТАЛИ ОШИБКИ:
+2025-10-12 12:39:29 - ERROR - {
+  "exception_type": "TimeoutError",
+  "exception_message": "Individual Search Agent timeout"
+}
+2025-10-12 12:39:29,136 - thermo_agents_session_20251012_123247 - ERROR - {
+  "exception_type": "TimeoutError",
+  "exception_message": "Individual Search Agent timeout"
+}
+2025-10-12 12:39:29 - ERROR - ВРЕМЯ ВЫПОЛНЕНИЯ ДО ОШИБКИ: 363315.02ms
+2025-10-12 12:39:29,136 - thermo_agents_session_20251012_123247 - ERROR - ВРЕМЯ ВЫПОЛНЕНИЯ ДО ОШИБКИ: 363315.02ms
+2025-10-12 12:39:29 - INFO - CORRELATION ID: orch_req_2140062825392
+2025-10-12 12:39:29,137 - thermo_agents_session_20251012_123247 - INFO - CORRELATION ID: orch_req_2140062825392
+2025-10-12 12:39:29 - ERROR - ПОЛНОЕ СОСТОЯНИЕ ХРАНИЛИЩА НА МОМЕНТ ОШИБКИ:
+2025-10-12 12:39:29,137 - thermo_agents_session_20251012_123247 - ERROR - ПОЛНОЕ СОСТОЯНИЕ ХРАНИЛИЩА НА МОМЕНТ ОШИБКИ:
+2025-10-12 12:39:29 - ERROR - {
+  "timestamp": "2025-10-12T12:39:29.133228",
+  "stats": {
+    "storage_entries": 9,
+    "message_queue_size": 3,
+    "message_history_size": 13,
+    "active_sessions": 6,
+    "agents": [
+      "thermo_agent",
+      "sql_agent",
+      "database_agent",
+      "results_filtering_agent",
+      "individual_search_agent",
+      "orchestrator"
+    ]
+  },
+  "storage_entries": {
+    "orchestrator_request_2140062825392": {
+      "created_at": "2025-10-12T12:33:25.822471",
+      "updated_at": "2025-10-12T12:33:25.822471",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'user_query': 'Может ли провзаимодействовать оксид церия с хлоридом аммония при 400 цельсия?', 'request_type': 'thermodynamic', 'options': {}}"
+    },
+    "thermo_result_1588123e-8479-44ac-97fa-2dc119064924": {
+      "created_at": "2025-10-12T12:33:29.130244",
+      "updated_at": "2025-10-12T12:33:29.130244",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'intent': 'reaction', 'compounds': ['CeO2', 'NH4Cl'], 'temperature_k': 673.15, 'temperature_range_k': [573.0, 873.0], 'phases': ['s', 's'], 'properties': ['all'], 'sql_query_hint': 'Find thermodynami"
+    },
+    "db_result_f5796efa-e9df-4f8b-9386-1ca8a104e6a3": {
+      "created_at": "2025-10-12T12:33:39.992876",
+      "updated_at": "2025-10-12T12:33:39.992876",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CeO2' OR Formula LIKE 'CeO2(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC L"
+    },
+    "filtered_result_8a2c4215-1d07-4f0b-9419-f1695edbd56b": {
+      "created_at": "2025-10-12T12:34:01.372728",
+      "updated_at": "2025-10-12T12:34:01.372728",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'filtered_result': {'selected_entries': [{'compound': 'CeO2', 'selected_id': 0, 'reasoning': 'SQL-filtered record for CeO2: Generated 3-tier filtering strategy for CeO2 at 673.15K. Priority 1: Exact "
+    },
+    "sql_result_82f13224-12ac-4390-ac37-5b304f805901": {
+      "created_at": "2025-10-12T12:34:40.160037",
+      "updated_at": "2025-10-12T12:34:40.160037",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CeO2' OR Formula LIKE 'CeO2(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC L"
+    },
+    "db_result_dcb6ea0f-8a8f-492e-99ae-a7f969ba74f7": {
+      "created_at": "2025-10-12T12:34:46.305183",
+      "updated_at": "2025-10-12T12:34:46.305183",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'NH4Cl' OR Formula LIKE 'NH4Cl(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC"
+    },
+    "filtered_result_cef84042-329a-418b-8435-3404eb562650": {
+      "created_at": "2025-10-12T12:35:17.507104",
+      "updated_at": "2025-10-12T12:35:17.507104",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'filtered_result': {'selected_entries': [{'compound': 'NH4Cl', 'selected_id': 0, 'reasoning': 'SQL-filtered record for NH4Cl: Fallback SQL filter generation for NH4Cl using basic reliability and temp"
+    },
+    "sql_result_f17df2bc-7d0e-458b-bbab-5a2a294ca282": {
+      "created_at": "2025-10-12T12:35:46.403650",
+      "updated_at": "2025-10-12T12:35:46.403650",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'NH4Cl' OR Formula LIKE 'NH4Cl(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC"
+    },
+    "individual_search_result_872a5b3f-5c0f-4bcf-adce-6eb0705e359a": {
+      "created_at": "2025-10-12T12:38:46.754573",
+      "updated_at": "2025-10-12T12:38:46.754573",
+      "ttl_seconds": 1800,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'individual_results': [{'compound': 'CeO2', 'search_results': [], 'selected_records': [], 'confidence': 0.0, 'errors': ['Filtering Agent response timeout for search search_CeO2_872a5b3f-5c0f-4bcf-adc"
+    }
+  },
+  "message_queue": [
+    {
+      "id": "6cc09e23-3781-462f-854b-ec6c2d896a80",
+      "timestamp": "2025-10-12T12:34:01.376716",
+      "source_agent": "results_filtering_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_filter_complete",
+      "correlation_id": "82f13224-12ac-4390-ac37-5b304f805901",
+      "payload_preview": "{'status': 'success', 'result_key': 'filtered_result_8a2c4215-1d07-4f0b-9419-f1695edbd56b', 'filtered_result': {'selected_entries': [{'compound': 'CeO2', 'selected_id': 0, 'reasoning': 'SQL-filtered r"
+    },
+    {
+      "id": "fc9e5312-9ab1-4379-b025-1082bc84b107",
+      "timestamp": "2025-10-12T12:35:17.510197",
+      "source_agent": "results_filtering_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_filter_complete",
+      "correlation_id": "f17df2bc-7d0e-458b-bbab-5a2a294ca282",
+      "payload_preview": "{'status': 'success', 'result_key': 'filtered_result_cef84042-329a-418b-8435-3404eb562650', 'filtered_result': {'selected_entries': [{'compound': 'NH4Cl', 'selected_id': 0, 'reasoning': 'SQL-filtered "
+    },
+    {
+      "id": "9feab3ea-59af-491f-8156-af0b64031e33",
+      "timestamp": "2025-10-12T12:38:46.754573",
+      "source_agent": "individual_search_agent",
+      "target_agent": "thermo_agent",
+      "message_type": "individual_search_complete",
+      "correlation_id": "872a5b3f-5c0f-4bcf-adce-6eb0705e359a",
+      "payload_preview": "{'status': 'success', 'result_key': 'individual_search_result_872a5b3f-5c0f-4bcf-adce-6eb0705e359a', 'aggregated_results': {'individual_results': [{'compound': 'CeO2', 'search_results': [], 'selected_"
+    }
+  ],
+  "recent_history": [
+    {
+      "id": "82f13224-12ac-4390-ac37-5b304f805901",
+      "timestamp": "2025-10-12T12:33:29.854134",
+      "source_agent": "individual_search_agent",
+      "target_agent": "sql_agent",
+      "message_type": "generate_individual_query",
+      "correlation_id": "search_CeO2_872a5b3f-5c0f-4bcf-adce-6eb0705e359a_6704b431"
+    },
+    {
+      "id": "f17df2bc-7d0e-458b-bbab-5a2a294ca282",
+      "timestamp": "2025-10-12T12:33:29.856025",
+      "source_agent": "individual_search_agent",
+      "target_agent": "sql_agent",
+      "message_type": "generate_individual_query",
+      "correlation_id": "search_NH4Cl_872a5b3f-5c0f-4bcf-adce-6eb0705e359a_6f3ce5be"
+    },
+    {
+      "id": "f5796efa-e9df-4f8b-9386-1ca8a104e6a3",
+      "timestamp": "2025-10-12T12:33:38.291433",
+      "source_agent": "sql_agent",
+      "target_agent": "database_agent",
+      "message_type": "execute_individual_sql",
+      "correlation_id": "82f13224-12ac-4390-ac37-5b304f805901"
+    },
+    {
+      "id": "ccdde5d8-6281-4b89-91a6-b302f78586f8",
+      "timestamp": "2025-10-12T12:33:39.992876",
+      "source_agent": "database_agent",
+      "target_agent": "sql_agent",
+      "message_type": "sql_executed",
+      "correlation_id": "f5796efa-e9df-4f8b-9386-1ca8a104e6a3"
+    },
+    {
+      "id": "8a2c4215-1d07-4f0b-9419-f1695edbd56b",
+      "timestamp": "2025-10-12T12:33:39.992876",
+      "source_agent": "database_agent",
+      "target_agent": "results_filtering_agent",
+      "message_type": "filter_individual_results",
+      "correlation_id": "82f13224-12ac-4390-ac37-5b304f805901"
+    },
+    {
+      "id": "c0b8d18f-aaf5-4f53-ae1f-9b14aae6455f",
+      "timestamp": "2025-10-12T12:34:40.161894",
+      "source_agent": "sql_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_sql_complete",
+      "correlation_id": "82f13224-12ac-4390-ac37-5b304f805901"
+    },
+    {
+      "id": "dcb6ea0f-8a8f-492e-99ae-a7f969ba74f7",
+      "timestamp": "2025-10-12T12:34:44.778360",
+      "source_agent": "sql_agent",
+      "target_agent": "database_agent",
+      "message_type": "execute_individual_sql",
+      "correlation_id": "f17df2bc-7d0e-458b-bbab-5a2a294ca282"
+    },
+    {
+      "id": "e8bc06d6-8e29-4d05-94be-53a888b57acf",
+      "timestamp": "2025-10-12T12:34:46.305183",
+      "source_agent": "database_agent",
+      "target_agent": "sql_agent",
+      "message_type": "sql_executed",
+      "correlation_id": "dcb6ea0f-8a8f-492e-99ae-a7f969ba74f7"
+    },
+    {
+      "id": "cef84042-329a-418b-8435-3404eb562650",
+      "timestamp": "2025-10-12T12:34:46.305183",
+      "source_agent": "database_agent",
+      "target_agent": "results_filtering_agent",
+      "message_type": "filter_individual_results",
+      "correlation_id": "f17df2bc-7d0e-458b-bbab-5a2a294ca282"
+    },
+    {
+      "id": "09653afa-ecb6-485c-bf3d-c6d34688c75b",
+      "timestamp": "2025-10-12T12:35:46.405796",
+      "source_agent": "sql_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_sql_complete",
+      "correlation_id": "f17df2bc-7d0e-458b-bbab-5a2a294ca282"
+    }
+  ],
+  "agent_sessions": {
+    "thermo_agent": {
+      "status": "running",
+      "capabilities": [
+        "extract_parameters",
+        "normalize_formulas",
+        "convert_temperature"
+      ],
+      "metadata": {}
+    },
+    "sql_agent": {
+      "status": "running",
+      "capabilities": [
+        "generate_sql",
+        "execute_query",
+        "explain_query"
+      ],
+      "metadata": {
+        "database": "data/thermo_data.db"
+      }
+    },
+    "database_agent": {
+      "status": "running",
+      "capabilities": [
+        "execute_sql",
+        "filter_results",
+        "query_database"
+      ],
+      "metadata": {
+        "database": "data/thermo_data.db"
+      }
+    },
+    "results_filtering_agent": {
+      "status": "running",
+      "capabilities": [
+        "filter_results",
+        "temperature_analysis",
+        "compound_selection"
+      ],
+      "metadata": {}
+    },
+    "individual_search_agent": {
+      "status": "running",
+      "capabilities": [
+        "coordinate_individual_search",
+        "aggregate_results",
+        "handle_parallel_searches"
+      ],
+      "metadata": {}
+    },
+    "orchestrator": {
+      "status": "ready",
+      "capabilities": [],
+      "metadata": {}
+    }
+  }
+}
+2025-10-12 12:39:29,139 - thermo_agents_session_20251012_123247 - ERROR - {
+  "timestamp": "2025-10-12T12:39:29.133228",
+  "stats": {
+    "storage_entries": 9,
+    "message_queue_size": 3,
+    "message_history_size": 13,
+    "active_sessions": 6,
+    "agents": [
+      "thermo_agent",
+      "sql_agent",
+      "database_agent",
+      "results_filtering_agent",
+      "individual_search_agent",
+      "orchestrator"
+    ]
+  },
+  "storage_entries": {
+    "orchestrator_request_2140062825392": {
+      "created_at": "2025-10-12T12:33:25.822471",
+      "updated_at": "2025-10-12T12:33:25.822471",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'user_query': 'Может ли провзаимодействовать оксид церия с хлоридом аммония при 400 цельсия?', 'request_type': 'thermodynamic', 'options': {}}"
+    },
+    "thermo_result_1588123e-8479-44ac-97fa-2dc119064924": {
+      "created_at": "2025-10-12T12:33:29.130244",
+      "updated_at": "2025-10-12T12:33:29.130244",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'intent': 'reaction', 'compounds': ['CeO2', 'NH4Cl'], 'temperature_k': 673.15, 'temperature_range_k': [573.0, 873.0], 'phases': ['s', 's'], 'properties': ['all'], 'sql_query_hint': 'Find thermodynami"
+    },
+    "db_result_f5796efa-e9df-4f8b-9386-1ca8a104e6a3": {
+      "created_at": "2025-10-12T12:33:39.992876",
+      "updated_at": "2025-10-12T12:33:39.992876",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CeO2' OR Formula LIKE 'CeO2(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC L"
+    },
+    "filtered_result_8a2c4215-1d07-4f0b-9419-f1695edbd56b": {
+      "created_at": "2025-10-12T12:34:01.372728",
+      "updated_at": "2025-10-12T12:34:01.372728",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'filtered_result': {'selected_entries': [{'compound': 'CeO2', 'selected_id': 0, 'reasoning': 'SQL-filtered record for CeO2: Generated 3-tier filtering strategy for CeO2 at 673.15K. Priority 1: Exact "
+    },
+    "sql_result_82f13224-12ac-4390-ac37-5b304f805901": {
+      "created_at": "2025-10-12T12:34:40.160037",
+      "updated_at": "2025-10-12T12:34:40.160037",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'CeO2' OR Formula LIKE 'CeO2(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC L"
+    },
+    "db_result_dcb6ea0f-8a8f-492e-99ae-a7f969ba74f7": {
+      "created_at": "2025-10-12T12:34:46.305183",
+      "updated_at": "2025-10-12T12:34:46.305183",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'NH4Cl' OR Formula LIKE 'NH4Cl(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC"
+    },
+    "filtered_result_cef84042-329a-418b-8435-3404eb562650": {
+      "created_at": "2025-10-12T12:35:17.507104",
+      "updated_at": "2025-10-12T12:35:17.507104",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'filtered_result': {'selected_entries': [{'compound': 'NH4Cl', 'selected_id': 0, 'reasoning': 'SQL-filtered record for NH4Cl: Fallback SQL filter generation for NH4Cl using basic reliability and temp"
+    },
+    "sql_result_f17df2bc-7d0e-458b-bbab-5a2a294ca282": {
+      "created_at": "2025-10-12T12:35:46.403650",
+      "updated_at": "2025-10-12T12:35:46.403650",
+      "ttl_seconds": 600,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'sql_query': \"SELECT * FROM compounds WHERE (TRIM(Formula) = 'NH4Cl' OR Formula LIKE 'NH4Cl(%') AND (Tmin IS NULL OR Tmax IS NULL OR (673.15 >= Tmin AND 673.15 <= Tmax)) ORDER BY ReliabilityClass ASC"
+    },
+    "individual_search_result_872a5b3f-5c0f-4bcf-adce-6eb0705e359a": {
+      "created_at": "2025-10-12T12:38:46.754573",
+      "updated_at": "2025-10-12T12:38:46.754573",
+      "ttl_seconds": 1800,
+      "metadata": {},
+      "value_type": "dict",
+      "value_preview": "{'individual_results': [{'compound': 'CeO2', 'search_results': [], 'selected_records': [], 'confidence': 0.0, 'errors': ['Filtering Agent response timeout for search search_CeO2_872a5b3f-5c0f-4bcf-adc"
+    }
+  },
+  "message_queue": [
+    {
+      "id": "6cc09e23-3781-462f-854b-ec6c2d896a80",
+      "timestamp": "2025-10-12T12:34:01.376716",
+      "source_agent": "results_filtering_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_filter_complete",
+      "correlation_id": "82f13224-12ac-4390-ac37-5b304f805901",
+      "payload_preview": "{'status': 'success', 'result_key': 'filtered_result_8a2c4215-1d07-4f0b-9419-f1695edbd56b', 'filtered_result': {'selected_entries': [{'compound': 'CeO2', 'selected_id': 0, 'reasoning': 'SQL-filtered r"
+    },
+    {
+      "id": "fc9e5312-9ab1-4379-b025-1082bc84b107",
+      "timestamp": "2025-10-12T12:35:17.510197",
+      "source_agent": "results_filtering_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_filter_complete",
+      "correlation_id": "f17df2bc-7d0e-458b-bbab-5a2a294ca282",
+      "payload_preview": "{'status': 'success', 'result_key': 'filtered_result_cef84042-329a-418b-8435-3404eb562650', 'filtered_result': {'selected_entries': [{'compound': 'NH4Cl', 'selected_id': 0, 'reasoning': 'SQL-filtered "
+    },
+    {
+      "id": "9feab3ea-59af-491f-8156-af0b64031e33",
+      "timestamp": "2025-10-12T12:38:46.754573",
+      "source_agent": "individual_search_agent",
+      "target_agent": "thermo_agent",
+      "message_type": "individual_search_complete",
+      "correlation_id": "872a5b3f-5c0f-4bcf-adce-6eb0705e359a",
+      "payload_preview": "{'status': 'success', 'result_key': 'individual_search_result_872a5b3f-5c0f-4bcf-adce-6eb0705e359a', 'aggregated_results': {'individual_results': [{'compound': 'CeO2', 'search_results': [], 'selected_"
+    }
+  ],
+  "recent_history": [
+    {
+      "id": "82f13224-12ac-4390-ac37-5b304f805901",
+      "timestamp": "2025-10-12T12:33:29.854134",
+      "source_agent": "individual_search_agent",
+      "target_agent": "sql_agent",
+      "message_type": "generate_individual_query",
+      "correlation_id": "search_CeO2_872a5b3f-5c0f-4bcf-adce-6eb0705e359a_6704b431"
+    },
+    {
+      "id": "f17df2bc-7d0e-458b-bbab-5a2a294ca282",
+      "timestamp": "2025-10-12T12:33:29.856025",
+      "source_agent": "individual_search_agent",
+      "target_agent": "sql_agent",
+      "message_type": "generate_individual_query",
+      "correlation_id": "search_NH4Cl_872a5b3f-5c0f-4bcf-adce-6eb0705e359a_6f3ce5be"
+    },
+    {
+      "id": "f5796efa-e9df-4f8b-9386-1ca8a104e6a3",
+      "timestamp": "2025-10-12T12:33:38.291433",
+      "source_agent": "sql_agent",
+      "target_agent": "database_agent",
+      "message_type": "execute_individual_sql",
+      "correlation_id": "82f13224-12ac-4390-ac37-5b304f805901"
+    },
+    {
+      "id": "ccdde5d8-6281-4b89-91a6-b302f78586f8",
+      "timestamp": "2025-10-12T12:33:39.992876",
+      "source_agent": "database_agent",
+      "target_agent": "sql_agent",
+      "message_type": "sql_executed",
+      "correlation_id": "f5796efa-e9df-4f8b-9386-1ca8a104e6a3"
+    },
+    {
+      "id": "8a2c4215-1d07-4f0b-9419-f1695edbd56b",
+      "timestamp": "2025-10-12T12:33:39.992876",
+      "source_agent": "database_agent",
+      "target_agent": "results_filtering_agent",
+      "message_type": "filter_individual_results",
+      "correlation_id": "82f13224-12ac-4390-ac37-5b304f805901"
+    },
+    {
+      "id": "c0b8d18f-aaf5-4f53-ae1f-9b14aae6455f",
+      "timestamp": "2025-10-12T12:34:40.161894",
+      "source_agent": "sql_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_sql_complete",
+      "correlation_id": "82f13224-12ac-4390-ac37-5b304f805901"
+    },
+    {
+      "id": "dcb6ea0f-8a8f-492e-99ae-a7f969ba74f7",
+      "timestamp": "2025-10-12T12:34:44.778360",
+      "source_agent": "sql_agent",
+      "target_agent": "database_agent",
+      "message_type": "execute_individual_sql",
+      "correlation_id": "f17df2bc-7d0e-458b-bbab-5a2a294ca282"
+    },
+    {
+      "id": "e8bc06d6-8e29-4d05-94be-53a888b57acf",
+      "timestamp": "2025-10-12T12:34:46.305183",
+      "source_agent": "database_agent",
+      "target_agent": "sql_agent",
+      "message_type": "sql_executed",
+      "correlation_id": "dcb6ea0f-8a8f-492e-99ae-a7f969ba74f7"
+    },
+    {
+      "id": "cef84042-329a-418b-8435-3404eb562650",
+      "timestamp": "2025-10-12T12:34:46.305183",
+      "source_agent": "database_agent",
+      "target_agent": "results_filtering_agent",
+      "message_type": "filter_individual_results",
+      "correlation_id": "f17df2bc-7d0e-458b-bbab-5a2a294ca282"
+    },
+    {
+      "id": "09653afa-ecb6-485c-bf3d-c6d34688c75b",
+      "timestamp": "2025-10-12T12:35:46.405796",
+      "source_agent": "sql_agent",
+      "target_agent": "individual_search_agent",
+      "message_type": "individual_sql_complete",
+      "correlation_id": "f17df2bc-7d0e-458b-bbab-5a2a294ca282"
+    }
+  ],
+  "agent_sessions": {
+    "thermo_agent": {
+      "status": "running",
+      "capabilities": [
+        "extract_parameters",
+        "normalize_formulas",
+        "convert_temperature"
+      ],
+      "metadata": {}
+    },
+    "sql_agent": {
+      "status": "running",
+      "capabilities": [
+        "generate_sql",
+        "execute_query",
+        "explain_query"
+      ],
+      "metadata": {
+        "database": "data/thermo_data.db"
+      }
+    },
+    "database_agent": {
+      "status": "running",
+      "capabilities": [
+        "execute_sql",
+        "filter_results",
+        "query_database"
+      ],
+      "metadata": {
+        "database": "data/thermo_data.db"
+      }
+    },
+    "results_filtering_agent": {
+      "status": "running",
+      "capabilities": [
+        "filter_results",
+        "temperature_analysis",
+        "compound_selection"
+      ],
+      "metadata": {}
+    },
+    "individual_search_agent": {
+      "status": "running",
+      "capabilities": [
+        "coordinate_individual_search",
+        "aggregate_results",
+        "handle_parallel_searches"
+      ],
+      "metadata": {}
+    },
+    "orchestrator": {
+      "status": "ready",
+      "capabilities": [],
+      "metadata": {}
+    }
+  }
+}
+2025-10-12 12:39:33,878 - __main__ - ERROR - Interactive mode error: 
+Traceback (most recent call last):
+  File "c:\IDE\repository\agents_for_david\main.py", line 403, in interactive_mode
+    user_input = input("Query> ").strip()
+                 ^^^^^^^^^^^^^^^^
+EOFError
+2025-10-12 12:39:34,638 - __main__ - INFO - Stopping agents...
+2025-10-12 12:39:34,638 - thermo_agent - INFO - Agent 'thermo_agent' stopped
+2025-10-12 12:39:34,638 - sql_agent - INFO - Agent 'sql_agent' stopped
+2025-10-12 12:39:34,638 - database_agent - INFO - Agent 'database_agent' stopped
+2025-10-12 12:39:34,638 - results_filtering_agent - INFO - Agent 'results_filtering_agent' stopped
+2025-10-12 12:39:34,640 - individual_search_agent - INFO - Agent 'individual_search_agent' stopped
+2025-10-12 12:39:34,640 - orchestrator - INFO - Shutting down orchestrator
