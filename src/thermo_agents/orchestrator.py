@@ -18,7 +18,9 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from .agent_storage import AgentStorage, get_storage
+from .operations import OperationType
 from .thermo_agents_logger import SessionLogger
+from .timeout_manager import get_timeout_manager, OperationType as TimeoutOperationType
 
 
 class OrchestratorRequest(BaseModel):
@@ -48,8 +50,8 @@ class OrchestratorConfig:
     storage: AgentStorage = field(default_factory=get_storage)
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     session_logger: Optional[SessionLogger] = None
-    max_retries: int = 2
-    timeout_seconds: int = 60
+    max_retries: int = 2  # Обновлено до 2 попыток согласно новой политике
+    timeout_seconds: int = 90  # Увеличено до 90с для операций с реакциями на основе анализа
 
 
 class ThermoOrchestrator:
@@ -74,6 +76,13 @@ class ThermoOrchestrator:
         self.storage = config.storage
         self.logger = config.logger
         self.agent = self._initialize_agent()
+
+        # Инициализация TimeoutManager
+        self.timeout_manager = get_timeout_manager(
+            logger=self.config.logger,
+            session_logger=self.config.session_logger,
+            llm_base_url=self.config.llm_base_url
+        )
 
         # Регистрация в хранилище
         self.agent_id = "orchestrator"
@@ -258,14 +267,35 @@ class ThermoOrchestrator:
         Returns:
             Результат обработки всеми агентами
         """
-        self.logger.info(f"Processing request: {request.user_query[:100]}...")
-        trace = []
+        # Используем операцию для логирования координации
+        operation_context = None
+        if self.config.session_logger and self.config.session_logger.is_operations_enabled():
+            operation_context = self.config.session_logger.create_operation_context(
+                agent_name=self.agent_id,
+                operation_type=OperationType.PROCESS_REQUEST,
+                correlation_id=f"orch_req_{id(request)}",
+            )
+            operation_context.set_storage_snapshot_provider(lambda: self.storage.get_storage_snapshot(include_content=True))
+            operation = operation_context.__enter__()
+        else:
+            operation = None
 
         try:
+            # Инициализация трассировки
+            trace = []
+
+            # Устанавливаем входные данные для операции
+            input_data = {
+                "user_query": request.user_query[:200],  # Ограничиваем для лога
+                "request_type": request.request_type,
+            }
+
+            if operation:
+                operation.set_input_data(input_data)
+
             # Сохраняем запрос в хранилище
             request_id = f"orchestrator_request_{id(request)}"
             self.storage.set(request_id, request.model_dump(), ttl_seconds=600)
-            trace.append(f"Request saved with ID: {request_id}")
 
             # Шаг 1: Отправляем запрос thermo_agent
             thermo_message_id = self.storage.send_message(
@@ -274,36 +304,264 @@ class ThermoOrchestrator:
                 message_type="extract_parameters",
                 payload={"user_query": request.user_query},
             )
-            trace.append(f"Sent message to thermo_agent: {thermo_message_id}")
 
-            # Ждем ответа от thermo_agent через сообщения
+            # Ждем ответа от thermo_agent через сообщения с улучшенным логированием
             extracted_params = None
             start_time = asyncio.get_event_loop().time()
+            self.logger.info(f"DEBUG: Waiting for thermo_agent response, timeout={self.config.timeout_seconds}s, message_id={thermo_message_id}")
+
             while (
                 asyncio.get_event_loop().time() - start_time
             ) < self.config.timeout_seconds:
-                # Получаем сообщения от thermo агента
-                messages = self.storage.receive_messages(
+                # Получаем сообщения от thermo агента (и response, и error)
+                response_messages = self.storage.receive_messages(
                     self.agent_id, message_type="response"
                 )
+                error_messages = self.storage.receive_messages(
+                    self.agent_id, message_type="error"
+                )
+
+                all_messages = response_messages + error_messages
+
+                if all_messages:
+                    self.logger.debug(f"DEBUG: Found {len(all_messages)} messages for thermo_agent")
 
                 # Ищем ответ на наше сообщение
-                for msg in messages:
+                for msg in all_messages:
                     if msg.correlation_id == thermo_message_id and msg.source_agent == "thermo_agent":
-                        self.logger.info(f"Received response from thermo_agent: {msg.payload}")
-                        if msg.payload.get("status") == "success":
+                        status = msg.payload.get("status")
+                        self.logger.info(f"DEBUG: Received {msg.message_type} from thermo_agent: {status}")
+
+                        if msg.message_type == "error" or status == "error":
+                            error_msg = msg.payload.get("error", "Unknown error")
+                            self.logger.error(f"DEBUG: Thermo agent returned error: {error_msg}")
+                            trace.append(f"Thermo agent error: {error_msg}")
+                            if self.config.session_logger:
+                                self.config.session_logger.log_error(f"Thermo agent error: {error_msg}")
+
+                            # Завершаем операцию с ошибкой
+                            if operation_context:
+                                operation_context.__exit__(ValueError, ValueError(error_msg), None)
+
+                            return OrchestratorResponse(
+                                success=False,
+                                result={},
+                                errors=[f"Не удалось извлечь параметры из запроса: {error_msg}"],
+                                trace=trace,
+                            )
+
+                        elif status == "success":
                             extracted_params = msg.payload.get("extracted_params")
+                            if self.config.session_logger:
+                                self.config.session_logger.log_info(f"THERMO AGENT RESPONSE: Success with {len(extracted_params.get('compounds', []))} compounds")
                             break
 
                 if extracted_params:
                     break
-                await asyncio.sleep(0.1)  # Проверяем каждые 0.1 секунды
+                # Уменьшаем задержку для ускорения реакции
+                await asyncio.sleep(0.05)  # Уменьшено с 0.1 до 0.05 секунд
 
             if extracted_params:
                 trace.append("Received parameters from thermo_agent")
 
-                # Шаг 2: Ждем результат от SQL агента (thermo_agent уже отправил ему сообщение)
-                if extracted_params.get("sql_query_hint"):
+                # Валидация извлеченных параметров
+                compounds = extracted_params.get("compounds", [])
+                intent = extracted_params.get("intent", "lookup")
+
+                # Проверяем, что извлечены соединения
+                if not compounds or len(compounds) == 0:
+                    trace.append("No compounds extracted - cannot proceed")
+                    if self.config.session_logger:
+                        self.config.session_logger.log_error(
+                            f"No compounds extracted from query: {request.user_query[:100]}"
+                        )
+
+                    # Завершаем операцию с ошибкой извлечения
+                    if operation_context:
+                        operation_context.__exit__(ValueError, ValueError("No compounds extracted"), None)
+
+                    return OrchestratorResponse(
+                        success=False,
+                        result={},
+                        errors=["Не удалось извлечь химические соединения из запроса. Пожалуйста, уточните запрос, используя химические формулы или названия веществ."],
+                        trace=trace,
+                    )
+
+                # Для реакций должно быть как минимум 2 соединения
+                if intent == "reaction" and len(compounds) < 2:
+                    trace.append(f"Reaction intent with only {len(compounds)} compounds - insufficient")
+                    if self.config.session_logger:
+                        self.config.session_logger.log_error(
+                            f"Reaction query with insufficient compounds: {len(compounds)} compounds from query: {request.user_query[:100]}"
+                        )
+
+                    # Завершаем операцию с ошибкой
+                    if operation_context:
+                        operation_context.__exit__(ValueError, ValueError("Insufficient compounds for reaction"), None)
+
+                    return OrchestratorResponse(
+                        success=False,
+                        result={},
+                        errors=[f"Для анализа реакции необходимо указать как минимум 2 соединения. Извлечено соединений: {len(compounds)}."],
+                        trace=trace,
+                    )
+
+                # Определяем тип обработки на основе intent
+
+                if intent == "reaction" and extracted_params.get("compounds"):
+                    # Для реакций используем Individual Search Agent
+                    trace.append("Processing reaction via Individual Search Agent")
+
+                    # Ждем результата от Individual Search Agent с использованием TimeoutManager
+                    self.logger.info(f"DEBUG: Waiting for Individual Search Agent using TimeoutManager, correlation_id={thermo_message_id}")
+
+                    async def wait_for_individual_search():
+                        individual_result = None
+                        individual_start_time = asyncio.get_event_loop().time()
+                        timeout_seconds = self.timeout_manager.get_timeout(TimeoutOperationType.TOTAL_REQUEST)
+
+                        while (
+                            asyncio.get_event_loop().time() - individual_start_time
+                        ) < timeout_seconds:
+                            # Получаем сообщения от Individual Search Agent
+                            messages = self.storage.receive_messages(
+                                self.agent_id, message_type="individual_search_complete"
+                            )
+
+                            if messages:
+                                self.logger.debug(f"DEBUG: Found {len(messages)} individual search messages")
+
+                            # Ищем результат - принимаем любой correlation_id от Individual Search Agent
+                            # поскольку correlation_id может изменяться при передаче между агентами
+                            for msg in messages:
+                                if msg.source_agent == "individual_search_agent":
+                                    status = msg.payload.get("status")
+                                    self.logger.info(f"DEBUG: Received individual search result: {status}, correlation_id: {msg.correlation_id}")
+                                    if status == "success":
+                                        result_key = msg.payload.get("result_key")
+                                        if result_key:
+                                            # Получаем полный результат из хранилища
+                                            individual_result = self.storage.get(result_key)
+                                            if individual_result:
+                                                if self.config.session_logger:
+                                                    self.config.session_logger.log_info(f"INDIVIDUAL SEARCH COMPLETE: {len(individual_result.get('individual_results', []))} compounds processed")
+                                                self.logger.info(f"DEBUG: Successfully retrieved individual result with correlation_id: {msg.correlation_id}")
+                                            break
+                                    elif status == "error":
+                                        self.logger.error(f"DEBUG: Individual Search Agent error: {msg.payload.get('error')}")
+                                        trace.append(f"Individual Search Agent error: {msg.payload.get('error')}")
+                                        break
+
+                            if individual_result:
+                                break
+                            # Уменьшаем задержку для ускорения реакции
+                            await asyncio.sleep(0.05)  # Уменьшено с 0.1 до 0.05 секунд
+
+                        return individual_result
+
+                    # Используем TimeoutManager для выполнения с retry механизмом
+                    try:
+                        individual_result = await self.timeout_manager.execute_with_retry(
+                            wait_for_individual_search,
+                            TimeoutOperationType.TOTAL_REQUEST
+                        )
+                    except Exception as e:
+                        self.logger.error(f"Individual search failed with TimeoutManager: {e}")
+                        individual_result = None
+
+                    if individual_result:
+                        trace.append("Received aggregated results from Individual Search Agent")
+
+                        # Проверяем полноту данных для реакции
+                        is_complete_reaction = individual_result.get("is_complete_reaction", True)
+                        missing_compounds = individual_result.get("missing_compounds", [])
+                        data_completeness_status = individual_result.get("data_completeness_status", "complete")
+
+                        # Готовим результат операции
+                        operation_result = {
+                            "request_id": request_id,
+                            "status": "success",
+                            "compounds_count": len(extracted_params.get("compounds", [])),
+                            "processing_type": "individual_search",
+                            "individual_results_count": len(individual_result.get("individual_results", [])),
+                            "overall_confidence": individual_result.get("overall_confidence"),
+                            "data_completeness_status": data_completeness_status,
+                            "is_complete_reaction": is_complete_reaction,
+                            "missing_compounds_count": len(missing_compounds),
+                        }
+
+                        # Устанавливаем результат операции
+                        if operation_context:
+                            operation_context.set_result(operation_result)
+
+                        # Формируем ответ в зависимости от полноты данных
+                        if not is_complete_reaction and len(extracted_params.get("compounds", [])) > 1:
+                            # Неполные данные для реакции - создаем специальный ответ
+                            response_result = {
+                                "extracted_parameters": extracted_params,
+                                "aggregated_results": individual_result.get("aggregated_results"),
+                                "summary_table": individual_result.get("summary_table"),
+                                "overall_confidence": individual_result.get("overall_confidence"),
+                                "individual_results": individual_result.get("individual_results"),
+                                "missing_compounds": missing_compounds,
+                                "warnings": individual_result.get("warnings"),
+                                "processing_type": "individual_search",
+                                "data_completeness_status": data_completeness_status,
+                                "is_complete_reaction": False,
+                                "user_message": self._format_incomplete_data_message(
+                                    extracted_params, individual_result, missing_compounds
+                                )
+                            }
+
+                            response = OrchestratorResponse(
+                                success=True,  # Технически успешно, но данные неполные
+                                result=response_result,
+                                trace=trace + ["Response formatted for incomplete reaction data"],
+                            )
+                        else:
+                            # Полные данные или одиночное соединение
+                            response = OrchestratorResponse(
+                                success=True,
+                                result={
+                                    "extracted_parameters": extracted_params,
+                                    "aggregated_results": individual_result.get("aggregated_results"),
+                                    "summary_table": individual_result.get("summary_table"),
+                                    "overall_confidence": individual_result.get("overall_confidence"),
+                                    "individual_results": individual_result.get("individual_results"),
+                                    "missing_compounds": missing_compounds,
+                                    "warnings": individual_result.get("warnings"),
+                                    "processing_type": "individual_search",
+                                    "data_completeness_status": data_completeness_status,
+                                    "is_complete_reaction": is_complete_reaction,
+                                },
+                                trace=trace,
+                            )
+
+                        # Завершаем операцию успешно
+                        if operation_context:
+                            operation_context.__exit__(None, None, None)
+
+                        return response
+                    else:
+                        trace.append("Individual Search Agent result not ready")
+                        if self.config.session_logger:
+                            self.config.session_logger.log_error(
+                                "Individual Search Agent did not complete processing in time"
+                            )
+
+                        # Завершаем операцию с ошибкой
+                        if operation_context:
+                            operation_context.__exit__(TimeoutError, TimeoutError("Individual Search Agent timeout"), None)
+
+                        return OrchestratorResponse(
+                            success=False,
+                            result={},
+                            errors=["Individual Search Agent did not complete processing in time"],
+                            trace=trace,
+                        )
+
+                elif extracted_params.get("sql_query_hint"):
+                    # Для нерекакционных запросов используем стандартный SQL агент
                     trace.append("Waiting for SQL agent result (triggered by thermo_agent)")
 
                     # Ждем сообщения "sql_ready" от SQL агента
@@ -334,8 +592,22 @@ class ThermoOrchestrator:
                     if sql_result:
                         trace.append("Received SQL query and execution result from sql_agent")
 
+                        # Готовим результат операции
+                        operation_result = {
+                            "request_id": request_id,
+                            "status": "success",
+                            "compounds_count": len(extracted_params.get("compounds", [])),
+                            "processing_type": "standard_search",
+                            "sql_success": bool(sql_result.get("execution_result", {}).get("success")),
+                            "row_count": sql_result.get("execution_result", {}).get("row_count", 0),
+                        }
+
+                        # Устанавливаем результат операции
+                        if operation_context:
+                            operation_context.set_result(operation_result)
+
                         # Собираем полный результат
-                        return OrchestratorResponse(
+                        response = OrchestratorResponse(
                             success=True,
                             result={
                                 "extracted_parameters": extracted_params,
@@ -343,16 +615,27 @@ class ThermoOrchestrator:
                                 "explanation": sql_result.get("explanation"),
                                 "expected_columns": sql_result.get("expected_columns"),
                                 "execution_result": sql_result.get("execution_result"),
+                                "processing_type": "standard_search",
                             },
                             trace=trace,
                         )
+
+                        # Завершаем операцию успешно
+                        if operation_context:
+                            operation_context.__exit__(None, None, None)
+
+                        return response
                     else:
                         trace.append("SQL agent result not ready")
-                        # Логируем в сессионный лог
                         if self.config.session_logger:
                             self.config.session_logger.log_error(
                                 "SQL agent did not complete processing in time"
                             )
+
+                        # Завершаем операцию с ошибкой
+                        if operation_context:
+                            operation_context.__exit__(TimeoutError, TimeoutError("SQL agent timeout"), None)
+
                         return OrchestratorResponse(
                             success=False,
                             result={},
@@ -361,11 +644,29 @@ class ThermoOrchestrator:
                         )
                 else:
                     # Только извлечение параметров, SQL не требуется
-                    return OrchestratorResponse(
+                    # Готовим результат операции
+                    operation_result = {
+                        "request_id": request_id,
+                        "status": "success",
+                        "compounds_count": len(extracted_params.get("compounds", [])),
+                        "processing_type": "parameter_extraction_only",
+                    }
+
+                    # Устанавливаем результат операции
+                    if operation_context:
+                        operation_context.set_result(operation_result)
+
+                    response = OrchestratorResponse(
                         success=True,
                         result={"extracted_parameters": extracted_params},
                         trace=trace,
                     )
+
+                    # Завершаем операцию успешно
+                    if operation_context:
+                        operation_context.__exit__(None, None, None)
+
+                    return response
             else:
                 trace.append("Thermo agent response not ready")
                 # Логируем в сессионный лог
@@ -373,14 +674,24 @@ class ThermoOrchestrator:
                     self.config.session_logger.log_error(
                         "Thermo agent did not respond to orchestrator"
                     )
+
+                # Завершаем операцию с ошибкой
+                if operation_context:
+                    operation_context.__exit__(TimeoutError, TimeoutError("Thermo agent timeout"), None)
+
                 return OrchestratorResponse(
                     success=False,
                     result={},
-                    errors=["Thermo agent did not respond"],
+                    errors=["Не удалось извлечь параметры из запроса - превышено время ожидания. Пожалуйста, попробуйте упростить запрос или использовать более точные химические формулы."],
                     trace=trace,
                 )
         except Exception as e:
             self.logger.error(f"Error processing request: {e}")
+
+            # Завершаем операцию с ошибкой
+            if operation_context:
+                operation_context.__exit__(type(e), e, e.__traceback__)
+
             return OrchestratorResponse(
                 success=False, result={}, errors=[str(e)], trace=trace
             )
@@ -390,6 +701,67 @@ class ThermoOrchestrator:
         """Завершить работу оркестратора."""
         self.logger.info("Shutting down orchestrator")
         self.storage.end_session(self.agent_id)
+
+    def _format_incomplete_data_message(
+        self,
+        extracted_params: Dict,
+        individual_result: Dict,
+        missing_compounds: List[str]
+    ) -> str:
+        """
+        Форматирует сообщение для пользователя при неполных данных реакции.
+
+        Args:
+            extracted_params: Извлеченные параметры
+            individual_result: Результаты индивидуального поиска
+            missing_compounds: Список отсутствующих соединений
+
+        Returns:
+            Отформатированное сообщение для пользователя
+        """
+        all_compounds = extracted_params.get("compounds", [])
+        found_compounds = [c for c in all_compounds if c not in missing_compounds]
+        reaction_equation = extracted_params.get("reaction_equation", " → ".join(all_compounds))
+
+        message_parts = [
+            f"⚠️  **НЕПОЛНЫЕ ДАННЫЕ ДЛЯ РЕАКЦИИ**",
+            "",
+            f"Для реакции: {reaction_equation}",
+            f"Не найдены термодинамические данные для {len(missing_compounds)} из {len(all_compounds)} веществ:",
+            f"**Отсутствуют:** {', '.join(missing_compounds)}",
+            ""
+        ]
+
+        if found_compounds:
+            message_parts.extend([
+                f"**Найдены данные для:** {', '.join(found_compounds)}",
+                "",
+                "Рекомендуемые действия:",
+                "",
+            ])
+        else:
+            message_parts.extend([
+                "Данные не найдены ни для одного вещества в реакции.",
+                "",
+                "Рекомендуемые действия:",
+                "",
+            ])
+
+        suggestions = [
+            "1. **Проверьте химические формулы** - убедитесь, что все вещества написаны корректно",
+            "2. **Используйте альтернативные названия** некоторые вещества могут быть записаны по-разному",
+            "3. **Укажите фазовые состояния** например, 'CaO(тв)' вместо 'CaO'",
+            "4. **Измените температурный диапазон** данные могут отсутствовать в указанном диапазоне",
+            "5. **Разбейте реакцию на части** проанализируйте отдельно вещества, для которых найдены данные"
+        ]
+
+        message_parts.extend(suggestions)
+        message_parts.extend([
+            "",
+            "Ниже представлены таблицы с данными, которые удалось найти:"
+        ])
+
+        return "\n".join(message_parts)
 
     def get_status(self) -> Dict[str, Any]:
         """Получить статус оркестратора и системы."""

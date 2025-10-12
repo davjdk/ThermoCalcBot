@@ -28,7 +28,8 @@ from thermo_agents.orchestrator import (
 )
 from thermo_agents.database_agent import DatabaseAgentConfig, DatabaseAgent
 from thermo_agents.sql_generation_agent import SQLAgentConfig, SQLGenerationAgent
-from thermo_agents.results_filtering_agent import ResultsFilteringAgentConfig, ResultsFilteringAgent
+# Results Filtering Agent удален - функциональность перенесена в Individual Search Agent
+from thermo_agents.individual_search_agent import IndividualSearchAgentConfig, IndividualSearchAgent
 from thermo_agents.thermo_agents_logger import create_session_logger
 from thermo_agents.thermodynamic_agent import ThermoAgentConfig, ThermodynamicAgent
 
@@ -62,7 +63,8 @@ class ThermoSystem:
         self.thermo_agent = None
         self.sql_agent = None
         self.database_agent = None
-        self.results_filtering_agent = None
+        # Results Filtering Agent удален - функциональность перенесена в Individual Search Agent
+        self.individual_search_agent = None
         self.orchestrator = None
 
         # Задачи для агентов
@@ -124,7 +126,7 @@ class ThermoSystem:
             storage=self.storage,
             logger=logging.getLogger("thermo_agent"),
             session_logger=self.session_logger,
-            poll_interval=0.5,  # Быстрый отклик
+            poll_interval=2.0,  # Увеличенный интервал для учета времени LLM
         )
         self.thermo_agent = ThermodynamicAgent(thermo_config)
 
@@ -138,7 +140,7 @@ class ThermoSystem:
             storage=self.storage,
             logger=logging.getLogger("sql_agent"),
             session_logger=self.session_logger,
-            poll_interval=0.5,
+            poll_interval=2.0,  # Увеличенный интервал
         )
         self.sql_agent = SQLGenerationAgent(sql_config)
 
@@ -149,24 +151,27 @@ class ThermoSystem:
             storage=self.storage,
             logger=logging.getLogger("database_agent"),
             session_logger=self.session_logger,
-            poll_interval=0.5,
+            poll_interval=2.0,  # Увеличенный интервал
         )
         self.database_agent = DatabaseAgent(database_config)
 
-        # Агент фильтрации результатов
-        results_filtering_config = ResultsFilteringAgentConfig(
-            agent_id="results_filtering_agent",
-            llm_api_key=self.config["llm_api_key"],
-            llm_base_url=self.config["llm_base_url"],
-            llm_model=self.config["llm_model"],
-            storage=self.storage,
-            logger=logging.getLogger("results_filtering_agent"),
-            session_logger=self.session_logger,
-            poll_interval=0.5,
-        )
-        self.results_filtering_agent = ResultsFilteringAgent(results_filtering_config)
+        # Results Filtering Agent удален - функциональность перенесена в Individual Search Agent
+        # Интеллектуальный фильтр фаз теперь встроен в Individual Search Agent
 
-        # Оркестратор
+        # Individual Search Agent (оптимизированная конфигурация v2.0)
+        individual_search_config = IndividualSearchAgentConfig(
+            agent_id="individual_search_agent",
+            storage=self.storage,
+            logger=logging.getLogger("individual_search_agent"),
+            session_logger=self.session_logger,
+            poll_interval=0.05,  # Оптимизировано до 0.05с для немедленной обработки
+            max_retries=2,  # Обновлено до 2 попыток согласно новой политике
+            timeout_seconds=54,  # Оптимизировано на основе анализа: 27с × 2 = 54с
+            max_parallel_searches=4,  # Оптимизировано для баланса производительности
+        )
+        self.individual_search_agent = IndividualSearchAgent(individual_search_config)
+
+        # Оркестратор (оптимизированная конфигурация v2.0)
         orchestrator_config = OrchestratorConfig(
             llm_api_key=self.config["llm_api_key"],
             llm_base_url=self.config["llm_base_url"],
@@ -174,6 +179,8 @@ class ThermoSystem:
             storage=self.storage,
             logger=logging.getLogger("orchestrator"),
             session_logger=self.session_logger,
+            max_retries=2,  # Обновлено до 2 попыток согласно новой политике
+            timeout_seconds=60,  # Оптимизировано на основе анализа: общий таймаут 60с
         )
         self.orchestrator = ThermoOrchestrator(orchestrator_config)
 
@@ -183,12 +190,12 @@ class ThermoSystem:
         """Запуск всех агентов в отдельных задачах."""
         self.logger.info("Starting agents...")
 
-        # Создаем задачи для каждого агента
+        # Создаем задачи для каждого агента (Results Filtering Agent удален)
         self.agent_tasks = [
             asyncio.create_task(self.thermo_agent.start(), name="thermo_agent_task"),
             asyncio.create_task(self.sql_agent.start(), name="sql_agent_task"),
             asyncio.create_task(self.database_agent.start(), name="database_agent_task"),
-            asyncio.create_task(self.results_filtering_agent.start(), name="results_filtering_agent_task"),
+            asyncio.create_task(self.individual_search_agent.start(), name="individual_search_agent_task"),
         ]
 
         # Даем агентам время на инициализацию
@@ -201,15 +208,16 @@ class ThermoSystem:
         """Остановка всех агентов."""
         self.logger.info("Stopping agents...")
 
-        # Останавливаем агентов
+        # Останавливаем агентов (Results Filtering Agent удален)
         if self.thermo_agent:
             await self.thermo_agent.stop()
         if self.sql_agent:
             await self.sql_agent.stop()
         if self.database_agent:
             await self.database_agent.stop()
-        if self.results_filtering_agent:
-            await self.results_filtering_agent.stop()
+        # Results Filtering Agent был удален - функциональность перенесена в Individual Search Agent
+        if self.individual_search_agent:
+            await self.individual_search_agent.stop()
         if self.orchestrator:
             await self.orchestrator.shutdown()
 
@@ -264,7 +272,7 @@ class ThermoSystem:
         Args:
             query: Запрос пользователя
         """
-        print(f"\n🔍 Processing: {query}")
+        print(f"\nProcessing: {query}")
         print("-" * 60)
 
         try:
@@ -279,49 +287,134 @@ class ThermoSystem:
             if response.success:
                 result = response.result
 
+                # Проверяем статус полноты данных для реакций
+                is_complete_reaction = result.get("is_complete_reaction", True)
+                processing_type = result.get("processing_type", "")
+                missing_compounds = result.get("missing_compounds", [])
+
+                # Вывод сообщения для неполных данных реакции
+                if not is_complete_reaction and processing_type == "individual_search" and "user_message" in result:
+                    print("\n" + "="*80)
+                    print(result["user_message"])
+                    print("="*80)
+
                 # Вывод извлеченных параметров
                 if "extracted_parameters" in result:
                     params = result["extracted_parameters"]
                     print("\n[OK] Extracted Parameters:")
-                    print(f"  🎯 Intent: {params.get('intent', 'unknown')}")
-                    print(f"  🧪 Compounds: {params.get('compounds', [])}")
-                    print(f"  🌡️ Temperature: {params.get('temperature_k', 298.15)} K")
-                    print(f"  📊 Phases: {params.get('phases', [])}")
+                    print(f"  [Intent] {params.get('intent', 'unknown')}")
+                    print(f"  [Compounds] {params.get('compounds', [])}")
+                    print(f"  [Temperature] {params.get('temperature_k', 298.15)} K")
+                    print(f"  [Phases] {params.get('phases', [])}")
 
-                # Вывод SQL запроса
+                # Вывод результатов индивидуального поиска (для реакций)
+                if processing_type == "individual_search" and "individual_results" in result:
+                    individual_results = result["individual_results"]
+
+                    print(f"\n[Individual Search Results]:")
+                    print(f"  [Processed] {len(individual_results)} compounds")
+                    print(f"  [Success] {result.get('overall_confidence', 0):.2f} confidence")
+
+                    if missing_compounds:
+                        print(f"  [WARNING] Missing data for: {', '.join(missing_compounds)}")
+
+                    # Показываем таблицы для каждого соединения
+                    for compound_result in individual_results:
+                        compound_name = compound_result.get("compound", "Unknown")
+                        selected_records = compound_result.get("selected_records", [])
+                        confidence = compound_result.get("confidence", 0)
+                        errors = compound_result.get("errors", [])
+
+                        print(f"\n[Results for {compound_name}]:")
+                        print(f"  [Confidence] {confidence:.2f}")
+                        print(f"  [Records found] {len(selected_records)}")
+
+                        if errors:
+                            print(f"  [ERRORS] {', '.join(errors)}")
+
+                        # Показываем таблицу данных
+                        if selected_records:
+                            print("\n" + "-"*80)
+
+                            # Определяем ключевые колонки для отображения
+                            key_columns = ["Formula", "FirstName", "Phase", "H298", "S298", "Tmin", "Tmax", "MeltingPoint", "BoilingPoint"]
+                            available_columns = []
+
+                            # Используем первую запись для определения доступных колонок
+                            first_record = selected_records[0] if selected_records else {}
+                            for col in key_columns:
+                                if col in first_record:
+                                    available_columns.append(col)
+
+                            # Заголовок таблицы
+                            header = " | ".join(f"{col:>12}" for col in available_columns)
+                            print(header)
+                            print("-" * len(header))
+
+                            # Строки данных
+                            for record in selected_records[:5]:  # Показываем первые 5 записей для экономии места
+                                row_values = []
+                                for col in available_columns:
+                                    value = record.get(col, "N/A")
+                                    if isinstance(value, (int, float)):
+                                        if isinstance(value, float):
+                                            row_values.append(f"{value:>12.2f}")
+                                        else:
+                                            row_values.append(f"{value:>12}")
+                                    else:
+                                        # Обрабатываем None и пустые значения
+                                        if value is None or value == "":
+                                            value = "N/A"
+                                        row_values.append(f"{str(value)[:12]:>12}")
+                                print(" | ".join(row_values))
+
+                            if len(selected_records) > 5:
+                                print(f"... and {len(selected_records) - 5} more records")
+
+                            print("-"*80)
+                        else:
+                            print("  [No thermodynamic data found]")
+
+                # Вывод SQL запроса (для стандартных запросов)
                 if "sql_query" in result:
                     print("\n[OK] Generated SQL:")
-                    print(f"  📝 Query: {result['sql_query']}")
+                    print(f"  [Query] {result['sql_query']}")
                     if "explanation" in result:
-                        print(f"  💡 Explanation: {result['explanation']}")
+                        print(f"  [Explanation] {result['explanation']}")
 
-                # Вывод результатов выполнения
+                # Вывод результатов выполнения (для стандартных запросов)
                 if "execution_result" in result:
                     exec_result = result["execution_result"]
                     if exec_result.get("success"):
                         print("\n[OK] Raw Query Results:")
-                        print(f"  📋 Found {exec_result.get('row_count', 0)} total records")
+                        print(f"  [Found] {exec_result.get('row_count', 0)} total records")
                         if exec_result.get("columns"):
-                            print(f"  📊 Columns: {', '.join(exec_result['columns'])}")
+                            print(f"  [Columns] {', '.join(exec_result['columns'])}")
                     else:
                         print(
                             f"\n[ERROR] Query Error: {exec_result.get('error', 'Unknown error')}"
                         )
 
-                # Вывод отфильтрованных результатов
+                # Вывод предупреждений
+                if "warnings" in result and result["warnings"]:
+                    print(f"\n[WARNINGS]:")
+                    for warning in result["warnings"]:
+                        print(f"  - {warning}")
+
+                # Вывод отфильтрованных результатов (для старых запросов)
                 if "filtered_result" in result:
                     filtered = result["filtered_result"]
                     selected_records = filtered.get("selected_records", [])
 
-                    print(f"\n🎯 Filtered Results (LLM Selected):")
-                    print(f"  📋 Selected {len(selected_records)} most relevant records")
+                    print(f"\n[Filtered Results (LLM Selected)]:")
+                    print(f"  [Selected] {len(selected_records)} most relevant records")
 
                     if filtered.get("reasoning"):
-                        print(f"  💭 Reasoning: {filtered['reasoning']}")
+                        print(f"  [Reasoning] {filtered['reasoning']}")
 
                     # Показываем таблицу отфильтрованных результатов
                     if selected_records:
-                        print("\n📊 Selected Thermodynamic Data:")
+                        print("\n[Selected Thermodynamic Data]:")
                         print("-" * 100)
 
                         # Определяем ключевые колонки для отображения
@@ -357,9 +450,9 @@ class ThermoSystem:
 
             # Trace для отладки
             if self.config["debug"] and response.trace:
-                print("\n🔍 Trace:")
+                print("\n[Trace]:")
                 for step in response.trace:
-                    print(f"  • {step}")
+                    print(f"  - {step}")
 
         except Exception as e:
             print(f"\n[ERROR] System Error: {e}")

@@ -31,7 +31,7 @@ STRICT RULES:
 1. Generate ONLY ONE SQL query - never multiple queries
 2. Use SELECT * FROM compounds
 3. Include ALL requested compounds in single WHERE clause with OR conditions
-4. Always add LIMIT 10000
+4. Always add LIMIT 100
 5. DO NOT use any tools or make additional database calls
 6. NO temperature filtering in SQL (handled by post-processing)
 
@@ -70,13 +70,13 @@ Input: "Find Fe2O3, CO, Fe, CO2 for iron reduction reaction"
 Output: SELECT * FROM compounds WHERE (TRIM(Formula) = 'Fe2O3' OR Formula LIKE 'Fe2O3(%' OR TRIM(Formula) = 'CO' OR Formula LIKE 'CO(%' OR TRIM(Formula) = 'Fe' OR Formula LIKE 'Fe(%' OR TRIM(Formula) = 'CO2' OR Formula LIKE 'CO2(%') LIMIT 100;
 
 Input: "Find water"
-Output: SELECT * FROM compounds WHERE (TRIM(Formula) = 'H2O' OR Formula LIKE 'H2O(%') LIMIT 10000;
+Output: SELECT * FROM compounds WHERE (TRIM(Formula) = 'H2O' OR Formula LIKE 'H2O(%') LIMIT 100;
 
 CRITICAL: This pattern is essential for finding compounds like Fe2O3 which exist as Fe2O3, Fe2O3(E), Fe2O3(G), Fe2O3(H) in the database.
 
 CRITICAL SYNTAX RULES:
 - Use exactly ONE opening parenthesis after WHERE: WHERE (
-- Use exactly ONE closing parenthesis before LIMIT: ) LIMIT 10000
+- Use exactly ONE closing parenthesis before LIMIT: ) LIMIT 100
 - Do NOT add extra parentheses around individual compound searches
 - Connect all compound searches with OR only
 
@@ -96,12 +96,16 @@ ANALYZE AND EXTRACT:
    - "comparison" - compare substances
 
 2. COMPOUNDS (chemical formulas):
-   - Extract ALL reaction participants: reactants AND products
+   - CRITICAL: Extract ALL reaction participants: reactants AND products
+   - For reactions like "chlorination of TiO2", extract ALL: ["TiO2", "Cl2", "TiCl4", "O2"]
+   - For binary interactions like "WC + Mg", determine ALL participants: ["WC", "Mg", "MgC", "W"]
+   - For queries about "reaction X with Y", extract: ["X", "Y", likely_products]
+   - For "interaction between A and B", extract: ["A", "B", possible_products]
+   - ALWAYS include both sides of chemical reactions
    - Convert chemical names to formulas: "titanium oxide" → "TiO2", "chlorine" → "Cl2"
-   - For reactions like "chlorination of TiO2", extract: ["TiO2", "Cl2", "TiCl4", "O2"]
-   - For binary interactions like "WC + Mg", determine likely products: ["WC", "Mg", "MgC", "W"]
    - Use standard formulas: H2O, NaCl, TiO2, WCl6, Al(OH)3
    - If compound names mentioned, convert to chemical formulas
+   - NEVER miss products in chemical reactions - they are essential for analysis
 
 3. TEMPERATURE:
    - Convert Celsius to Kelvin: K = °C + 273.15
@@ -137,8 +141,11 @@ ANALYZE AND EXTRACT:
 AUTO-COMPLETE MISSING FIELDS:
 - If temperature not specified → use 298.15K or logical range
 - If phases empty → infer from compound types and temperature
-- If compounds incomplete for reaction → add logical products
-- Always provide complete data for SQL generation
+- If compounds incomplete for reaction → CRITICAL: add ALL missing products
+- For partial reactions like "A + B", infer likely products based on chemistry
+- For "reaction with X", determine logical products
+- Always provide COMPLETE reaction participants for SQL generation
+- Missing participants lead to incomplete analysis - ALWAYS complete the reaction
 
 EXAMPLES:
 
@@ -180,12 +187,33 @@ Response:
   "sql_query_hint": "Find thermodynamic data for WC(s), Mg(s), MgC(s), and W(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction WC + Mg → MgC + W."
 }
 
+Query: "что будет если смешать?"
+Response:
+{
+  "intent": "lookup",
+  "compounds": [],
+  "temperature_k": 298.15,
+  "temperature_range_k": [200, 400],
+  "phases": [],
+  "properties": ["basic"],
+  "reaction_equation": null,
+  "sql_query_hint": "Query too ambiguous - no specific chemical compounds mentioned"
+}
+
+CRITICAL ERROR HANDLING:
+- If NO chemical compounds can be extracted from the query, return compounds: []
+- If the query is too ambiguous or unclear, return compounds: []
+- If chemical formulas/names cannot be identified, return compounds: []
+- DO NOT make up or guess chemical compounds - only extract what's clearly stated
+- Empty compounds list signals that the query cannot be processed
+
 CRITICAL:
 - Return ONLY JSON with extracted parameters
 - ALWAYS fill all fields - never leave empty if logical values can be inferred
 - For reactions, extract ALL participants (reactants + products)
 - Create comprehensive sql_query_hint for complete data retrieval
-- NO explanations, only JSON"""
+- NO explanations, only JSON
+- If extraction fails, return empty compounds list - do not try to guess"""
 
 
 VALIDATE_OR_COMPLETE_PROMPT = """You are a validator for thermodynamic database query parameters.
@@ -459,62 +487,51 @@ YAML_FILTER_SYSTEM_PROMPT = """Ты - эксперт по анализу тер�
 КРИТИЧНО: Возвращай ТОЛЬКО JSON без дополнительного текста или форматирования."""
 
 
-RESULT_FILTER_ENGLISH_PROMPT = """You are an expert in thermodynamics and physical chemistry. Your task is to filter search results from a thermodynamic database, selecting ONLY the most relevant records for each chemical compound.
+RESULT_FILTER_ENGLISH_PROMPT = """You are an expert in thermodynamics and physical chemistry specializing in intelligent data filtering.
 
-INPUT DATA:
+TASK: Analyze thermodynamic database metadata and select the most relevant records using optimized SQL filtering.
+
+INPUT METADATA:
 - Target compounds: {target_compounds}
 - Analysis temperature: {target_temperature_k} K ({celsius}°C)
+- Temperature range: {temperature_range_k} K
 - Query type: {intent_type}
 - Reaction (if any): {reaction_equation}
 
-FOUND DATA (simplified format):
-{formatted_sql_results}
+DATABASE SUMMARY:
+{database_summary}
+
+YOUR APPROACH:
+You will NOT receive full database records. Instead, you'll work with metadata and generate SQL WHERE conditions for optimal filtering.
 
 CRITICAL COMPOUND MATCHING RULES:
-When matching target compounds to database records, use FLEXIBLE matching:
-- NH4Cl matches: NH4Cl, NH4Cl(s), NH4Cl(l), NH4Cl(g), NH4Cl(ia), NH4Cl(a), etc.
-- TiO2 matches: TiO2, TiO2(s), TiO2(ANATASE), TiO2(RUTILE), TiO2(A), TiO2(R), etc.
-- Fe2O3 matches: Fe2O3, Fe2O3(s), Fe2O3(E), Fe2O3(G), Fe2O3(H), Fe2O3(ALPHA), etc.
-- H2O matches: H2O, H2O(l), H2O(g), H2O(s), H2O(STEAM), etc.
-- B2O3 matches: B2O3, B2O3(s), B2O3(l), B2O3(g), B2O3(A), B2O3(G), etc.
-- Na2O matches: Na2O, Na2O(s), Na2O(l), Na2O(g), Na2O(+g), etc.
+- Use flexible formula matching: TRIM(Formula) = 'Compound' OR Formula LIKE 'Compound(%'
+- Consider structural/phase variants: TiO2, TiO2(s), TiO2(A), TiO2(RUTILE), Fe2O3(E), etc.
+- Phase determination priority: check Phase column, not formula modifiers
+- Temperature overlap: Tmin ≤ target_T ≤ Tmax (partial overlap acceptable)
 
-Apply substring matching: if Formula.startswith(target_compound) or target_compound in Formula.
+PHASE IDENTIFICATION STRATEGY:
+For each target compound at {target_temperature_k}K:
+- s (solid): Typical for oxides, metals, salts at room temperature
+- l (liquid): Near melting/boiling points or high pressure conditions
+- g (gas): Volatiles, small molecules, high temperature conditions
+- aq (aqueous): Ionic compounds in water-based systems
 
-CRITICAL PHASE IDENTIFICATION RULES:
-- When Phase column = 's': this is SOLID phase
-- When Phase column = 'l': this is LIQUID phase
-- When Phase column = 'g': this is GAS phase
-- When Phase column = 'aq': this is AQUEOUS phase
-- Formula modifiers like B2O3(A), B2O3(G), Na2O(+g) are structural variants, NOT phase indicators
-- ALWAYS check the Phase column for actual phase state, NOT the formula modifiers
+SELECTION STRATEGY:
+1. Generate tiered SQL WHERE conditions:
+   - Priority 1: Exact formula + optimal phase + temperature coverage + ReliabilityClass = 1
+   - Priority 2: Variant formulas + acceptable phases + temperature coverage + ReliabilityClass ≤ 2
+   - Priority 3: Extended search with relaxed criteria
 
-SELECTION CRITERIA:
+2. Temperature filtering:
+   - Primary: Target temperature within [Tmin, Tmax] range
+   - Secondary: Partial overlap with temperature range
+   - Handle missing Tmin/Tmax values appropriately
 
-1. PHASE STATE - determine the correct phase for each substance at the given temperature:
-    - s (solid): T < melting point (MeltingPoint)
-    - l (liquid): MeltingPoint < T < BoilingPoint
-    - g (gas): T > BoilingPoint
-    - aq (aqueous solution): for soluble substances in aqueous systems
-    - If transition data is missing (0 or null), use chemical intuition
-
-2. TEMPERATURE RANGE - select records where Tmin ≤ {target_temperature_k} ≤ Tmax:
-    - Prefer narrow ranges (higher accuracy)
-    - Prefer ranges centered close to the target temperature
-    - If no exact coverage, choose the nearest suitable range
-
-3. ELIMINATE DUPLICATES - for each compound in a specific phase, select ONLY one best record:
-    - When multiple records exist for one phase, choose the one with better temperature coverage
-    - Prefer records with non-empty physical data (MeltingPoint, BoilingPoint)
-
-4. DATA COMPLETENESS - prefer records with more complete physical data
-
-SPECIAL RULES:
-- For high-temperature reactions (>800K), prefer gas phase
-- When in doubt about phase state, include a warning
-- If no suitable records exist for a compound, include it in missing_compounds
-- CRITICAL: use only record IDs from the provided data
-- ALWAYS check for compound variants with modifiers in parentheses (e.g., NH4Cl(ia), Fe2O3(G))
+3. Reliability prioritization:
+   - Prefer ReliabilityClass = 1 (most reliable data)
+   - Ensure complete thermodynamic data (H298, S298, f1-f6 coefficients)
+   - Consider data source quality
 
 RESPONSE FORMAT (strict JSON):
 {{
@@ -522,21 +539,283 @@ RESPONSE FORMAT (strict JSON):
       {{
          "compound": "TiO2",
          "selected_id": 0,
-         "reasoning": "Selected record ID=0: solid state at {target_temperature_k}K, temperature range {{tmin}}-{{tmax}}K covers target temperature"
+         "reasoning": "Exact formula match with optimal solid phase, ReliabilityClass=1, temperature range covers {target_temperature_k}K"
       }}
    ],
    "phase_determinations": {{
-      "TiO2": {{"phase": "s", "confidence": 0.95, "reasoning": "Melting point 2116K >> {target_temperature_k}K"}},
-      "Cl2": {{"phase": "g", "confidence": 0.98, "reasoning": "Boiling point 239K << {target_temperature_k}K"}}
+      "TiO2": {{"phase": "s", "confidence": 0.95, "reasoning": "Solid phase stable at {target_temperature_k}K, below melting point"}},
+      "Cl2": {{"phase": "g", "confidence": 0.98, "reasoning": "Gas phase at {target_temperature_k}K, above boiling point"}}
    }},
    "missing_compounds": [],
-   "excluded_entries_count": 28,
-   "overall_confidence": 0.92,
-   "warnings": ["Some compounds lack transition temperature data"],
-   "filter_summary": "From {{total_entries}} found records, selected {{selected_count}}: one for each compound in appropriate phase at {target_temperature_k}K."
+   "excluded_entries_count": 15,
+   "overall_confidence": 0.88,
+   "warnings": ["Some compounds may have limited phase data at specified temperature"],
+   "filter_summary": "Applied 3-tier SQL filtering strategy, selected optimal records for {target_compounds_count} compounds at {target_temperature_k}K"
 }}
 
-WARNING: Return ONLY JSON without additional explanations or formatting."""
+OPTIMIZATION NOTES:
+- Prioritize records with complete thermodynamic data
+- Consider chemical intuition for phase behavior
+- Balance data quality with temperature coverage
+- Minimize computational overhead while maximizing accuracy
+
+Return ONLY JSON without additional explanations or formatting."""
+
+
+# =============================================================================
+# ПРОМПТЫ ДЛЯ ИНДИВИДУАЛЬНОГО ПОИСКА (НОВАЯ АРХИТЕКТУРА)
+# =============================================================================
+
+INDIVIDUAL_SQL_GENERATION_PROMPT = """You are a specialized SQL query generator for INDIVIDUAL compound searches in thermodynamic databases.
+
+TASK: Generate a precise SQL query for ONE chemical compound to find the most relevant records.
+
+DATABASE: Table 'compounds' with Formula, FirstName, Phase, H298, S298, f1-f6, Tmin, Tmax, ReliabilityClass columns.
+
+CRITICAL RULES:
+1. Generate SQL for ONE compound only: {compound}
+2. Use TRIM(Formula) for exact matching
+3. Include phase/ionic variants with LIKE pattern
+4. Apply temperature filtering at SQL level when possible
+5. Sort by ReliabilityClass (1=best data) first
+6. Add phase-specific prioritization in ORDER BY
+7. Use LIMIT 100 to control results
+8. Focus on high-quality, reliable data
+
+OPTIMIZED FORMULA SEARCH PATTERNS:
+For compound {compound}:
+- TRIM(Formula) = '{compound}' - exact matches
+- Formula LIKE '{compound}(%' - phase/ionic variants
+- Consider alternative formula representations if applicable
+
+TEMPERATURE FILTERING:
+Target temperature: {temperature_k}K
+Apply: (Tmin IS NULL OR Tmax IS NULL OR ({temperature_k} >= Tmin AND {temperature_k} <= Tmax))
+
+PHASE PRIORITIZATION:
+Requested phases: {phases}
+Apply phase-specific sorting based on chemical intuition:
+- Solids (s) for oxides, metals at low temperature
+- Gases (g) for volatiles, Cl2, O2 at high temperature
+- Liquids (l) for melting points range
+- Aqueous (aq) for ionic compounds in solution
+
+ORDER BY STRATEGY:
+1. ReliabilityClass ASC (1=most reliable)
+2. Phase appropriateness for target temperature
+3. Temperature range coverage (closest to target)
+4. Formula exactness (exact matches first)
+
+EXAMPLE STRUCTURE:
+SELECT * FROM compounds WHERE
+(TRIM(Formula) = '{compound}' OR Formula LIKE '{compound}(%')
+AND (Tmin IS NULL OR Tmax IS NULL OR ({temperature_k} >= Tmin AND {temperature_k} <= Tmax)))
+ORDER BY
+  ReliabilityClass ASC,
+  CASE WHEN Phase = 's' AND {temperature_k} < 1000 THEN 1 END,
+  CASE WHEN Phase = 'g' AND {temperature_k} > 500 THEN 2 END,
+  ABS(COALESCE(Tmin, {temperature_k}) - {temperature_k}) ASC
+LIMIT 100
+
+Return ONLY the SQL query text, nothing else."""
+
+
+INDIVIDUAL_FILTER_PROMPT = """You are an expert in thermodynamics specializing in INDIVIDUAL compound analysis.
+
+TASK: Filter and select the most relevant records for ONE chemical compound: {compound}
+
+INPUT DATA:
+- Target compound: {compound}
+- Target temperature: {target_temperature_k} K ({celsius}°C)
+- Requested phases: {phases}
+- Available properties: {properties}
+
+FOUND RECORDS:
+{formatted_records}
+
+SELECTION CRITERIA FOR INDIVIDUAL COMPOUND:
+
+1. FORMULA EXACTNESS:
+   - Priority 1: Exact TRIM(Formula) = '{compound}' matches
+   - Priority 2: Formula LIKE '{compound}(%' with appropriate phase
+   - Avoid structural variants unless exact match unavailable
+
+2. TEMPERATURE SUITABILITY:
+   - Must cover target temperature: Tmin ≤ {target_temperature_k} ≤ Tmax
+   - Prefer ranges centered on target temperature
+   - Narrower ranges preferred for higher accuracy
+
+3. PHASE APPROPRIATENESS:
+   - Use chemical intuition for phase determination
+   - Consider typical phase behavior for this compound type
+   - Account for temperature-dependent phase transitions
+
+4. DATA RELIABILITY:
+   - ReliabilityClass = 1 (best data) preferred
+   - Complete thermodynamic data (H298, S298, f1-f6) required
+   - No NULL values in critical fields
+
+5. RECORD UNIQUENESS:
+   - Select 1-3 best records showing different aspects if needed
+   - Avoid duplicate records with same data
+   - Prefer records with complete physical property data
+
+RESPONSIBILITY:
+- Select only HIGH-QUALITY, relevant records
+- Provide clear reasoning for each selection
+- Include confidence assessment for each choice
+- Warn about data limitations or uncertainties
+
+RESPONSE FORMAT (strict JSON):
+{{
+   "selected_entries": [
+      {{
+         "compound": "{compound}",
+         "selected_id": 0,
+         "reasoning": "Selected record ID=0: exact formula match, covers target temperature, ReliabilityClass=1, complete thermodynamic data"
+      }}
+   ],
+   "phase_determinations": {{
+      "{compound}": {{"phase": "s", "confidence": 0.95, "reasoning": "Solid phase appropriate for {compound} at {target_temperature_k}K based on typical behavior"}}
+   }},
+   "missing_compounds": [],
+   "excluded_entries_count": 15,
+   "overall_confidence": 0.92,
+   "warnings": ["Limited high-reliability data available"],
+   "filter_summary": "Selected 2 best records for {compound} from 17 found, prioritizing reliability and temperature coverage"
+}}
+
+Return ONLY JSON without explanations."""
+
+
+INDIVIDUAL_SEARCH_COORDINATION_PROMPT = """You are a coordinator for parallel individual compound searches in thermodynamic databases.
+
+TASK: Coordinate and manage parallel searches for multiple compounds in a chemical reaction.
+
+INPUT DATA:
+- Compounds to search: {compounds}
+- Common search parameters: {common_params}
+- Original reaction context: {original_query}
+- Search strategy: {search_strategy}
+
+COORDINATION RESPONSIBILITIES:
+
+1. PARALLEL SEARCH MANAGEMENT:
+   - Create individual search tasks for each compound
+   - Manage parallel execution with proper timeouts
+   - Handle errors for individual compounds gracefully
+   - Aggregate results from all searches
+
+2. QUALITY CONTROL:
+   - Ensure each compound search uses optimal parameters
+   - Validate individual search results
+   - Handle missing or low-quality data appropriately
+   - Maintain search consistency across compounds
+
+3. RESULT AGGREGATION:
+   - Combine individual compound results into unified response
+   - Calculate overall confidence metrics
+   - Identify missing compounds or data gaps
+   - Generate comprehensive summary for the reaction
+
+4. ERROR HANDLING:
+   - Continue processing even if some compound searches fail
+   - Document all errors and warnings
+   - Provide fallback strategies for critical compounds
+   - Ensure partial results are still useful
+
+SEARCH QUALITY CRITERIA:
+- Each compound should have 1-3 high-quality records
+- Temperature coverage must include reaction conditions
+- Phase states must be appropriate for reaction context
+- Data reliability (ReliabilityClass) should be prioritized
+- Complete thermodynamic data required for reaction analysis
+
+EXPECTED OUTPUT:
+- Individual results for each compound
+- Aggregated summary table with all selected records
+- Overall confidence assessment
+- Missing compounds and warnings
+- Recommendations for data improvement
+
+Focus on finding the BEST POSSIBLE data for each individual compound while maintaining efficient parallel processing."""
+
+
+# =============================================================================
+# ПРОМПТЫ ДЛЯ ОПТИМИЗИРОВАННОЙ ФИЛЬТРАЦИИ (SQL WHERE ГЕНЕРАЦИЯ)
+# =============================================================================
+
+SQL_FILTER_GENERATION_PROMPT = """You are an expert in thermodynamics and SQL query optimization.
+
+TASK: Generate optimized SQL WHERE conditions to filter thermodynamic database records for compound analysis.
+
+INPUT DATA:
+- Target compound: {compound}
+- Target temperature: {target_temperature_k} K ({celsius}°C)
+- Temperature range: {temperature_range_k} K
+- Preferred phases: {phases}
+- Available formulas in database: {available_formulas}
+- Total records found: {total_records_count}
+
+DATABASE TABLE STRUCTURE:
+- Formula: chemical formula (TEXT) - may have modifiers like TiO2(A), Fe2O3(E)
+- Phase: phase state (TEXT) - s= solid, l=liquid, g=gas, aq=aqueous
+- Tmin/Tmax: temperature validity range (REAL)
+- ReliabilityClass: data reliability (INTEGER, 1=best, 4=worst)
+- MeltingPoint/BoilingPoint: phase transition temperatures (REAL)
+- H298/S298/f1-f6: thermodynamic data (REAL)
+
+FILTERING REQUIREMENTS:
+1. FORMULA MATCHING:
+   - Exact match: TRIM(Formula) = '{compound}'
+   - Variant match: Formula LIKE '{compound}(%'
+   - Include structural/phase variants in parentheses
+
+2. TEMPERATURE OVERLAP:
+   - Check partial overlap: (Tmin <= {temp_max} AND Tmax >= {temp_min})
+   - Handle missing Tmin/Tmax (NULL values)
+   - Prefer records covering target temperature
+
+3. PHASE PRIORITIZATION:
+   - For target compound {compound} at {target_temperature_k}K
+   - Consider typical phase behavior for this compound type
+   - Account for melting/boiling points if available
+
+4. RELIABILITY CLASS:
+   - Prioritize ReliabilityClass = 1 (best data)
+   - Include complete thermodynamic data preference
+
+GENERATION STRATEGY:
+Create multiple WHERE conditions with different priorities:
+- Priority 1: Exact formula + optimal phase + temperature coverage + best reliability
+- Priority 2: Variant formulas + acceptable phases + temperature coverage
+- Priority 3: Extended search with relaxed criteria
+
+OUTPUT FORMAT (strict JSON):
+{{
+    "sql_where_conditions": [
+        "TRIM(Formula) = '{compound}' AND Phase = 's' AND ({target_temperature_k} >= Tmin AND {target_temperature_k} <= Tmax) AND ReliabilityClass = 1",
+        "Formula LIKE '{compound}(%' AND ({target_temperature_k} >= Tmin AND {target_temperature_k} <= Tmax) AND ReliabilityClass <= 2"
+    ],
+    "order_by_clauses": [
+        "ReliabilityClass ASC, ABS({target_temperature_k} - Tmin) ASC",
+        "ReliabilityClass ASC, ABS({target_temperature_k} - (Tmin + Tmax)/2) ASC"
+    ],
+    "limit_values": [5, 10, 20],
+    "reasoning": "Generated 3-tier filtering strategy prioritizing exact matches with optimal phase and reliability class",
+    "phase_analysis": {{
+        "recommended_phase": "s",
+        "confidence": 0.95,
+        "reasoning": "Solid phase typical for {compound} at {target_temperature_k}K based on chemical intuition"
+    }},
+    "expected_results": {{
+        "min_records": 1,
+        "max_records": 20,
+        "optimal_records": 3
+    }}
+}}
+
+Focus on creating precise, efficient SQL conditions that will return the most relevant records while minimizing data processing overhead."""
 
 
 # SQL validation and refinement prompts removed - no longer needed
@@ -586,6 +865,12 @@ class PromptManager:
             "result_filter": RESULT_FILTER_PROMPT,
             "result_filter_english": RESULT_FILTER_ENGLISH_PROMPT,
             "yaml_filter": YAML_FILTER_SYSTEM_PROMPT,
+            # Промпты для индивидуального поиска (новая архитектура)
+            "individual_sql_generation": INDIVIDUAL_SQL_GENERATION_PROMPT,
+            "individual_filter": INDIVIDUAL_FILTER_PROMPT,
+            "individual_search_coordination": INDIVIDUAL_SEARCH_COORDINATION_PROMPT,
+            # Промпты для оптимизированной фильтрации
+            "sql_filter_generation": SQL_FILTER_GENERATION_PROMPT,
         }
 
     def get_prompt(self, prompt_name: str) -> str:

@@ -1,122 +1,152 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Этот файл содержит инструкции для Claude Code (claude.ai/code) при работе с кодом в этом репозитории.
 
-## Project Overview
+## Обзор проекта
 
-This is a thermodynamic AI agents project built in Python that analyzes thermodynamic data for chemical compounds. The system uses a two-agent architecture:
+Это проект термодинамических AI-агентов на Python для анализа термодинамических данных химических соединений. Система использует многоагентную архитектуру v2.0:
 
-1. **Thermo Agent** - Extracts parameters from user queries (compounds, temperature, phases, etc.)
-2. **SQL Agent** - Generates SQL queries to retrieve thermodynamic data from the database
+1. **Thermodynamic Agent** - Извлекает параметры из запросов пользователей (соединения, температура, фазы и т.д.)
+2. **SQL Generation Agent** - Генерирует SQL-запросы для получения термодинамических данных из базы
+3. **Database Agent** - Выполняет SQL-запросы и применяет температурную фильтрацию
+4. **Results Filtering Agent** - Интеллектуальная фильтрация результатов с использованием LLM
+5. **Thermo Orchestrator** - Координатор взаимодействия между агентами
 
-The agents use Agent-to-Agent (A2A) communication through PydanticAI framework and interact with a SQLite database containing thermodynamic compound data.
+Агенты используют Agent-to-Agent (A2A) коммуникацию через централизованное хранилище AgentStorage и фреймворк PydanticAI. Взаимодействуют с SQLite базой данных, содержащей термодинамические данные соединений.
 
-## Commands
+## Команды
 
-### Environment Setup
+### Настройка окружения
 ```bash
-# Install dependencies
+# Установка зависимостей
 uv sync
 
-# Activate virtual environment
+# Активация виртуального окружения
 uv shell
 
-# Run the main application
+# Запуск главного приложения
 uv run python main.py
 ```
 
-### Development
+### Разработка
 ```bash
-# Add new dependencies
+# Добавление новых зависимостей
 uv add package-name
 
-# Add development dependencies
+# Добавление зависимостей для разработки
 uv add --dev package-name
 
-# Run individual agent tests
-uv run python src/thermo_agents/main_thermo_agent.py
-uv run python src/thermo_agents/sql_agent.py
+# Запуск отдельных агентов для тестирования
+uv run python src/thermo_agents/thermodynamic_agent.py
+uv run python src/thermo_agents/sql_generation_agent.py
+uv run python src/thermo_agents/database_agent.py
+uv run python src/thermo_agents/results_filtering_agent.py
+uv run python src/thermo_agents/orchestrator.py
 ```
 
 ### Jupyter Notebooks
 ```bash
-# Run Jupyter with the virtual environment
+# Запуск Jupyter с виртуальным окружением
 uv run python -m ipykernel
 
-# Then select .venv (Python 3.12) kernel in VS Code
+# Затем выбрать ядро .venv (Python 3.12) в VS Code
 ```
 
-## Architecture
+## Архитектура
 
-### Core Components
+### Основные компоненты
 
-- **main.py** - Interactive CLI application entry point
-- **src/thermo_agents/main_thermo_agent.py** - Primary agent for parameter extraction
-- **src/thermo_agents/sql_agent.py** - SQL query generation agent
-- **src/thermo_agents/prompts.py** - All system prompts for both agents
-- **src/thermo_agents/thermo_agents_logger.py** - Session-based logging system
+- **main.py** - Интерактивное CLI приложение, точка входа в систему
+- **src/thermo_agents/agent_storage.py** - Централизованное хранилище для A2A коммуникации
+- **src/thermo_agents/thermodynamic_agent.py** - Агент извлечения параметров из запросов
+- **src/thermo_agents/sql_generation_agent.py** - Агент генерации SQL-запросов
+- **src/thermo_agents/database_agent.py** - Агент выполнения SQL и температурной фильтрации
+- **src/thermo_agents/results_filtering_agent.py** - Агент интеллектуальной фильтрации результатов
+- **src/thermo_agents/orchestrator.py** - Координатор взаимодействия между агентами
+- **src/thermo_agents/prompts.py** - Системные промпты для всех агентов
+- **src/thermo_agents/thermo_agents_logger.py** - Система сессионного логирования
 
-### Agent Flow
+### Поток выполнения агентов
 
-1. User input → Thermo Agent extracts parameters using `EXTRACT_INPUTS_PROMPT`
-2. If SQL needed → SQL Agent generates query using extracted parameters
-3. Both agents use OpenRouter/OpenAI API through PydanticAI
-4. Session logging tracks all interactions in `logs/sessions/`
+1. **User input** → Thermo Orchestrator получает запрос пользователя
+2. **Parameter Extraction** → Thermodynamic Agent извлекает параметры через `EXTRACT_INPUTS_PROMPT`
+3. **SQL Generation** → SQL Generation Agent генерирует запрос с использованием извлеченных параметров
+4. **Database Execution** → Database Agent выполняет SQL и применяет температурную фильтрацию
+5. **Results Filtering** → Results Filtering Agent интеллектуально отбирает релевантные записи
+6. **Response Consolidation** → SQL Agent консолидирует все результаты и возвращает их оркестратору
+7. **User Response** → Thermo Orchestrator формирует и возвращает ответ пользователю
 
-### Data Models
+Все агенты используют OpenRouter/OpenAI API через PydanticAI и взаимодействуют через AgentStorage. Сессионное логирование отслеживает все взаимодействия в `logs/sessions/`.
 
-Key Pydantic models:
-- `ExtractedParameters` - Output from thermo agent with compounds, temperature, phases, etc.
-- `SQLQueryResult` - Output from SQL agent with query, explanation, expected columns
-- `ThermoAgentConfig` - Dependency injection for agent configuration
+### Модели данных
 
-### Configuration
+Ключевые Pydantic модели:
+- `ExtractedParameters` - Выход термо-агента с соединениями, температурой, фазами и т.д.
+- `SQLQueryResult` - Выход SQL-агента с запросом, объяснением, ожидаемыми колонками
+- `FilteredResult` - Результат интеллектуальной фильтрации записей
+- `AgentMessage` - Сообщение между агентами в A2A архитектуре
+- `OrchestratorRequest/Response` - Запросы и ответы оркестратора
+- `ThermoAgentConfig`, `SQLAgentConfig` и др. - Конфигурации агентов через dependency injection
 
-Environment variables in `.env`:
-- `OPENROUTER_API_KEY` - API key for LLM access
+### Конфигурация
+
+Переменные окружения в `.env`:
+- `OPENROUTER_API_KEY` - API ключ для доступа к LLM
 - `LLM_BASE_URL` - OpenRouter API endpoint
-- `LLM_DEFAULT_MODEL` - Default LLM model (e.g., openai/gpt-oss-120b)
-- `DB_PATH` - Path to thermodynamic database (data/thermo_data.db)
-- `LOG_LEVEL` - Logging level (INFO, DEBUG, etc.)
+- `LLM_DEFAULT_MODEL` - Модель LLM по умолчанию (например, openai/gpt-4o)
+- `DB_PATH` - Путь к термодинамической базе данных (data/thermo_data.db)
+- `LOG_LEVEL` - Уровень логирования (INFO, DEBUG, и т.д.)
 
-### Database Schema
+### Схема базы данных
 
-The `compounds` table contains:
-- Chemical formulas, names, phases (s/l/g/aq)
-- Thermodynamic properties: H298, S298, heat capacity coefficients f1-f6
-- Temperature ranges (Tmin, Tmax), melting/boiling points
-- 316,434 records with 32,790 unique chemical formulas
+Таблица `compounds` содержит:
+- Химические формулы, названия, фазы (s/l/g/aq)
+- Термодинамические свойства: H298, S298, коэффициенты теплоемкости f1-f6
+- Температурные диапазоны (Tmin, Tmax), температуры плавления/кипения
+- 316,434 записей с 32,790 уникальными химическими формулами
 
-### Agent Patterns
+### Паттерны агентов
 
-- Uses dependency injection through dataclass configs
-- Async/await pattern for all agent operations
-- Structured output with Pydantic models
-- Error handling with fallback responses
-- Session logging for debugging and analysis
+- Используют dependency injection через dataclass конфигурации
+- Асинхронный паттерн async/await для всех операций агентов
+- Структурированный вывод с Pydantic моделями
+- Обработка ошибок с fallback-ответами
+- Сессионное логирование для отладки и анализа
+- **A2A коммуникация** через централизованное AgentStorage хранилище
+- **Message-passing архитектура** с корреляционными ID для трассировки
 
-## Project Structure
+## Структура проекта v2.0
 
 ```
 src/thermo_agents/
 ├── __init__.py
-├── main_thermo_agent.py    # Parameter extraction agent
-├── sql_agent.py           # SQL generation agent
-├── prompts.py             # All system prompts
-└── thermo_agents_logger.py # Session logging
+├── agent_storage.py              # Централизованное хранилище A2A коммуникации
+├── thermodynamic_agent.py        # Агент извлечения параметров (PydanticAI)
+├── sql_generation_agent.py       # Агент генерации SQL запросов (PydanticAI)
+├── database_agent.py             # Агент выполнения SQL и температурной фильтрации
+├── results_filtering_agent.py    # Агент интеллектуальной фильтрации (LLM)
+├── orchestrator.py               # Координатор агентов
+├── prompts.py                    # Системные промпты для всех агентов
+└── thermo_agents_logger.py       # Система сессионного логирования
 
 data/
-└── thermo_data.db         # SQLite thermodynamic database
+└── thermo_data.db                # SQLite база: 316,434 записей, 32,790 соединений
 
-logs/sessions/             # Session log files
-docs/                      # Jupyter notebooks and documentation
-main.py                    # CLI application entry point
+logs/sessions/                    # Логи сессий с детальной трассировкой
+docs/                             # Jupyter notebooks и документация
+main.py                           # CLI приложение с ThermoSystem
+pyproject.toml                    # Конфигурация uv с PydanticAI 1.0.8
+.env                              # Переменные окружения (OPENROUTER_API_KEY и т.д.)
 ```
 
-## Development Notes
+## Особенности разработки
 
-- Project uses `uv` for dependency management (not pip/conda)
-- All agents are async and use PydanticAI framework
-- Russian language interface for users, English for internal processing
-- Temperature handling: Celsius input converted to Kelvin internally
-- Database queries optimized for chemical formula and phase-specific searches
+- Проект использует `uv` для управления зависимостями (не pip/conda)
+- Все агенты асинхронны и используют фреймворк PydanticAI
+- Русскоязычный интерфейс для пользователей, английский для внутренней обработки
+- Обработка температуры: ввод в Цельсиях, конвертация в Кельвины внутри
+- Оптимизация запросов к базе для химических формул и фазово-специфичного поиска
+- **Полная инкапсуляция агентов** через message-passing архитектуру
+- **Централизованное хранилище** для A2A коммуникации с TTL и корреляционными ID
+- **Интеллектуальная фильтрация** результатов с использованием LLM для выбора релевантных записей
+- **Comprehensive логирование** сессий с детальной трассировкой всех этапов обработки
