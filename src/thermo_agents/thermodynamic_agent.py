@@ -64,6 +64,8 @@ class AggregatedResults(BaseModel):
     overall_confidence: float  # Общая уверенность
     missing_compounds: List[str]  # Отсутствующие вещества
     warnings: List[str]  # Предупреждения
+    data_completeness_status: str = "complete"  # "complete" или "incomplete"
+    is_complete_reaction: bool = True  # True если все данные найдены
 
 
 @dataclass
@@ -251,6 +253,40 @@ class ThermodynamicAgent:
                     if self.config.session_logger:
                         self.config.session_logger.log_info(f"EXTRACTED REACTION: {extracted_params.reaction_equation}")
                     self.logger.info(f"Extracted reaction equation: {extracted_params.reaction_equation}")
+
+                # TEMPORARY DEBUG LOGGING - TO BE REMOVED LATER
+                # Логируем извлеченные параметры
+                if self.config.session_logger:
+                    # Логируем базовые параметры
+                    extraction_metadata = {
+                        "query_intent": extracted_params.intent,
+                        "compounds_count": len(extracted_params.compounds),
+                        "compounds": ", ".join(extracted_params.compounds),
+                        "temperature_celsius": round(extracted_params.temperature_k - 273.15, 2),
+                        "temperature_k": extracted_params.temperature_k,
+                        "temperature_range_celsius": f"{round(extracted_params.temperature_range_k[0] - 273.15, 2)}-{round(extracted_params.temperature_range_k[1] - 273.15, 2)}",
+                        "temperature_range_k": f"{extracted_params.temperature_range_k[0]}-{extracted_params.temperature_range_k[1]}",
+                        "phases": ", ".join(extracted_params.phases),
+                        "properties": ", ".join(extracted_params.properties),
+                        "has_sql_hint": bool(extracted_params.sql_query_hint)
+                    }
+                    self.config.session_logger.log_search_metadata(extraction_metadata, "EXTRACTED PARAMETERS")
+
+                    # Если это реакция, логируем детальную информацию о соединениях
+                    if extracted_params.intent == "reaction" and extracted_params.compounds:
+                        # Создаем заготовку для будущих результатов поиска
+                        compound_placeholders = []
+                        for compound in extracted_params.compounds:
+                            compound_placeholders.append({
+                                "compound": compound,
+                                "selected_records": [],  # Будет заполнено позже
+                                "confidence": 0.0       # Будет рассчитано позже
+                            })
+
+                        self.config.session_logger.log_compound_data_table(
+                            compound_placeholders,
+                            "COMPOUNDS TO SEARCH (pre-search status)"
+                        )
             except asyncio.TimeoutError:
                 self.logger.error(f"Network timeout after 30 seconds - cannot extract parameters")
                 raise ValueError(f"Не удалось извлечь параметры: превышено время ожидания ответа от модели. Попробуйте упростить запрос.")

@@ -138,6 +138,38 @@ class IndividualSearchAgent:
                 search_request, correlation_id=message.id
             )
 
+            # TEMPORARY DEBUG LOGGING - TO BE REMOVED LATER
+            # Логируем результаты поиска соединений
+            if self.config.session_logger:
+                # Подготавливаем данные для логирования
+                compound_results_for_logging = []
+                for result in aggregated_results.individual_results:
+                    compound_results_for_logging.append({
+                        "compound": result.compound,
+                        "selected_records": result.selected_records,
+                        "confidence": result.confidence
+                    })
+
+                # Логируем сводную таблицу по соединениям
+                self.config.session_logger.log_compound_data_table(
+                    compound_results_for_logging,
+                    "INDIVIDUAL SEARCH RESULTS - AGGREGATED DATA"
+                )
+
+                # Логируем метаданные поиска
+                search_metadata = {
+                    "original_query": search_request.original_query,
+                    "compounds_count": len(search_request.compounds),
+                    "compounds": ", ".join(search_request.compounds),
+                    "temperature_k": search_request.common_params.get("temperature_k"),
+                    "temperature_range_k": search_request.common_params.get("temperature_range_k"),
+                    "phases": search_request.common_params.get("phases"),
+                    "overall_confidence": aggregated_results.overall_confidence,
+                    "missing_compounds": aggregated_results.missing_compounds,
+                    "warnings_count": len(aggregated_results.warnings)
+                }
+                self.config.session_logger.log_search_metadata(search_metadata, "SEARCH METADATA")
+
             # Сохраняем результаты
             result_key = f"individual_search_result_{message.id}"
             self.storage.set(
@@ -257,7 +289,11 @@ class IndividualSearchAgent:
             else:
                 # Успешный поиск
                 individual_results.append(result)
-                if result.confidence < 0.5:
+                # Проверяем, найдены ли данные для соединения
+                if not result.selected_records or len(result.selected_records) == 0:
+                    missing_compounds.append(compound)
+                    warnings.append(f"No thermodynamic data found for compound {compound}")
+                elif result.confidence < 0.5:
                     warnings.append(
                         f"Low confidence ({result.confidence:.2f}) for compound {compound}"
                     )
@@ -268,12 +304,25 @@ class IndividualSearchAgent:
         # Вычисляем общую уверенность
         overall_confidence = self._calculate_overall_confidence(individual_results)
 
+        # Определяем статус полноты данных для реакции
+        is_complete_reaction = len(missing_compounds) == 0
+        data_completeness_status = "complete" if is_complete_reaction else "incomplete"
+
+        # Добавляем специальное предупреждение для реакций с неполными данными
+        if not is_complete_reaction and len(compounds) > 1:
+            warnings.append(
+                f"REACTION DATA INCOMPLETE: Missing thermodynamic data for {len(missing_compounds)} of {len(compounds)} compounds. "
+                f"Missing compounds: {', '.join(missing_compounds)}"
+            )
+
         return AggregatedResults(
             individual_results=individual_results,
             summary_table=summary_table,
             overall_confidence=overall_confidence,
             missing_compounds=missing_compounds,
-            warnings=warnings
+            warnings=warnings,
+            data_completeness_status=data_completeness_status,
+            is_complete_reaction=is_complete_reaction
         )
 
     async def _search_single_compound(
@@ -343,10 +392,27 @@ class IndividualSearchAgent:
                 temperature = search_request.common_params.get("temperature_k", 298.15)
                 temperature_range = search_request.common_params.get("temperature_range_k", [298.15, 2000.0])
 
+                # TEMPORARY DEBUG LOGGING - TO BE REMOVED LATER
+                # Проверяем структуру данных до конвертации
+                self.logger.info(f"DEBUG: Raw search_results type: {type(search_results)}")
+                self.logger.info(f"DEBUG: execution_result keys: {list(execution_result.keys())}")
+                self.logger.info(f"DEBUG: _last_columns: {self._last_columns}")
+                if search_results:
+                    self.logger.info(f"DEBUG: First result type: {type(search_results[0])}")
+                    self.logger.info(f"DEBUG: First result: {search_results[0]}")
+                    if len(search_results[0]) > 0:
+                        self.logger.info(f"DEBUG: First result length: {len(search_results[0])}")
+
                 # Конвертируем кортежи в словари
                 converted_search_results = [
                     self._convert_row_to_dict(row) for row in search_results
                 ]
+
+                # TEMPORARY DEBUG LOGGING - TO BE REMOVED LATER
+                # Проверяем структуру данных после конвертации
+                if converted_search_results:
+                    self.logger.info(f"DEBUG: First converted result: {converted_search_results[0]}")
+                    self.logger.info(f"DEBUG: First converted result keys: {list(converted_search_results[0].keys())}")
 
                 # Применяем интеллектуальный фильтр по фазам
                 self.logger.info(f"DEBUG: Applying phase filter for {compound}: T={temperature}K, range={temperature_range}")
@@ -361,6 +427,28 @@ class IndividualSearchAgent:
                     confidence = 0.0
 
                 self.logger.info(f"DEBUG: Search completed for compound {compound}: {len(filtered_data)} records selected, confidence={confidence}")
+
+                # TEMPORARY DEBUG LOGGING - TO BE REMOVED LATER
+                # Логируем детальные результаты по соединению
+                if self.config.session_logger and filtered_data:
+                    # Ограничиваем количество записей для лога (максимум 10 для экономии места)
+                    records_for_logging = filtered_data[:10]
+                    self.config.session_logger.log_detailed_compound_records(
+                        compound,
+                        records_for_logging,
+                        f"DETAILED RESULTS FOR {compound} (showing first {len(records_for_logging)} records)"
+                    )
+
+                    # Логируем сводную информацию по соединению
+                    compound_summary = [{
+                        "compound": compound,
+                        "selected_records": filtered_data,
+                        "confidence": confidence
+                    }]
+                    self.config.session_logger.log_compound_data_table(
+                        compound_summary,
+                        f"COMPOUND SUMMARY - {compound}"
+                    )
 
                 return IndividualCompoundResult(
                     compound=compound,

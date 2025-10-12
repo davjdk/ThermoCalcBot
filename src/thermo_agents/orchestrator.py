@@ -472,6 +472,11 @@ class ThermoOrchestrator:
                     if individual_result:
                         trace.append("Received aggregated results from Individual Search Agent")
 
+                        # Проверяем полноту данных для реакции
+                        is_complete_reaction = individual_result.get("is_complete_reaction", True)
+                        missing_compounds = individual_result.get("missing_compounds", [])
+                        data_completeness_status = individual_result.get("data_completeness_status", "complete")
+
                         # Готовим результат операции
                         operation_result = {
                             "request_id": request_id,
@@ -480,27 +485,57 @@ class ThermoOrchestrator:
                             "processing_type": "individual_search",
                             "individual_results_count": len(individual_result.get("individual_results", [])),
                             "overall_confidence": individual_result.get("overall_confidence"),
+                            "data_completeness_status": data_completeness_status,
+                            "is_complete_reaction": is_complete_reaction,
+                            "missing_compounds_count": len(missing_compounds),
                         }
 
                         # Устанавливаем результат операции
                         if operation_context:
                             operation_context.set_result(operation_result)
 
-                        # Собираем полный результат для реакции
-                        response = OrchestratorResponse(
-                            success=True,
-                            result={
+                        # Формируем ответ в зависимости от полноты данных
+                        if not is_complete_reaction and len(extracted_params.get("compounds", [])) > 1:
+                            # Неполные данные для реакции - создаем специальный ответ
+                            response_result = {
                                 "extracted_parameters": extracted_params,
                                 "aggregated_results": individual_result.get("aggregated_results"),
                                 "summary_table": individual_result.get("summary_table"),
                                 "overall_confidence": individual_result.get("overall_confidence"),
                                 "individual_results": individual_result.get("individual_results"),
-                                "missing_compounds": individual_result.get("missing_compounds"),
+                                "missing_compounds": missing_compounds,
                                 "warnings": individual_result.get("warnings"),
                                 "processing_type": "individual_search",
-                            },
-                            trace=trace,
-                        )
+                                "data_completeness_status": data_completeness_status,
+                                "is_complete_reaction": False,
+                                "user_message": self._format_incomplete_data_message(
+                                    extracted_params, individual_result, missing_compounds
+                                )
+                            }
+
+                            response = OrchestratorResponse(
+                                success=True,  # Технически успешно, но данные неполные
+                                result=response_result,
+                                trace=trace + ["Response formatted for incomplete reaction data"],
+                            )
+                        else:
+                            # Полные данные или одиночное соединение
+                            response = OrchestratorResponse(
+                                success=True,
+                                result={
+                                    "extracted_parameters": extracted_params,
+                                    "aggregated_results": individual_result.get("aggregated_results"),
+                                    "summary_table": individual_result.get("summary_table"),
+                                    "overall_confidence": individual_result.get("overall_confidence"),
+                                    "individual_results": individual_result.get("individual_results"),
+                                    "missing_compounds": missing_compounds,
+                                    "warnings": individual_result.get("warnings"),
+                                    "processing_type": "individual_search",
+                                    "data_completeness_status": data_completeness_status,
+                                    "is_complete_reaction": is_complete_reaction,
+                                },
+                                trace=trace,
+                            )
 
                         # Завершаем операцию успешно
                         if operation_context:
@@ -666,6 +701,67 @@ class ThermoOrchestrator:
         """Завершить работу оркестратора."""
         self.logger.info("Shutting down orchestrator")
         self.storage.end_session(self.agent_id)
+
+    def _format_incomplete_data_message(
+        self,
+        extracted_params: Dict,
+        individual_result: Dict,
+        missing_compounds: List[str]
+    ) -> str:
+        """
+        Форматирует сообщение для пользователя при неполных данных реакции.
+
+        Args:
+            extracted_params: Извлеченные параметры
+            individual_result: Результаты индивидуального поиска
+            missing_compounds: Список отсутствующих соединений
+
+        Returns:
+            Отформатированное сообщение для пользователя
+        """
+        all_compounds = extracted_params.get("compounds", [])
+        found_compounds = [c for c in all_compounds if c not in missing_compounds]
+        reaction_equation = extracted_params.get("reaction_equation", " → ".join(all_compounds))
+
+        message_parts = [
+            f"⚠️  **НЕПОЛНЫЕ ДАННЫЕ ДЛЯ РЕАКЦИИ**",
+            "",
+            f"Для реакции: {reaction_equation}",
+            f"Не найдены термодинамические данные для {len(missing_compounds)} из {len(all_compounds)} веществ:",
+            f"**Отсутствуют:** {', '.join(missing_compounds)}",
+            ""
+        ]
+
+        if found_compounds:
+            message_parts.extend([
+                f"**Найдены данные для:** {', '.join(found_compounds)}",
+                "",
+                "Рекомендуемые действия:",
+                "",
+            ])
+        else:
+            message_parts.extend([
+                "Данные не найдены ни для одного вещества в реакции.",
+                "",
+                "Рекомендуемые действия:",
+                "",
+            ])
+
+        suggestions = [
+            "1. **Проверьте химические формулы** - убедитесь, что все вещества написаны корректно",
+            "2. **Используйте альтернативные названия** некоторые вещества могут быть записаны по-разному",
+            "3. **Укажите фазовые состояния** например, 'CaO(тв)' вместо 'CaO'",
+            "4. **Измените температурный диапазон** данные могут отсутствовать в указанном диапазоне",
+            "5. **Разбейте реакцию на части** проанализируйте отдельно вещества, для которых найдены данные"
+        ]
+
+        message_parts.extend(suggestions)
+        message_parts.extend([
+            "",
+            "Ниже представлены таблицы с данными, которые удалось найти:"
+        ])
+
+        return "\n".join(message_parts)
 
     def get_status(self) -> Dict[str, Any]:
         """Получить статус оркестратора и системы."""

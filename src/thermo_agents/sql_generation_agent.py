@@ -506,6 +506,7 @@ class SQLGenerationAgent:
                         "status": "success",
                         "result_key": result_key,
                         "sql_result": result_data,
+                        "execution_result": result_data.get("execution_result", {}),
                         "search_results": result_data.get("execution_result", {}).get("rows", []),
                         "filtered_data": result_data.get("execution_result", {}).get("rows", []),
                         "confidence": self._calculate_confidence(result_data),

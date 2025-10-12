@@ -8,7 +8,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 
 from tabulate import tabulate
 from .operations import OperationLogger, OperationType
@@ -129,6 +129,95 @@ class SessionLogger:
             for row in display_rows:
                 result += "| " + " | ".join(str(cell) for cell in row) + " |\n"
             return result
+
+    def log_compound_data_table(self, compound_results: List[Dict], title: str = "COMPOUND SEARCH RESULTS"):
+        """
+        Логировать данные по соединениям в виде таблицы.
+
+        Args:
+            compound_results: Список результатов по соединениям
+            title: Заголовок таблицы
+        """
+        if not compound_results:
+            self.log_info(f"{title}: No compounds found")
+            return
+
+        # Формируем данные для таблицы
+        headers = ["Compound", "Records Count", "Confidence", "Temperature Range (K)", "Phases"]
+        rows = []
+
+        for result in compound_results:
+            compound = result.get("compound", "Unknown")
+            records_count = len(result.get("selected_records", []))
+            confidence = result.get("confidence", 0.0)
+
+            # Определяем температурный диапазон из записей
+            selected_records = result.get("selected_records", [])
+            if selected_records:
+                t_min = min(record.get("Tmin", 0) for record in selected_records)
+                t_max = max(record.get("Tmax", 0) for record in selected_records)
+                temp_range = f"{t_min}-{t_max}"
+            else:
+                temp_range = "N/A"
+
+            # Собираем уникальные фазы
+            phases = list(set(record.get("Phase", "") for record in selected_records))
+            phases_str = ", ".join(filter(None, phases)) if phases else "N/A"
+
+            rows.append([compound, records_count, f"{confidence:.2f}", temp_range, phases_str])
+
+        # Форматируем и логируем таблицу
+        table = self.format_table(headers, rows)
+        self.log_info(f"{title}:\n{table}")
+
+    def log_detailed_compound_records(self, compound: str, records: List[Dict], title: str = None):
+        """
+        Логировать детальные записи по соединению.
+
+        Args:
+            compound: Химическая формула соединения
+            records: Список записей по соединению
+            title: Заголовок (если None, генерируется автоматически)
+        """
+        if not records:
+            self.log_info(f"DETAILED RESULTS FOR {compound}: No records found")
+            return
+
+        if title is None:
+            title = f"DETAILED RESULTS FOR {compound}"
+
+        # Формируем данные для таблицы
+        headers = ["Formula", "Phase", "Tmin (K)", "Tmax (K)", "H298 (J/mol)", "S298 (J/mol·K)",
+                   "Melting Point (°C)", "Boiling Point (°C)"]
+        rows = []
+
+        for record in records:
+            formula = record.get("Formula", compound)
+            phase = record.get("Phase", "N/A")
+            t_min = record.get("Tmin", "N/A")
+            t_max = record.get("Tmax", "N/A")
+            h298 = record.get("H298", "N/A")
+            s298 = record.get("S298", "N/A")
+            melting_point = record.get("MeltingPoint", "N/A")
+            boiling_point = record.get("BoilingPoint", "N/A")
+
+            rows.append([formula, phase, t_min, t_max, h298, s298, melting_point, boiling_point])
+
+        # Форматируем и логируем таблицу
+        table = self.format_table(headers, rows)
+        self.log_info(f"{title}:\n{table}")
+
+    def log_search_metadata(self, metadata: Dict, title: str = "SEARCH METADATA"):
+        """
+        Логировать метаданные поиска.
+
+        Args:
+            metadata: Словарь с метаданными
+            title: Заголовок
+        """
+        self.log_info(f"{title}:")
+        for key, value in metadata.items():
+            self.log_info(f"  {key}: {value}")
 
     @property
     def current_session_file(self) -> Optional[Path]:

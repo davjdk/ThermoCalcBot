@@ -96,12 +96,16 @@ ANALYZE AND EXTRACT:
    - "comparison" - compare substances
 
 2. COMPOUNDS (chemical formulas):
-   - Extract ALL reaction participants: reactants AND products
+   - CRITICAL: Extract ALL reaction participants: reactants AND products
+   - For reactions like "chlorination of TiO2", extract ALL: ["TiO2", "Cl2", "TiCl4", "O2"]
+   - For binary interactions like "WC + Mg", determine ALL participants: ["WC", "Mg", "MgC", "W"]
+   - For queries about "reaction X with Y", extract: ["X", "Y", likely_products]
+   - For "interaction between A and B", extract: ["A", "B", possible_products]
+   - ALWAYS include both sides of chemical reactions
    - Convert chemical names to formulas: "titanium oxide" → "TiO2", "chlorine" → "Cl2"
-   - For reactions like "chlorination of TiO2", extract: ["TiO2", "Cl2", "TiCl4", "O2"]
-   - For binary interactions like "WC + Mg", determine likely products: ["WC", "Mg", "MgC", "W"]
    - Use standard formulas: H2O, NaCl, TiO2, WCl6, Al(OH)3
    - If compound names mentioned, convert to chemical formulas
+   - NEVER miss products in chemical reactions - they are essential for analysis
 
 3. TEMPERATURE:
    - Convert Celsius to Kelvin: K = °C + 273.15
@@ -137,8 +141,11 @@ ANALYZE AND EXTRACT:
 AUTO-COMPLETE MISSING FIELDS:
 - If temperature not specified → use 298.15K or logical range
 - If phases empty → infer from compound types and temperature
-- If compounds incomplete for reaction → add logical products
-- Always provide complete data for SQL generation
+- If compounds incomplete for reaction → CRITICAL: add ALL missing products
+- For partial reactions like "A + B", infer likely products based on chemistry
+- For "reaction with X", determine logical products
+- Always provide COMPLETE reaction participants for SQL generation
+- Missing participants lead to incomplete analysis - ALWAYS complete the reaction
 
 EXAMPLES:
 
