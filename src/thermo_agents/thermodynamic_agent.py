@@ -19,8 +19,9 @@ from pydantic_ai.providers.openai import OpenAIProvider
 
 from .agent_storage import AgentStorage, get_storage
 from .operations import OperationType
-from .prompts import EXTRACT_INPUTS_PROMPT
+from .prompts import THERMODYNAMIC_EXTRACTION_PROMPT
 from .thermo_agents_logger import SessionLogger
+from .models.extraction import ExtractedReactionParameters
 
 
 class ExtractedParameters(BaseModel):
@@ -137,8 +138,8 @@ class ThermodynamicAgent:
         agent = Agent(
             model,
             deps_type=ThermoAgentConfig,
-            output_type=ExtractedParameters,
-            system_prompt=EXTRACT_INPUTS_PROMPT,
+            output_type=ExtractedReactionParameters,
+            system_prompt=THERMODYNAMIC_EXTRACTION_PROMPT,
             retries=self.config.max_retries,
         )
 
@@ -432,7 +433,71 @@ class ThermodynamicAgent:
             if self.config.session_logger:
                 self.config.session_logger.log_info(f"EXTRACTION ERROR: {str(e)[:100]}")
 
-    async def process_single_query(self, user_query: str) -> ExtractedParameters:
+    async def extract_parameters(
+        self,
+        user_query: str
+    ) -> ExtractedReactionParameters:
+        """
+        Извлечение параметров из запроса пользователя.
+
+        Args:
+            user_query: Запрос на естественном языке
+
+        Returns:
+            ExtractedReactionParameters
+
+        Raises:
+            ValueError: Если извлечённые данные некорректны
+        """
+        max_retries = 3
+
+        for attempt in range(max_retries):
+            try:
+                import asyncio
+                timeout = 30.0 * (attempt + 1)
+
+                # Формируем промпт
+                prompt = THERMODYNAMIC_EXTRACTION_PROMPT.format(user_query=user_query)
+
+                result = await asyncio.wait_for(
+                    self.agent.run(prompt, deps=self.config),
+                    timeout=timeout
+                )
+                extracted_params = result.output
+
+                # Проверка полноты
+                if not extracted_params.is_complete():
+                    missing = ", ".join(extracted_params.missing_fields)
+                    if attempt == max_retries - 1:
+                        raise ValueError(
+                            f"Не удалось извлечь обязательные поля: {missing}. "
+                            f"Пожалуйста, уточните запрос."
+                        )
+                    continue
+
+                self.logger.info(f"Successfully extracted parameters for {len(extracted_params.all_compounds)} compounds")
+                return extracted_params
+
+            except asyncio.TimeoutError:
+                self.logger.error(f"Timeout in extract_parameters (attempt {attempt + 1}/{max_retries})")
+                if attempt == max_retries - 1:
+                    raise ValueError(f"Не удалось извлечь параметры: превышено время ожидания ответа от модели. Попробуйте упростить запрос.")
+                await asyncio.sleep(1)
+
+            except Exception as e:
+                self.logger.error(f"Error in extract_parameters (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt == max_retries - 1:
+                    if "status_code: 401" in str(e) or "No auth credentials" in str(e):
+                        raise ValueError("Ошибка аутентификации: проверьте API ключ для доступа к модели.")
+                    elif "status_code: 429" in str(e) or "rate limit" in str(e).lower():
+                        raise ValueError("Превышен лимит запросов к модели. Попробуйте повторить запрос позже.")
+                    else:
+                        raise ValueError(f"Не удалось извлечь параметры: {str(e)[:100]}...")
+                await asyncio.sleep(1)
+
+        raise ValueError(f"Не удалось извлечь параметры после {max_retries} попыток.")
+
+    async def process_single_query(self, user_query: str) -> ExtractedReactionParameters:
         """
         Обработать одиночный запрос (для совместимости и тестирования).
 
@@ -445,56 +510,7 @@ class ThermodynamicAgent:
         Raises:
             ValueError: Если не удалось извлечь параметры после повторных попыток
         """
-        max_retries = 3
-        base_timeout = 30.0
-
-        for attempt in range(max_retries):
-            try:
-                import asyncio
-                timeout = base_timeout * (attempt + 1)  # Увеличиваем таймаут с каждой попыткой
-
-                result = await asyncio.wait_for(
-                    self.agent.run(user_query, deps=self.config),
-                    timeout=timeout
-                )
-                return result.output
-
-            except asyncio.TimeoutError:
-                self.logger.error(f"Timeout in single query processing (attempt {attempt + 1}/{max_retries})")
-                if attempt == max_retries - 1:
-                    raise ValueError(f"Не удалось извлечь параметры: превышено время ожидания ответа от модели после {max_retries} попыток. Попробуйте упростить запрос.")
-                await asyncio.sleep(1)  # Небольшая задержка перед повторной попыткой
-
-            except Exception as e:
-                self.logger.error(f"Error in single query processing (attempt {attempt + 1}/{max_retries}): {e}")
-                error_msg = str(e)
-
-                # Дополнительное логирование для трассировки
-                if self.config.session_logger:
-                    self.config.session_logger.log_error(f"SINGLE QUERY FAILED (attempt {attempt + 1}): {error_msg[:200]}")
-
-                # Определяем тип ошибки для более понятного сообщения
-                if "status_code: 401" in error_msg or "No auth credentials" in error_msg:
-                    raise ValueError("Ошибка аутентификации: проверьте API ключ для доступа к модели.")
-                elif "status_code: 429" in error_msg or "rate limit" in error_msg.lower():
-                    if attempt == max_retries - 1:
-                        raise ValueError("Превышен лимит запросов к модели. Попробуйте повторить запрос позже.")
-                    await asyncio.sleep(5)  # Ждем перед повторной попыткой при rate limit
-                elif "network" in error_msg.lower() or "connection" in error_msg.lower():
-                    if attempt == max_retries - 1:
-                        raise ValueError("Сетевая ошибка: проверьте подключение к интернету.")
-                    await asyncio.sleep(2)  # Ждем перед повторной попыткой при проблемах сети
-                elif "timeout" in error_msg.lower():
-                    if attempt == max_retries - 1:
-                        raise ValueError("Превышено время ожидания ответа от модели. Попробуйте упростить запрос.")
-                    await asyncio.sleep(1)
-                else:
-                    if attempt == max_retries - 1:
-                        raise ValueError(f"Не удалось извлечь параметры после {max_retries} попыток: {error_msg[:100]}...")
-                    await asyncio.sleep(1)
-
-        # Этот код не должен быть достигнут, так как все ошибки обрабатываются выше
-        raise ValueError(f"Не удалось извлечь параметры после {max_retries} попыток.")
+        return await self.extract_parameters(user_query)
 
   
     def get_status(self) -> Dict:

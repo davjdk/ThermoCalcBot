@@ -19,7 +19,14 @@
       "Bash(del:*)",
       "Bash(git push:*)",
       "Bash(uv pip:*)",
-      "Bash(uv sync:*)"
+      "Bash(uv sync:*)",
+      "Bash(mkdir:*)",
+      "Bash(uv add:*)",
+      "Bash(PYTHONPATH=. uv run python:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr edit:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

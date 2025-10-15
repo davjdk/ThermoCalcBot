@@ -83,137 +83,69 @@ CRITICAL SYNTAX RULES:
 Return ONLY the SQL query text, nothing else."""
 
 
-EXTRACT_INPUTS_PROMPT = """You are an expert analyzer of queries for a thermodynamic database of chemical compounds.
+THERMODYNAMIC_EXTRACTION_PROMPT = """
+Ты — эксперт по термодинамике и химии. Твоя задача — извлечь параметры химической реакции из запроса пользователя.
 
-TASK: Extract all parameters from user query to find ALL reaction participants with complete information for SQL generation.
+# Входные данные:
+Запрос пользователя: {user_query}
 
-ANALYZE AND EXTRACT:
+# Задача:
+Извлеки следующие параметры:
+1. **Уравненное уравнение реакции** — сбалансируй стехиометрические коэффициенты
+2. **Список всех веществ** (до 10 веществ, включая реагенты и продукты)
+3. **Реагенты** (левая часть уравнения)
+4. **Продукты** (правая часть уравнения)
+5. **Температурный диапазон** в Кельвинах (tmin, tmax)
 
-1. INTENT (query type):
-   - "lookup" - search for compound data
-   - "calculation" - thermodynamic calculations (enthalpy, entropy, Gibbs energy)
-   - "reaction" - chemical reaction analysis
-   - "comparison" - compare substances
+# Важные правила:
+- Стехиометрические коэффициенты НЕ используются в дальнейшей логике поиска
+- Максимум 10 веществ в реакции
+- Температурный диапазон обязателен (если не указан, используй 298-1000K по умолчанию)
+- Формулы веществ — без фаз в скобках (например, "H2O", а не "H2O(g)")
 
-2. COMPOUNDS (chemical formulas):
-   - CRITICAL: Extract ALL reaction participants: reactants AND products
-   - For reactions like "chlorination of TiO2", extract ALL: ["TiO2", "Cl2", "TiCl4", "O2"]
-   - For binary interactions like "WC + Mg", determine ALL participants: ["WC", "Mg", "MgC", "W"]
-   - For queries about "reaction X with Y", extract: ["X", "Y", likely_products]
-   - For "interaction between A and B", extract: ["A", "B", possible_products]
-   - ALWAYS include both sides of chemical reactions
-   - Convert chemical names to formulas: "titanium oxide" → "TiO2", "chlorine" → "Cl2"
-   - Use standard formulas: H2O, NaCl, TiO2, WCl6, Al(OH)3
-   - If compound names mentioned, convert to chemical formulas
-   - NEVER miss products in chemical reactions - they are essential for analysis
+# Примеры:
 
-3. TEMPERATURE:
-   - Convert Celsius to Kelvin: K = °C + 273.15
-   - If no temperature specified, use 298.15K (standard conditions)
-   - For reaction analysis, expand range: use [T-100, T+200] for better data coverage
-   - Default range for reactions: [200, 2000] K
+## Пример 1:
+Запрос: "Хлорирование оксида титана при 600-900K"
+Ответ:
+{{
+  "balanced_equation": "TiO2 + 2Cl2 → TiCl4 + O2",
+  "all_compounds": ["TiO2", "Cl2", "TiCl4", "O2"],
+  "reactants": ["TiO2", "Cl2"],
+  "products": ["TiCl4", "O2"],
+  "temperature_range_k": [600, 900],
+  "extraction_confidence": 0.95,
+  "missing_fields": []
+}}
 
-4. PHASES (phase states):
-   - Extract or infer logical phases for each compound:
-   - "s" - solid (default for oxides, salts at low T)
-   - "l" - liquid (rare, specific conditions)
-   - "g" - gas (default for Cl2, O2, volatile compounds at high T)
-   - "aq" - aqueous solution
-   - If phases not specified, use logical defaults based on compound type and temperature
+## Пример 2:
+Запрос: "Восстановление оксида железа водородом"
+Ответ:
+{{
+  "balanced_equation": "Fe2O3 + 3H2 → 2Fe + 3H2O",
+  "all_compounds": ["Fe2O3", "H2", "Fe", "H2O"],
+  "reactants": ["Fe2O3", "H2"],
+  "products": ["Fe", "H2O"],
+  "temperature_range_k": [298, 1000],
+  "extraction_confidence": 0.85,
+  "missing_fields": ["temperature_range"]
+}}
 
-5. PROPERTIES (required data):
-   - For reactions: always use "all" (need H298, S298, f1-f6 coefficients)
-   - For lookup: "basic" (H298, S298)
-   - For calculations: "thermal" (heat capacity data)
+## Пример 3 (сложная реакция):
+Запрос: "Синтез аммиака из азота и водорода при 400-500°C"
+Ответ:
+{{
+  "balanced_equation": "N2 + 3H2 → 2NH3",
+  "all_compounds": ["N2", "H2", "NH3"],
+  "reactants": ["N2", "H2"],
+  "products": ["NH3"],
+  "temperature_range_k": [673, 773],
+  "extraction_confidence": 1.0,
+  "missing_fields": []
+}}
 
-6. REACTION_EQUATION (for reactions only):
-   - Generate balanced chemical equation when intent="reaction"
-   - Include all identified reactants and products
-   - Example: "WC + Mg → MgC + W" or "TiO2 + 2Cl2 → TiCl4 + O2"
-   - For complex reactions, provide most probable equation based on chemical knowledge
-
-7. SQL_QUERY_HINT (compose search strategy):
-   - Create detailed search instruction for SQL_GENERATION_PROMPT
-   - Must find ALL compounds in appropriate phases and temperature ranges
-   - Include alternative formulas and phase combinations
-   - Example: "Find TiO2 in solid phase, Cl2 in gas phase, TiCl4 in gas phase, and O2 in gas phase for temperature range 573-873K. Include all thermodynamic data (H298, S298, f1-f6) for reaction analysis."
-
-AUTO-COMPLETE MISSING FIELDS:
-- If temperature not specified → use 298.15K or logical range
-- If phases empty → infer from compound types and temperature
-- If compounds incomplete for reaction → CRITICAL: add ALL missing products
-- For partial reactions like "A + B", infer likely products based on chemistry
-- For "reaction with X", determine logical products
-- Always provide COMPLETE reaction participants for SQL generation
-- Missing participants lead to incomplete analysis - ALWAYS complete the reaction
-
-EXAMPLES:
-
-Query: "Is chlorination of titanium oxide possible at 400 Celsius?"
-Response:
-{
-  "intent": "reaction",
-  "compounds": ["TiO2", "Cl2", "TiCl4", "O2"],
-  "temperature_k": 673.15,
-  "temperature_range_k": [573, 873],
-  "phases": ["s", "g", "g", "g"],
-  "properties": ["all"],
-  "reaction_equation": "TiO2 + 2Cl2 → TiCl4 + O2",
-  "sql_query_hint": "Find thermodynamic data for TiO2(s), Cl2(g), TiCl4(g), and O2(g) in temperature range 573-873K. Include H298, S298, and heat capacity coefficients f1-f6 for reaction analysis."
-}
-
-Query: "Find water enthalpy in gas phase at 500K"
-Response:
-{
-  "intent": "lookup",
-  "compounds": ["H2O"],
-  "temperature_k": 500,
-  "temperature_range_k": [400, 600],
-  "phases": ["g"],
-  "properties": ["basic"],
-  "sql_query_hint": "Find H2O in gas phase with temperature range covering 500K. Include H298 and S298 data."
-}
-
-Query: "При какой температуре идет взаимодействие карбида вольфрама с магнием?"
-Response:
-{
-  "intent": "reaction",
-  "compounds": ["WC", "Mg", "MgC", "W"],
-  "temperature_k": 298.15,
-  "temperature_range_k": [200, 2000],
-  "phases": ["s", "s", "s", "s"],
-  "properties": ["all"],
-  "reaction_equation": "WC + Mg → MgC + W",
-  "sql_query_hint": "Find thermodynamic data for WC(s), Mg(s), MgC(s), and W(s) in temperature range 200-2000K. Include H298, S298, and heat capacity coefficients f1-f6 for all compounds to analyze the reaction WC + Mg → MgC + W."
-}
-
-Query: "что будет если смешать?"
-Response:
-{
-  "intent": "lookup",
-  "compounds": [],
-  "temperature_k": 298.15,
-  "temperature_range_k": [200, 400],
-  "phases": [],
-  "properties": ["basic"],
-  "reaction_equation": null,
-  "sql_query_hint": "Query too ambiguous - no specific chemical compounds mentioned"
-}
-
-CRITICAL ERROR HANDLING:
-- If NO chemical compounds can be extracted from the query, return compounds: []
-- If the query is too ambiguous or unclear, return compounds: []
-- If chemical formulas/names cannot be identified, return compounds: []
-- DO NOT make up or guess chemical compounds - only extract what's clearly stated
-- Empty compounds list signals that the query cannot be processed
-
-CRITICAL:
-- Return ONLY JSON with extracted parameters
-- ALWAYS fill all fields - never leave empty if logical values can be inferred
-- For reactions, extract ALL participants (reactants + products)
-- Create comprehensive sql_query_hint for complete data retrieval
-- NO explanations, only JSON
-- If extraction fails, return empty compounds list - do not try to guess"""
+# Твой ответ (JSON):
+"""
 
 
 VALIDATE_OR_COMPLETE_PROMPT = """You are a validator for thermodynamic database query parameters.
