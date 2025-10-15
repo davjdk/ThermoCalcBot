@@ -22,7 +22,10 @@
       "Bash(uv sync:*)",
       "Bash(mkdir:*)",
       "Bash(uv add:*)",
-      "Bash(PYTHONPATH=. uv run python:*)"
+      "Bash(PYTHONPATH=. uv run python:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr edit:*)"
     ],
     "deny": [],
     "ask": []
