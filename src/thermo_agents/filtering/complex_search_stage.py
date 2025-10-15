@@ -8,12 +8,12 @@
 4. Общий поиск Formula LIKE '%H2O%'
 """
 
-from typing import List, Dict, Any, Optional
-import time
 import re
+import time
+from typing import Any, Dict, List, Optional
 
-from .filter_pipeline import FilterStage, FilterContext
 from ..models.search import DatabaseRecord
+from .filter_pipeline import FilterContext, FilterStage
 
 
 class ComplexFormulaSearchStage(FilterStage):
@@ -29,9 +29,7 @@ class ComplexFormulaSearchStage(FilterStage):
         self.search_strategy = search_strategy
 
     def filter(
-        self,
-        records: List[DatabaseRecord],
-        context: FilterContext
+        self, records: List[DatabaseRecord], context: FilterContext
     ) -> List[DatabaseRecord]:
         """
         Фильтрация записей с использованием комплексного поиска формул.
@@ -51,10 +49,10 @@ class ComplexFormulaSearchStage(FilterStage):
 
         filtered = []
         search_stats = {
-            'exact_matches': 0,
-            'phase_matches': 0,
-            'prefix_matches': 0,
-            'contains_matches': 0
+            "exact_matches": 0,
+            "phase_matches": 0,
+            "prefix_matches": 0,
+            "contains_matches": 0,
         }
 
         for record in records:
@@ -63,18 +61,20 @@ class ComplexFormulaSearchStage(FilterStage):
 
             if match_type:
                 filtered.append(record)
-                search_stats[match_type] += 1
+                search_stats[f"{match_type}_matches"] += 1
 
         execution_time = (time.time() - start_time) * 1000
 
         self.last_stats = {
-            'target_formula': target_formula,
-            'search_method': search_method,
-            'total_records_before': len(records),
-            'total_records_after': len(filtered),
-            'search_statistics': search_stats,
-            'execution_time_ms': execution_time,
-            'reduction_rate': (len(records) - len(filtered)) / len(records) if records else 0
+            "target_formula": target_formula,
+            "search_method": search_method,
+            "total_records_before": len(records),
+            "total_records_after": len(filtered),
+            "search_statistics": search_stats,
+            "execution_time_ms": execution_time,
+            "reduction_rate": (len(records) - len(filtered)) / len(records)
+            if records
+            else 0,
         }
 
         return filtered
@@ -90,26 +90,40 @@ class ComplexFormulaSearchStage(FilterStage):
         - CH4: needs LIKE 'CH4%' (0 exact matches, 1352 with prefix)
         """
         # Простые молекулы, которые требуют расширенного поиска
-        simple_molecules = {'HCL', 'CO2', 'NH3', 'CH4', 'HF', 'HBR', 'HI', 'NO', 'NO2', 'SO2', 'SO3'}
+        simple_molecules = {
+            "HCL",
+            "CO2",
+            "NH3",
+            "CH4",
+            "HF",
+            "HBR",
+            "HI",
+            "NO",
+            "NO2",
+            "SO2",
+            "SO3",
+        }
 
         if formula in simple_molecules:
             return "prefix_required"
 
         # Формулы с возможными изотопами
-        if re.match(r'^[A-Z][a-z]?[0-9]+', formula):
+        if re.match(r"^[A-Z][a-z]?[0-9]+", formula):
             return "isotope_possible"
 
         # Сложные формулы с возможными модификаторами
-        if '(' in formula or ')' in formula:
+        if "(" in formula or ")" in formula:
             return "phase_aware"
 
         # Ионные формы
-        if '+' in formula or '-' in formula:
+        if "+" in formula or "-" in formula:
             return "ionic"
 
         return "standard"
 
-    def _check_formula_match(self, record_formula: str, target_formula: str) -> Optional[str]:
+    def _check_formula_match(
+        self, record_formula: str, target_formula: str
+    ) -> Optional[str]:
         """
         Проверяет соответствие формулы записи целевой формуле.
 
@@ -121,36 +135,39 @@ class ComplexFormulaSearchStage(FilterStage):
             None - нет соответствия
         """
         # 1. Точное совпадение (TRIM)
-        record_base = record_formula.split('(')[0].strip()
+        record_base = record_formula.split("(")[0].strip()
         if record_base == target_formula:
-            return 'exact'
+            return "exact"
 
         # 2. Совпадение с фазовыми модификаторами
-        if record_formula.startswith(target_formula + '('):
-            return 'phase'
+        if record_formula.startswith(target_formula + "("):
+            return "phase"
 
         # 3. Префиксное совпадение (для сложных соединений)
         if record_formula.startswith(target_formula):
-            return 'prefix'
+            return "prefix"
 
         # 4. Проверка на изотопы и изомеры
         if self._is_isotope_or_isomer_match(record_base, target_formula):
-            return 'contains'
+            return "contains"
 
         return None
 
-    def _is_isotope_or_isomer_match(self, record_formula: str, target_formula: str) -> bool:
+    def _is_isotope_or_isomer_match(
+        self, record_formula: str, target_formula: str
+    ) -> bool:
         """
         Проверяет совпадение изотопов или изомеров.
 
         Например: 2H2O (тяжёлая вода) соответствует H2O
         """
+
         # Извлекаем химические символы (без изотопных чисел)
         def extract_symbols(formula: str) -> List[str]:
             # Удаляем все цифры и получаем символы
-            clean = re.sub(r'[0-9]', '', formula)
+            clean = re.sub(r"[0-9]", "", formula)
             # Находим все химические символы (заглавная + необязательная строчная)
-            return re.findall(r'[A-Z][a-z]?', clean)
+            return re.findall(r"[A-Z][a-z]?", clean)
 
         record_symbols = extract_symbols(record_formula)
         target_symbols = extract_symbols(target_formula)
@@ -177,22 +194,28 @@ class ComplexFormulaSearchStage(FilterStage):
         search_method = self._determine_search_method(formula_upper)
 
         if search_method == "prefix_required":
-            recommendations.extend([
-                f"Formula LIKE '{formula_upper}%'",  # Основной поиск
-                f"TRIM(Formula) = '{formula_upper}'",  # Точный поиск
-                f"Formula LIKE '%{formula_upper}%'"  # Общий поиск
-            ])
+            recommendations.extend(
+                [
+                    f"Formula LIKE '{formula_upper}%'",  # Основной поиск
+                    f"TRIM(Formula) = '{formula_upper}'",  # Точный поиск
+                    f"Formula LIKE '%{formula_upper}%'",  # Общий поиск
+                ]
+            )
         elif search_method == "ionic":
-            recommendations.extend([
-                f"Formula LIKE '{formula_upper}%'",  # Основной поиск
-                f"Formula LIKE '%{formula_upper}%'"  # Общий поиск
-            ])
+            recommendations.extend(
+                [
+                    f"Formula LIKE '{formula_upper}%'",  # Основной поиск
+                    f"Formula LIKE '%{formula_upper}%'",  # Общий поиск
+                ]
+            )
         else:
-            recommendations.extend([
-                f"TRIM(Formula) = '{formula_upper}'",  # Точный поиск
-                f"Formula LIKE '{formula_upper}(%'",  # С фазами
-                f"Formula LIKE '{formula_upper}%'"   # Префиксный
-            ])
+            recommendations.extend(
+                [
+                    f"TRIM(Formula) = '{formula_upper}'",  # Точный поиск
+                    f"Formula LIKE '{formula_upper}(%'",  # С фазами
+                    f"Formula LIKE '{formula_upper}%'",  # Префиксный
+                ]
+            )
 
         return recommendations
 
@@ -213,9 +236,7 @@ class FormulaConsistencyStage(FilterStage):
         self.max_records_per_formula = max_records_per_formula
 
     def filter(
-        self,
-        records: List[DatabaseRecord],
-        context: FilterContext
+        self, records: List[DatabaseRecord], context: FilterContext
     ) -> List[DatabaseRecord]:
         """
         Фильтрация записей с удалением дубликатов и сохранением лучших.
@@ -232,7 +253,7 @@ class FormulaConsistencyStage(FilterStage):
         # Группируем записи по базовой формуле
         formula_groups = {}
         for record in records:
-            base_formula = record.formula.split('(')[0].strip().upper()
+            base_formula = record.formula.split("(")[0].strip().upper()
             if base_formula not in formula_groups:
                 formula_groups[base_formula] = []
             formula_groups[base_formula].append(record)
@@ -240,39 +261,45 @@ class FormulaConsistencyStage(FilterStage):
         # Сортируем каждую группу по надёжности и выбираем лучшие записи
         filtered = []
         duplication_stats = {
-            'total_formulas': len(formula_groups),
-            'total_records_before': len(records),
-            'total_records_after': 0,
-            'max_group_size': 0,
-            'avg_group_size': 0
+            "total_formulas": len(formula_groups),
+            "total_records_before": len(records),
+            "total_records_after": 0,
+            "max_group_size": 0,
+            "avg_group_size": 0,
         }
 
         for base_formula, group in formula_groups.items():
             # Сортируем по надёжности (1=лучший), затем по температурному диапазону
-            group.sort(key=lambda r: (
-                r.reliability_class,
-                -(r.tmax - r.tmin) if r.tmax and r.tmin else 0
-            ))
+            group.sort(
+                key=lambda r: (
+                    r.reliability_class,
+                    -(r.tmax - r.tmin) if r.tmax and r.tmin else 0,
+                )
+            )
 
             # Выбираем топ-N записей
-            selected = group[:self.max_records_per_formula]
+            selected = group[: self.max_records_per_formula]
             filtered.extend(selected)
 
             # Обновляем статистику
-            duplication_stats['max_group_size'] = max(
-                duplication_stats['max_group_size'], len(group)
+            duplication_stats["max_group_size"] = max(
+                duplication_stats["max_group_size"], len(group)
             )
 
-        duplication_stats['total_records_after'] = len(filtered)
-        duplication_stats['avg_group_size'] = len(records) / len(formula_groups) if formula_groups else 0
+        duplication_stats["total_records_after"] = len(filtered)
+        duplication_stats["avg_group_size"] = (
+            len(records) / len(formula_groups) if formula_groups else 0
+        )
 
         execution_time = (time.time() - start_time) * 1000
 
         self.last_stats = {
-            'duplication_statistics': duplication_stats,
-            'deduplication_rate': (len(records) - len(filtered)) / len(records) if records else 0,
-            'execution_time_ms': execution_time,
-            'max_records_per_formula': self.max_records_per_formula
+            "duplication_statistics": duplication_stats,
+            "deduplication_rate": (len(records) - len(filtered)) / len(records)
+            if records
+            else 0,
+            "execution_time_ms": execution_time,
+            "max_records_per_formula": self.max_records_per_formula,
         }
 
         return filtered

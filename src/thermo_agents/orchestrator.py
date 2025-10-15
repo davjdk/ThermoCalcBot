@@ -9,35 +9,38 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
 from .agent_storage import AgentStorage, get_storage
-from .operations import OperationType
-from .thermo_agents_logger import SessionLogger
-from .thermodynamic_agent import ThermodynamicAgent
-from .search.compound_searcher import CompoundSearcher
-from .search.database_connector import DatabaseConnector
-from .search.sql_builder import SQLBuilder
-from .filtering.filter_pipeline import FilterPipeline, FilterContext, FilterResult
-from .filtering.temperature_resolver import TemperatureResolver
-from .filtering.phase_resolver import PhaseResolver
-from .filtering.filter_stages import (
-    TemperatureFilterStage,
-    PhaseSelectionStage,
-    ReliabilityPriorityStage,
-    TemperatureCoverageStage
-)
-from .filtering.complex_search_stage import ComplexFormulaSearchStage
+
+# Определение поддержки Unicode для консоли
+try:
+    USE_EMOJI = sys.stdout.encoding and "utf" in sys.stdout.encoding.lower()
+except AttributeError:
+    USE_EMOJI = False
+
+# Символы с fallback для Windows
+SYMBOLS = {
+    "success": "✅" if USE_EMOJI else "[OK]",
+    "error": "❌" if USE_EMOJI else "[ОШИБКА]",
+    "warning": "⚠️" if USE_EMOJI else "[ВНИМАНИЕ]",
+    "data": "📊" if USE_EMOJI else "[ДАННЫЕ]",
+    "idea": "💡" if USE_EMOJI else "[СОВЕТ]",
+}
+
+
 from .aggregation.reaction_aggregator import ReactionAggregator
-from .aggregation.table_formatter import TableFormatter
 from .aggregation.statistics_formatter import StatisticsFormatter
+from .aggregation.table_formatter import TableFormatter
+from .filtering.filter_pipeline import FilterContext, FilterPipeline, FilterResult
+from .models.aggregation import AggregatedReactionData, FilterStatistics
 from .models.search import CompoundSearchResult
-from .models.aggregation import FilterStatistics
-from .models.aggregation import AggregatedReactionData
-from .models.extraction import ExtractedReactionParameters
+from .search.compound_searcher import CompoundSearcher
+from .thermodynamic_agent import ThermodynamicAgent
 
 
 class OrchestratorRequest(BaseModel):
@@ -63,7 +66,6 @@ class OrchestratorConfig:
 
     storage: AgentStorage = field(default_factory=get_storage)
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
-    session_logger: Optional[SessionLogger] = None
     max_retries: int = 2
     timeout_seconds: int = 90
 
@@ -86,7 +88,7 @@ class ThermoOrchestrator:
         reaction_aggregator: ReactionAggregator,
         table_formatter: TableFormatter,
         statistics_formatter: StatisticsFormatter,
-        config: Optional[OrchestratorConfig] = None
+        config: Optional[OrchestratorConfig] = None,
     ):
         """
         Инициализация оркестратора с новыми компонентами.
@@ -147,12 +149,13 @@ class ThermoOrchestrator:
             # Шаг 4: Агрегация
             aggregated_data = self.reaction_aggregator.aggregate_reaction_data(
                 reaction_equation=params.balanced_equation,
-                compounds_results=compound_results
+                compounds_results=compound_results,
             )
 
             # Форматирование таблицы
-            aggregated_data.summary_table_formatted = \
+            aggregated_data.summary_table_formatted = (
                 self.table_formatter.format_summary_table(compound_results)
+            )
 
             # Шаг 5: Форматирование ответа
             response = self._format_response(aggregated_data)
@@ -160,12 +163,16 @@ class ThermoOrchestrator:
             return response
 
         except Exception as e:
+            import traceback
+
+            print(f"DEBUG: Exception details:")
+            print(f"  Type: {type(e)}")
+            print(f"  Message: {str(e)}")
+            traceback.print_exc()
             return self._format_error_response(str(e))
 
     async def _search_and_filter_compound(
-        self,
-        compound: str,
-        temperature_range: Tuple[float, float]
+        self, compound: str, temperature_range: Tuple[float, float]
     ) -> CompoundSearchResult:
         """Поиск и фильтрация для одного вещества."""
         # Поиск
@@ -175,46 +182,42 @@ class ThermoOrchestrator:
 
         # Фильтрация
         filter_context = FilterContext(
-            temperature_range=temperature_range,
-            compound_formula=compound
+            temperature_range=temperature_range, compound_formula=compound
         )
 
         filter_result = self.filter_pipeline.execute(
-            search_result.records_found,
-            filter_context
+            search_result.records_found, filter_context
         )
 
         # Обновление результата
         search_result.records_found = filter_result.filtered_records
-        search_result.filter_statistics = self._build_filter_statistics(
-            filter_result
-        )
+        search_result.filter_statistics = self._build_filter_statistics(filter_result)
 
         return search_result
 
-    def _build_filter_statistics(
-        self,
-        filter_result: FilterResult
-    ) -> FilterStatistics:
+    def _build_filter_statistics(self, filter_result: FilterResult) -> FilterStatistics:
         """Преобразование FilterResult в FilterStatistics."""
         stats = filter_result.stage_statistics
 
+        # Защита от некорректных данных
+        if not isinstance(stats, list):
+            print(f"DEBUG: stats is not a list, it's {type(stats)}: {stats}")
+            stats = []
+
         return FilterStatistics(
-            stage_1_initial_matches=stats[0]['records_before'] if stats else 0,
-            stage_1_description=stats[0]['stage_name'] if stats else "",
-
-            stage_2_temperature_filtered=stats[1]['records_after'] if len(stats) > 1 else 0,
-            stage_2_description=stats[1]['stage_name'] if len(stats) > 1 else "",
-
-            stage_3_phase_selected=stats[2]['records_after'] if len(stats) > 2 else 0,
-            stage_3_description=stats[2]['stage_name'] if len(stats) > 2 else "",
-
-            stage_4_final_selected=stats[3]['records_after'] if len(stats) > 3 else 0,
-            stage_4_description=stats[3]['stage_name'] if len(stats) > 3 else "",
-
+            stage_1_initial_matches=stats[0]["records_before"] if len(stats) > 0 else 0,
+            stage_1_description=stats[0]["stage_name"] if len(stats) > 0 else "",
+            stage_2_temperature_filtered=stats[1]["records_after"]
+            if len(stats) > 1
+            else 0,
+            stage_2_description=stats[1]["stage_name"] if len(stats) > 1 else "",
+            stage_3_phase_selected=stats[2]["records_after"] if len(stats) > 2 else 0,
+            stage_3_description=stats[2]["stage_name"] if len(stats) > 2 else "",
+            stage_4_final_selected=stats[3]["records_after"] if len(stats) > 3 else 0,
+            stage_4_description=stats[3]["stage_name"] if len(stats) > 3 else "",
             is_found=filter_result.is_found,
             failure_stage=filter_result.failure_stage,
-            failure_reason=filter_result.failure_reason
+            failure_reason=filter_result.failure_reason,
         )
 
     def _format_response(self, data: AggregatedReactionData) -> str:
@@ -314,16 +317,15 @@ class ThermoOrchestrator:
             return OrchestratorResponse(
                 success=True,
                 result={"response": response_text},
-                trace=["Processed via new orchestrator v2"]
+                trace=["Processed via new orchestrator v2"],
             )
         except Exception as e:
             return OrchestratorResponse(
                 success=False,
                 result={},
                 errors=[str(e)],
-                trace=["Error in new orchestrator v2"]
+                trace=["Error in new orchestrator v2"],
             )
-
 
     async def shutdown(self):
         """Завершить работу оркестратора."""

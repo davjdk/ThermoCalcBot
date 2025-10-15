@@ -6,9 +6,13 @@ ReactionAggregator - агрегация результатов поиска по
 и рекомендаций.
 """
 
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
+
+from src.thermo_agents.models.aggregation import (
+    AggregatedReactionData,
+    FilterStatistics,
+)
 from src.thermo_agents.models.search import CompoundSearchResult, SearchStatistics
-from src.thermo_agents.models.aggregation import AggregatedReactionData, FilterStatistics
 
 
 class ReactionAggregator:
@@ -24,9 +28,7 @@ class ReactionAggregator:
         self.max_compounds = max_compounds
 
     def aggregate_reaction_data(
-        self,
-        reaction_equation: str,
-        compounds_results: List[CompoundSearchResult]
+        self, reaction_equation: str, compounds_results: List[CompoundSearchResult]
     ) -> AggregatedReactionData:
         """
         Агрегация данных по всем веществам реакции.
@@ -69,7 +71,7 @@ class ReactionAggregator:
 
         # Сбор детальной статистики
         detailed_statistics = {
-            result.compound_formula: self._convert_search_statistics_to_filter_statistics(result.filter_statistics)
+            result.compound_formula: result.filter_statistics
             for result in compounds_results
             if result.filter_statistics is not None
         }
@@ -82,7 +84,7 @@ class ReactionAggregator:
             missing_compounds, completeness_status
         )
 
-        return AggregatedReactionData(
+        return AggregatedReactionData.model_construct(
             reaction_equation=reaction_equation,
             compounds_data=compounds_results,
             summary_table_formatted="",  # Заполняется TableFormatter
@@ -91,12 +93,11 @@ class ReactionAggregator:
             found_compounds=found_compounds,
             detailed_statistics=detailed_statistics,
             warnings=warnings,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     def _generate_warnings(
-        self,
-        compounds_results: List[CompoundSearchResult]
+        self, compounds_results: List[CompoundSearchResult]
     ) -> List[str]:
         """Генерация предупреждений на основе результатов."""
         warnings = []
@@ -125,9 +126,7 @@ class ReactionAggregator:
         return warnings
 
     def _generate_recommendations(
-        self,
-        missing_compounds: List[str],
-        completeness_status: str
+        self, missing_compounds: List[str], completeness_status: str
     ) -> List[str]:
         """Генерация рекомендаций пользователю."""
         recommendations = []
@@ -159,8 +158,7 @@ class ReactionAggregator:
         return recommendations
 
     def _convert_search_statistics_to_filter_statistics(
-        self,
-        search_stats: Optional[SearchStatistics]
+        self, search_stats: Optional[SearchStatistics]
     ) -> Optional[FilterStatistics]:
         """
         Конвертация SearchStatistics в FilterStatistics для обратной совместимости.
@@ -180,16 +178,17 @@ class ReactionAggregator:
             stage_1_description="Поиск по формуле",
             stage_2_temperature_filtered=search_stats.total_records,  # Упрощенно
             stage_2_description="Температурная фильтрация",
-            stage_3_phase_selected=len(search_stats.phase_distribution) if search_stats.phase_distribution else search_stats.total_records,
+            stage_3_phase_selected=len(search_stats.phase_distribution)
+            if search_stats.phase_distribution
+            else search_stats.total_records,
             stage_3_description="Выбор фазы",
             stage_4_final_selected=1,  # Упрощенно - одна лучшая запись
             stage_4_description="Приоритизация по надёжности",
-            is_found=search_stats.total_records > 0
+            is_found=search_stats.total_records > 0,
         )
 
     def validate_compound_results(
-        self,
-        compounds_results: List[CompoundSearchResult]
+        self, compounds_results: List[CompoundSearchResult]
     ) -> List[str]:
         """
         Валидация результатов поиска веществ.
@@ -204,9 +203,11 @@ class ReactionAggregator:
 
         for i, result in enumerate(compounds_results):
             if not result.compound_formula:
-                errors.append(f"Вещество {i+1}: отсутствует формула")
+                errors.append(f"Вещество {i + 1}: отсутствует формула")
 
             if result.filter_statistics is None:
-                errors.append(f"Вещество {result.compound_formula}: отсутствует статистика")
+                errors.append(
+                    f"Вещество {result.compound_formula}: отсутствует статистика"
+                )
 
         return errors

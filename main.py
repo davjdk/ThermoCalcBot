@@ -1,4 +1,5 @@
 """Главный файл запуска термодинамической системы."""
+
 import asyncio
 import os
 import sys
@@ -11,26 +12,26 @@ if str(src_path) not in sys.path:
 
 from dotenv import load_dotenv
 
-from thermo_agents.thermodynamic_agent import ThermoAgentConfig, ThermodynamicAgent
-from thermo_agents.search.sql_builder import SQLBuilder
-from thermo_agents.search.database_connector import DatabaseConnector
-from thermo_agents.search.compound_searcher import CompoundSearcher
+from thermo_agents.agent_storage import AgentStorage
+from thermo_agents.aggregation.reaction_aggregator import ReactionAggregator
+from thermo_agents.aggregation.statistics_formatter import StatisticsFormatter
+from thermo_agents.aggregation.table_formatter import TableFormatter
+from thermo_agents.filtering.complex_search_stage import ComplexFormulaSearchStage
 from thermo_agents.filtering.filter_pipeline import FilterPipeline
 from thermo_agents.filtering.filter_stages import (
-    TemperatureFilterStage,
     PhaseSelectionStage,
     ReliabilityPriorityStage,
-    TemperatureCoverageStage
+    TemperatureCoverageStage,
+    TemperatureFilterStage,
 )
-from thermo_agents.filtering.complex_search_stage import ComplexFormulaSearchStage
-from thermo_agents.filtering.temperature_resolver import TemperatureResolver
 from thermo_agents.filtering.phase_resolver import PhaseResolver
-from thermo_agents.aggregation.reaction_aggregator import ReactionAggregator
-from thermo_agents.aggregation.table_formatter import TableFormatter
-from thermo_agents.aggregation.statistics_formatter import StatisticsFormatter
-from thermo_agents.orchestrator import ThermoOrchestrator, OrchestratorConfig
-from thermo_agents.agent_storage import AgentStorage
+from thermo_agents.filtering.temperature_resolver import TemperatureResolver
+from thermo_agents.orchestrator import OrchestratorConfig, ThermoOrchestrator
+from thermo_agents.search.compound_searcher import CompoundSearcher
+from thermo_agents.search.database_connector import DatabaseConnector
+from thermo_agents.search.sql_builder import SQLBuilder
 from thermo_agents.thermo_agents_logger import create_session_logger
+from thermo_agents.thermodynamic_agent import ThermoAgentConfig, ThermodynamicAgent
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -87,155 +88,119 @@ def create_orchestrator(db_path: str = "data/thermo_data.db") -> ThermoOrchestra
         reaction_aggregator=reaction_aggregator,
         table_formatter=table_formatter,
         statistics_formatter=statistics_formatter,
-        config=orchestrator_config
+        config=orchestrator_config,
     )
 
     return orchestrator
 
 
-async def main():
-    """Главная функция для демонстрации работы системы."""
+async def main_interactive():
+    """Главная функция в режиме ожидания запросов пользователя."""
     # Инициализация
     db_path = Path(__file__).parent / "data" / "thermo_data.db"
     orchestrator = create_orchestrator(str(db_path))
 
-    print("Термодинамическая система v2.0")
-    print("Гибридная архитектура: LLM + детерминированная логика")
-    print("=" * 60)
-
-    # Пример запроса
-    query = "Хлорирование оксида титана при 600-900K"
-    print(f"Запрос: {query}\n")
+    print("\nТермодинамическая система v2.0")
+    print("Гибридная архитектура: LLM + детерминированная логика\n")
 
     try:
-        # Обработка
-        response = await orchestrator.process_query(query)
-        print(response)
+        while True:
+            # Ожидание запроса
+            query = input("Введите запрос: ").strip()
+
+            if not query:
+                continue
+
+            print()
+
+            try:
+                # Обработка запроса
+                response = await orchestrator.process_query(query)
+                print(response)
+                print()
+            except Exception as e:
+                print(f"Ошибка обработки: {e}\n")
+
+    except KeyboardInterrupt:
+        print("\n\nЗавершение работы...")
     except Exception as e:
-        print(f"Ошибка: {e}")
-        print("Убедитесь, что OPENROUTER_API_KEY указан в .env файле")
+        print(f"\nКритическая ошибка: {e}")
     finally:
-        # Завершаем работу
         await orchestrator.shutdown()
 
 
-class ThermoSystem:
-    """
-    Расширенная система управления с интерактивным режимом.
+async def main_test():
+    """Тестовый режим с предопределённым запросом."""
+    # Инициализация
+    db_path = Path(__file__).parent / "data" / "thermo_data.db"
+    orchestrator = create_orchestrator(str(db_path))
 
-    Provides interactive CLI interface for the thermodynamic system.
-    """
+    print("\n" + "=" * 80)
+    print("Термодинамическая система v2.0 - ТЕСТОВЫЙ РЕЖИМ")
+    print("=" * 80)
 
-    def __init__(self):
-        """Инициализация системы."""
-        self.orchestrator = None
-        self.session_logger = create_session_logger()
+    # Тестовый запрос
+    test_query = (
+        "Возможно ли взаимодействие фторида титана (TiF4) с магнием (Mg) при температуре 900-1500K?"
+    )
 
-    async def start(self):
-        """Запуск системы в интерактивном режиме."""
-        # Инициализация
-        db_path = Path(__file__).parent / "data" / "thermo_data.db"
-        self.orchestrator = create_orchestrator(str(db_path))
-
-        print("\n" + "=" * 80)
-        print("THERMO AGENTS v2.0 - Interactive Mode")
-        print("Using hybrid architecture: LLM + deterministic modules")
-        print("=" * 80)
-        print("Commands:")
-        print("  • Type your thermodynamic query")
-        print("  • 'status' - Show system status")
-        print("  • 'clear' - Clear message history")
-        print("  • 'exit' - Exit the system")
-        print("=" * 80 + "\n")
-
-        await self.interactive_mode()
-
-    async def interactive_mode(self):
-        """Интерактивный режим работы."""
-        while True:
-            try:
-                user_input = input("Query> ").strip()
-
-                if not user_input:
-                    continue
-
-                if user_input.lower() in ["exit", "quit", "q"]:
-                    print("Shutting down...")
-                    break
-
-                elif user_input.lower() == "status":
-                    print("✅ System operational")
-                    print(f"📊 Database: {Path(__file__).parent / 'data' / 'thermo_data.db'}")
-                    print(f"🔧 LLM Model: {os.getenv('LLM_DEFAULT_MODEL', 'openai/gpt-4o')}")
-
-                elif user_input.lower() == "clear":
-                    self.orchestrator.storage.clear()
-                    print("[OK] Storage cleared")
-
-                else:
-                    # Обработка термодинамического запроса
-                    await self.process_query(user_input)
-
-                print()
-
-            except KeyboardInterrupt:
-                print("\nInterrupted by user")
-                break
-            except Exception as e:
-                print(f"[ERROR] Error: {e}")
-
-    async def process_query(self, query: str):
-        """Обработка термодинамического запроса."""
-        print(f"\nProcessing: {query}")
-        print("-" * 60)
-
-        try:
-            response = await self.orchestrator.process_query(query)
-            print(response)
-        except Exception as e:
-            print(f"\n[ERROR] {e}")
-
-    async def shutdown(self):
-        """Завершение работы системы."""
-        if self.orchestrator:
-            await self.orchestrator.shutdown()
-        if self.session_logger:
-            self.session_logger.close()
-
-
-async def interactive_main():
-    """Точка входа для интерактивного режима."""
-    system = ThermoSystem()
     try:
-        await system.start()
+        # Обработка запроса
+        response = await orchestrator.process_query(test_query)
+
+        # Убираем эмодзи для совместимости с Windows
+        response_clean = response.replace("✅", "[OK]").replace("❌", "[ОШИБКА]")
+        response_clean = response_clean.replace("⚠️", "[ВНИМАНИЕ]").replace(
+            "📊", "[ДАННЫЕ]"
+        )
+        response_clean = response_clean.replace("💡", "[СОВЕТ]")
+
+        print("\n[РЕЗУЛЬТАТ]")
+        print(response_clean)
+        print("\n" + "=" * 80)
+        print("[ТЕСТ ЗАВЕРШЁН УСПЕШНО]")
+        print("=" * 80)
+
+    except Exception as e:
+        print(f"\n[ОШИБКА] Ошибка обработки: {e}")
+        import traceback
+
+        traceback.print_exc()
     finally:
-        await system.shutdown()
+        await orchestrator.shutdown()
 
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Термодинамическая система v2.0")
-    parser.add_argument(
-        "--demo",
-        action="store_true",
-        help="Запустить демо-режим с одним примером"
+    parser = argparse.ArgumentParser(
+        description="Термодинамическая система v2.0",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Примеры использования:
+  python main.py                    # Интерактивный режим (по умолчанию)
+  python main.py --test             # Тестовый режим с предопределённым запросом
+        """,
     )
     parser.add_argument(
-        "--interactive",
+        "--test",
         action="store_true",
-        help="Запустить интерактивный режим"
+        help="Запустить тестовый режим с предопределённым запросом",
     )
 
     args = parser.parse_args()
 
     try:
-        if args.interactive:
-            asyncio.run(interactive_main())
+        if args.test:
+            # Тестовый режим
+            asyncio.run(main_test())
         else:
-            # По умолчанию - демо режим
-            asyncio.run(main())
+            # Интерактивный режим (по умолчанию)
+            asyncio.run(main_interactive())
     except KeyboardInterrupt:
-        print("\n\nShutdown by user")
+        print("\n\nЗавершение работы пользователем")
     except Exception as e:
-        print(f"\n[ERROR] Fatal error: {e}")
+        print(f"\n[ОШИБКА] Критическая ошибка: {e}")
+        import traceback
+
+        traceback.print_exc()
