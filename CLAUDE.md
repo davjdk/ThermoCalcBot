@@ -4,15 +4,19 @@
 
 ## Обзор проекта
 
-Это проект термодинамических AI-агентов на Python для анализа термодинамических данных химических соединений. Система использует многоагентную архитектуру v2.0:
+Это проект термодинамических AI-агентов на Python для анализа термодинамических данных химических соединений. Система использует **гибридную архитектуру v2.0**, сочетающую LLM и детерминированную логику:
 
-1. **Thermodynamic Agent** - Извлекает параметры из запросов пользователей (соединения, температура, фазы и т.д.)
-2. **SQL Generation Agent** - Генерирует SQL-запросы для получения термодинамических данных из базы
-3. **Database Agent** - Выполняет SQL-запросы и применяет температурную фильтрацию
-4. **Results Filtering Agent** - Интеллектуальная фильтрация результатов с использованием LLM
-5. **Thermo Orchestrator** - Координатор взаимодействия между агентами
+### LLM-компоненты
+- **Thermodynamic Agent** - Извлекает параметры из запросов пользователей (соединения, температура, фазы и т.д.)
 
-Агенты используют Agent-to-Agent (A2A) коммуникацию через централизованное хранилище AgentStorage и фреймворк PydanticAI. Взаимодействуют с SQLite базой данных, содержащей термодинамические данные соединений.
+### Детерминированные компоненты
+- **CompoundSearcher** - Поиск данных для вещества
+- **FilterPipeline** - Конвейерная фильтрация (6 стадий)
+- **ReactionAggregator** - Агрегация данных по реакции
+- **TableFormatter** - Форматирование результатов через tabulate
+- **StatisticsFormatter** - Форматирование детальной статистики
+
+Система заменяет традиционных LLM-агентов на детерминированные модули для повышения производительности и предсказуемости результатов.
 
 ## Команды
 
@@ -36,12 +40,14 @@ uv add package-name
 # Добавление зависимостей для разработки
 uv add --dev package-name
 
-# Запуск отдельных агентов для тестирования
-uv run python src/thermo_agents/thermodynamic_agent.py
-uv run python src/thermo_agents/sql_generation_agent.py
-uv run python src/thermo_agents/database_agent.py
-uv run python src/thermo_agents/results_filtering_agent.py
-uv run python src/thermo_agents/orchestrator.py
+# Запуск компонентов для тестирования
+uv run python src/thermo_agents/thermodynamic_agent.py  # Только LLM агент
+uv run python main.py  # Полная система с гибридной архитектурой
+
+# Запуск тестов
+uv run pytest tests/ -v
+uv run pytest tests/integration/ -v  # Интеграционные тесты
+uv run pytest tests/integration/test_end_to_end.py -v  # Сквозные тесты
 ```
 
 ### Jupyter Notebooks
@@ -52,41 +58,72 @@ uv run python -m ipykernel
 # Затем выбрать ядро .venv (Python 3.12) в VS Code
 ```
 
-## Архитектура
+## Архитектура после рефакторинга (v2.0)
 
-### Основные компоненты
+### LLM-компоненты
+- **ThermodynamicAgent** — извлечение параметров из естественного языка
 
-- **main.py** - Интерактивное CLI приложение, точка входа в систему
-- **src/thermo_agents/agent_storage.py** - Централизованное хранилище для A2A коммуникации
-- **src/thermo_agents/thermodynamic_agent.py** - Агент извлечения параметров из запросов
-- **src/thermo_agents/sql_generation_agent.py** - Агент генерации SQL-запросов
-- **src/thermo_agents/database_agent.py** - Агент выполнения SQL и температурной фильтрации
-- **src/thermo_agents/results_filtering_agent.py** - Агент интеллектуальной фильтрации результатов
-- **src/thermo_agents/orchestrator.py** - Координатор взаимодействия между агентами
-- **src/thermo_agents/prompts.py** - Системные промпты для всех агентов
-- **src/thermo_agents/thermo_agents_logger.py** - Система сессионного логирования
+### Детерминированные компоненты
+- **CompoundSearcher** — поиск данных для вещества
+- **FilterPipeline** — конвейерная фильтрация (6 стадий)
+- **ReactionAggregator** — агрегация данных по реакции
+- **TableFormatter** — форматирование результатов
 
-### Поток выполнения агентов
+### Поток выполнения
+1. User Query → ThermodynamicAgent → ExtractedReactionParameters
+2. For each compound:
+   - CompoundSearcher → SQL query → DatabaseRecord[]
+   - FilterPipeline → Filtered records
+3. ReactionAggregator → AggregatedReactionData
+4. TableFormatter → Formatted response
 
-1. **User input** → Thermo Orchestrator получает запрос пользователя
-2. **Parameter Extraction** → Thermodynamic Agent извлекает параметры через `EXTRACT_INPUTS_PROMPT`
-3. **SQL Generation** → SQL Generation Agent генерирует запрос с использованием извлеченных параметров
-4. **Database Execution** → Database Agent выполняет SQL и применяет температурную фильтрацию
-5. **Results Filtering** → Results Filtering Agent интеллектуально отбирает релевантные записи
-6. **Response Consolidation** → SQL Agent консолидирует все результаты и возвращает их оркестратору
-7. **User Response** → Thermo Orchestrator формирует и возвращает ответ пользователю
+### Основные компоненты v2.0
 
-Все агенты используют OpenRouter/OpenAI API через PydanticAI и взаимодействуют через AgentStorage. Сессионное логирование отслеживает все взаимодействия в `logs/sessions/`.
+#### LLM-компонент
+- **src/thermo_agents/thermodynamic_agent.py** - Агент извлечения параметров (PydanticAI)
 
-### Модели данных
+#### Детерминированные модули
+- **src/thermo_agents/search/** - Модули поиска
+  - `sql_builder.py` - Генерация детерминированных SQL запросов
+  - `database_connector.py` - Надежное соединение с SQLite
+  - `compound_searcher.py` - Координация поиска соединений
+
+- **src/thermo_agents/filtering/** - Конвейерная фильтрация
+  - `filter_pipeline.py` - 6-стадийный конвейер фильтрации
+  - `filter_stages.py` - Реализация стадий фильтрации
+  - `temperature_resolver.py` - Разрешение температурных диапазонов
+  - `phase_resolver.py` - Определение фазовых состояний
+  - `complex_search_stage.py` - Комплексный поиск для сложных соединений
+
+- **src/thermo_agents/aggregation/** - Агрегация и форматирование
+  - `reaction_aggregator.py` - Агрегация данных по реакции (до 10 веществ)
+  - `table_formatter.py` - Форматирование таблиц через tabulate
+  - `statistics_formatter.py` - Форматирование статистики
+
+#### Оркестрация
+- **src/thermo_agents/orchestrator.py** - ThermoOrchestrator v2.0 с гибридной архитектурой
+
+#### Модели данных
+- **src/thermo_agents/models/** - Pydantic модели
+  - `search.py` - Модели поиска (DatabaseRecord, CompoundSearchResult)
+  - `aggregation.py` - Модели агрегации (AggregatedReactionData)
+  - `extraction.py` - Модели извлечения (ExtractedReactionParameters)
+
+#### Поддержка
+- **src/thermo_agents/agent_storage.py** - Хранилище для LLM коммуникации
+- **src/thermo_agents/prompts.py** - Системные промпты
+- **src/thermo_agents/thermo_agents_logger.py** - Система логирования
+
+### Модели данных v2.0
 
 Ключевые Pydantic модели:
-- `ExtractedParameters` - Выход термо-агента с соединениями, температурой, фазами и т.д.
-- `SQLQueryResult` - Выход SQL-агента с запросом, объяснением, ожидаемыми колонками
-- `FilteredResult` - Результат интеллектуальной фильтрации записей
-- `AgentMessage` - Сообщение между агентами в A2A архитектуре
-- `OrchestratorRequest/Response` - Запросы и ответы оркестратора
-- `ThermoAgentConfig`, `SQLAgentConfig` и др. - Конфигурации агентов через dependency injection
+- `ExtractedReactionParameters` - Параметры из запроса (до 10 соединений, валидация диапазонов)
+- `DatabaseRecord` - Запись из базы данных термодинамических свойств
+- `CompoundSearchResult` - Результат поиска соединения со статистикой
+- `FilterStatistics` - Статистика по стадиям фильтрации
+- `AggregatedReactionData` - Агрегированные данные по реакции
+- `ThermoAgentConfig` - Конфигурация LLM агента
+- `OrchestratorConfig` - Конфигурация оркестратора v2.0
 
 ### Конфигурация
 
@@ -120,33 +157,61 @@ uv run python -m ipykernel
 ```
 src/thermo_agents/
 ├── __init__.py
-├── agent_storage.py              # Централизованное хранилище A2A коммуникации
-├── thermodynamic_agent.py        # Агент извлечения параметров (PydanticAI)
-├── sql_generation_agent.py       # Агент генерации SQL запросов (PydanticAI)
-├── database_agent.py             # Агент выполнения SQL и температурной фильтрации
-├── results_filtering_agent.py    # Агент интеллектуальной фильтрации (LLM)
-├── orchestrator.py               # Координатор агентов
-├── prompts.py                    # Системные промпты для всех агентов
-└── thermo_agents_logger.py       # Система сессионного логирования
+├── agent_storage.py              # Хранилище для LLM коммуникации
+├── thermodynamic_agent.py        # LLM агент извлечения параметров
+├── orchestrator.py               # ThermoOrchestrator v2.0
+├── prompts.py                    # Системные промпты для LLM
+├── thermo_agents_logger.py       # Система сессионного логирования
+├── search/                       # Детерминированный поиск
+│   ├── sql_builder.py           # Генерация SQL запросов
+│   ├── database_connector.py    # Соединение с БД
+│   └── compound_searcher.py     # Поиск соединений
+├── filtering/                    # Конвейерная фильтрация
+│   ├── filter_pipeline.py       # Конвейер из 6 стадий
+│   ├── filter_stages.py         # Реализация стадий
+│   ├── temperature_resolver.py  # Разрешение температур
+│   ├── phase_resolver.py        # Определение фаз
+│   └── complex_search_stage.py  # Комплексный поиск
+├── aggregation/                  # Агрегация данных
+│   ├── reaction_aggregator.py   # Агрегатор реакций
+│   ├── table_formatter.py       # Форматирование таблиц
+│   └── statistics_formatter.py  # Форматирование статистики
+└── models/                       # Pydantic модели
+    ├── search.py                # Модели поиска
+    ├── aggregation.py           # Модели агрегации
+    └── extraction.py            # Модели извлечения
 
 data/
-└── thermo_data.db                # SQLite база: 316,434 записей, 32,790 соединений
+└── thermo_data.db                # База термодинамических данных (316K записей)
 
-logs/sessions/                    # Логи сессий с детальной трассировкой
-docs/                             # Jupyter notebooks и документация
-main.py                           # CLI приложение с ThermoSystem
-pyproject.toml                    # Конфигурация uv с PydanticAI 1.0.8
-.env                              # Переменные окружения (OPENROUTER_API_KEY и т.д.)
+tests/
+├── integration/                  # Интеграционные тесты
+│   ├── test_end_to_end.py      # Сквозные тесты
+│   └── test_edge_cases.py      # Тесты граничных случаев
+└── unit/                        # Unit тесты для модулей
+
+examples/                         # Примеры использования
+├── basic_usage.py               # Базовое использование
+├── advanced_filtering.py        # Расширенная фильтрация
+└── custom_formatters.py         # Кастомное форматирование
+
+logs/sessions/                    # Логи сессий
+docs/specs/stages/                # Спецификации этапов рефакторинга
+main.py                           # CLI приложение с ThermoSystem v2.0
+pyproject.toml                    # Конфигурация uv с tabulate
+.env                              # Переменные окружения
 ```
 
-## Особенности разработки
+## Особенности разработки v2.0
 
-- Проект использует `uv` для управления зависимостями (не pip/conda)
-- Все агенты асинхронны и используют фреймворк PydanticAI
-- Русскоязычный интерфейс для пользователей, английский для внутренней обработки
-- Обработка температуры: ввод в Цельсиях, конвертация в Кельвины внутри
-- Оптимизация запросов к базе для химических формул и фазово-специфичного поиска
-- **Полная инкапсуляция агентов** через message-passing архитектуру
-- **Централизованное хранилище** для A2A коммуникации с TTL и корреляционными ID
-- **Интеллектуальная фильтрация** результатов с использованием LLM для выбора релевантных записей
-- **Comprehensive логирование** сессий с детальной трассировкой всех этапов обработки
+- **Гибридная архитектура**: LLM для извлечения параметров, детерминированная логика для обработки
+- **Детерминированная фильтрация**: 6-стадийный конвейер без использования LLM
+- **Tabulate форматирование**: Профессиональные таблицы и статистика
+- **Многоуровневый поиск**: Префиксный поиск для сложных соединений (HCl, CO2, NH3)
+- **Температурная валидация**: Проверка диапазонов и фазовых переходов
+- **Агрегация данных**: Поддержка до 10 соединений в реакции
+- **Прямые вызовы**: Упрощенная архитектура вместо message-passing
+- **Comprehensive тестирование**: 35+ интеграционных тестов, включая граничные случаи
+- **Русскоязычный интерфейс**: Для пользователей, английский для внутренней обработки
+- **Надежное логирование**: Детальная трассировка всех этапов обработки
+- **Оптимизированная производительность**: <5 секунд для 10 соединений
