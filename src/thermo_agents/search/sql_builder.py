@@ -194,8 +194,8 @@ class SQLBuilder:
         phase_priority += "ELSE 4 END"
         conditions.append(phase_priority)
 
-        # Final: Record ID for consistency
-        conditions.append("ID ASC")
+        # Final: Row ID for consistency
+        conditions.append("rowid ASC")
 
         return "ORDER BY " + ", ".join(conditions)
 
