@@ -9,10 +9,10 @@ import pytest
 import os
 from pathlib import Path
 
-from src.thermo_agents.search.sql_builder import SQLBuilder, FilterPriorities
-from src.thermo_agents.search.database_connector import DatabaseConnector
-from src.thermo_agents.search.compound_searcher import CompoundSearcher
-from src.thermo_agents.models.search import CoverageStatus
+from thermo_agents.search.sql_builder import SQLBuilder, FilterPriorities
+from thermo_agents.search.database_connector import DatabaseConnector
+from thermo_agents.search.compound_searcher import CompoundSearcher
+from thermo_agents.models.search import CoverageStatus
 
 
 @pytest.mark.integration

@@ -8,8 +8,8 @@ and phase transition analysis functionality.
 import pytest
 from typing import List
 
-from src.thermo_agents.models.search import DatabaseRecord
-from src.thermo_agents.filtering.phase_resolver import PhaseResolver, PhaseTransition
+from thermo_agents.models.search import DatabaseRecord
+from thermo_agents.filtering.phase_resolver import PhaseResolver, PhaseTransition
 
 
 class TestPhaseResolver:

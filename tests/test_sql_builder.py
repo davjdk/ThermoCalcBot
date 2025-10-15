@@ -5,7 +5,7 @@ Tests cover deterministic SQL generation based on Stage 0 database analysis.
 """
 
 import pytest
-from src.thermo_agents.search.sql_builder import SQLBuilder, FilterPriorities
+from thermo_agents.search.sql_builder import SQLBuilder, FilterPriorities
 
 
 class TestSQLBuilder:

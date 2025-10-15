@@ -8,9 +8,9 @@ and formula consistency validation functionality.
 import pytest
 from typing import List
 
-from src.thermo_agents.models.search import DatabaseRecord
-from src.thermo_agents.filtering.filter_pipeline import FilterContext
-from src.thermo_agents.filtering.complex_search_stage import (
+from thermo_agents.models.search import DatabaseRecord
+from thermo_agents.filtering.filter_pipeline import FilterContext
+from thermo_agents.filtering.complex_search_stage import (
     ComplexFormulaSearchStage, FormulaConsistencyStage
 )
 

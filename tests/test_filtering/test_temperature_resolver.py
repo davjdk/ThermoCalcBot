@@ -8,8 +8,8 @@ and temperature statistics functionality.
 import pytest
 from typing import List
 
-from src.thermo_agents.models.search import DatabaseRecord
-from src.thermo_agents.filtering.temperature_resolver import (
+from thermo_agents.models.search import DatabaseRecord
+from thermo_agents.filtering.temperature_resolver import (
     TemperatureResolver, TemperatureInterval
 )
 

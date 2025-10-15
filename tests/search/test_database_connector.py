@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
-from src.thermo_agents.search.database_connector import DatabaseConnector, get_db_connection
+from thermo_agents.search.database_connector import DatabaseConnector, get_db_connection
 
 
 class TestDatabaseConnector:
@@ -322,7 +322,7 @@ class TestDatabaseConnector:
         assert "connected" in repr(self.connector)
         assert str(self.db_path) in repr(self.connector)
 
-    @patch('src.thermo_agents.search.database_connector.logger')
+    @patch('thermo_agents.search.database_connector.logger')
     def test_logging_connect(self, mock_logger):
         """Test that connection attempts are logged."""
         self.connector.connect()
@@ -331,7 +331,7 @@ class TestDatabaseConnector:
             f"Successfully connected to database: {self.db_path}"
         )
 
-    @patch('src.thermo_agents.search.database_connector.logger')
+    @patch('thermo_agents.search.database_connector.logger')
     def test_logging_disconnect(self, mock_logger):
         """Test that disconnection is logged."""
         self.connector.connect()
@@ -339,7 +339,7 @@ class TestDatabaseConnector:
 
         mock_logger.info.assert_called_with("Database connection closed")
 
-    @patch('src.thermo_agents.search.database_connector.logger')
+    @patch('thermo_agents.search.database_connector.logger')
     def test_logging_query_execution(self, mock_logger):
         """Test that query execution is logged."""
         self.connector.connect()

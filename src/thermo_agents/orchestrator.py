@@ -34,7 +34,8 @@ from .filtering.complex_search_stage import ComplexFormulaSearchStage
 from .aggregation.reaction_aggregator import ReactionAggregator
 from .aggregation.table_formatter import TableFormatter
 from .aggregation.statistics_formatter import StatisticsFormatter
-from .models.search import CompoundSearchResult, FilterStatistics
+from .models.search import CompoundSearchResult
+from .models.aggregation import FilterStatistics
 from .models.aggregation import AggregatedReactionData
 from .models.extraction import ExtractedReactionParameters
 

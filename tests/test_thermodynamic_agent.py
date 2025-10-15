@@ -10,8 +10,8 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from pydantic import ValidationError
 
-from src.thermo_agents.thermodynamic_agent import ThermodynamicAgent, ThermoAgentConfig
-from src.thermo_agents.models.extraction import ExtractedReactionParameters
+from thermo_agents.thermodynamic_agent import ThermodynamicAgent, ThermoAgentConfig
+from thermo_agents.models.extraction import ExtractedReactionParameters
 
 
 class TestExtractedReactionParameters:
@@ -36,7 +36,7 @@ class TestExtractedReactionParameters:
 
     def test_valid_complex_reaction(self):
         """Тест валидной сложной реакции с 10 веществами."""
-        compounds = [f"C{i}H{j}" for i, j in [(1, 4), (2, 6), (3, 8), (4, 10), (5, 12)]
+        compounds = [f"C{i}H{j}" for i, j in [(1, 4), (2, 6), (3, 8), (4, 10), (5, 12)]]
         params = ExtractedReactionParameters(
             balanced_equation="C1H4 + C2H6 + C3H8 + C4H10 + C5H12 → Products",
             all_compounds=compounds,
@@ -189,8 +189,8 @@ class TestThermodynamicAgent:
     @pytest.fixture
     def mock_agent(self, mock_config):
         """Фикстура с мок-агентом."""
-        with patch('src.thermo_agents.thermodynamic_agent.OpenAIProvider'), \
-             patch('src.thermo_agents.thermodynamic_agent.OpenAIChatModel'):
+        with patch('thermo_agents.thermodynamic_agent.OpenAIProvider'), \
+             patch('thermo_agents.thermodynamic_agent.OpenAIChatModel'):
             agent = ThermodynamicAgent(mock_config)
             # Мокаем PydanticAI агент
             agent.agent = AsyncMock()
@@ -402,7 +402,7 @@ class TestIntegrationWithNewArchitecture:
 
     def test_prompt_formatting(self):
         """Тест форматирования промпта."""
-        from src.thermo_agents.prompts import THERMODYNAMIC_EXTRACTION_PROMPT
+        from thermo_agents.prompts import THERMODYNAMIC_EXTRACTION_PROMPT
 
         user_query = "Хлорирование оксида титана при 600-900K"
         formatted_prompt = THERMODYNAMIC_EXTRACTION_PROMPT.format(user_query=user_query)

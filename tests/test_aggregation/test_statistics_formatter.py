@@ -3,8 +3,8 @@ Unit-тесты для StatisticsFormatter.
 """
 
 import pytest
-from src.thermo_agents.aggregation.statistics_formatter import StatisticsFormatter
-from src.thermo_agents.models.aggregation import FilterStatistics
+from thermo_agents.aggregation.statistics_formatter import StatisticsFormatter
+from thermo_agents.models.aggregation import FilterStatistics
 
 
 @pytest.fixture

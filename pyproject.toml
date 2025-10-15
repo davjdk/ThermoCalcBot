@@ -1,7 +1,7 @@
 [project]
 name = "agents-for-david"
-version = "0.1.0"
-description = "AI Agents project for learning and development with Python"
+version = "2.0.0"
+description = "Термодинамическая система с детерминированной фильтрацией"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

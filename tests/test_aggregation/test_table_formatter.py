@@ -3,9 +3,9 @@ Unit-тесты для TableFormatter.
 """
 
 import pytest
-from src.thermo_agents.aggregation.table_formatter import TableFormatter
-from src.thermo_agents.models.search import CompoundSearchResult, DatabaseRecord
-from src.thermo_agents.models.aggregation import FilterStatistics
+from thermo_agents.aggregation.table_formatter import TableFormatter
+from thermo_agents.models.search import CompoundSearchResult, DatabaseRecord
+from thermo_agents.models.aggregation import FilterStatistics
 
 
 @pytest.fixture
@@ -84,7 +84,7 @@ def mock_compound_search_results(
     mock_database_record_incomplete
 ):
     """Mock результаты поиска по веществам."""
-    from src.thermo_agents.models.search import SearchStatistics
+    from thermo_agents.models.search import SearchStatistics
 
     mock_stats = SearchStatistics(
         total_records=5,

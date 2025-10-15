@@ -25,7 +25,8 @@
       "Bash(PYTHONPATH=. uv run python:*)",
       "Bash(gh pr create:*)",
       "Bash(gh pr view:*)",
-      "Bash(gh pr edit:*)"
+      "Bash(gh pr edit:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

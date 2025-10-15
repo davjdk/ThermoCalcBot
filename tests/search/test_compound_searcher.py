@@ -10,10 +10,10 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
-from src.thermo_agents.search.compound_searcher import CompoundSearcher
-from src.thermo_agents.search.sql_builder import SQLBuilder, FilterPriorities
-from src.thermo_agents.search.database_connector import DatabaseConnector
-from src.thermo_agents.models.search import (
+from thermo_agents.search.compound_searcher import CompoundSearcher
+from thermo_agents.search.sql_builder import SQLBuilder, FilterPriorities
+from thermo_agents.search.database_connector import DatabaseConnector
+from thermo_agents.models.search import (
     DatabaseRecord,
     CompoundSearchResult,
     CoverageStatus,
@@ -454,7 +454,7 @@ class TestCompoundSearcher:
         assert sorted_records[1]['ReliabilityClass'] == 2
         assert sorted_records[2]['ReliabilityClass'] == 3
 
-    @patch('src.thermo_agents.search.compound_searcher.logger')
+    @patch('thermo_agents.search.compound_searcher.logger')
     def test_search_compound_with_database_error(self, mock_logger):
         """Test search behavior when database error occurs."""
         # Mock database connector to raise an error
@@ -468,7 +468,7 @@ class TestCompoundSearcher:
         assert any("Search failed" in w for w in result.warnings)
         assert result.execution_time_ms is not None
 
-    @patch('src.thermo_agents.search.compound_searcher.logger')
+    @patch('thermo_agents.search.compound_searcher.logger')
     def test_search_compound_logging(self, mock_logger):
         """Test that search operations are properly logged."""
         self.searcher.search_compound('H2O')

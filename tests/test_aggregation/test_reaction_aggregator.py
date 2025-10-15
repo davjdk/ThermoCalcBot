@@ -3,9 +3,9 @@ Unit-тесты для ReactionAggregator.
 """
 
 import pytest
-from src.thermo_agents.aggregation.reaction_aggregator import ReactionAggregator
-from src.thermo_agents.models.search import CompoundSearchResult, DatabaseRecord
-from src.thermo_agents.models.aggregation import FilterStatistics
+from thermo_agents.aggregation.reaction_aggregator import ReactionAggregator
+from thermo_agents.models.search import CompoundSearchResult, DatabaseRecord
+from thermo_agents.models.aggregation import FilterStatistics
 
 
 @pytest.fixture
@@ -65,7 +65,7 @@ def mock_filter_statistics_failure():
 def mock_compound_search_result(mock_database_record):
     """Mock результат поиска по веществу."""
     # Создать SearchStatistics вместо FilterStatistics
-    from src.thermo_agents.models.search import SearchStatistics
+    from thermo_agents.models.search import SearchStatistics
 
     search_stats = SearchStatistics(
         total_records=5,
@@ -213,7 +213,7 @@ class TestReactionAggregator:
         )
 
         # Создать результат с частичным покрытием
-        from src.thermo_agents.models.search import SearchStatistics
+        from thermo_agents.models.search import SearchStatistics
 
         search_stats = SearchStatistics(
             total_records=3,

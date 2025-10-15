@@ -21,12 +21,12 @@ from thermo_agents.search.database_connector import DatabaseConnector
 from thermo_agents.search.compound_searcher import CompoundSearcher
 from thermo_agents.filtering.filter_pipeline import FilterPipeline, FilterContext
 from thermo_agents.filtering.filter_stages import (
-    ComplexFormulaSearchStage,
     TemperatureFilterStage,
     PhaseSelectionStage,
     ReliabilityPriorityStage,
     TemperatureCoverageStage
 )
+from thermo_agents.filtering.complex_search_stage import ComplexFormulaSearchStage
 from thermo_agents.filtering.temperature_resolver import TemperatureResolver
 from thermo_agents.filtering.phase_resolver import PhaseResolver
 from thermo_agents.aggregation.reaction_aggregator import ReactionAggregator

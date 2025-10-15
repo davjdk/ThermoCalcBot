@@ -8,12 +8,12 @@ and error handling functionality.
 import pytest
 from typing import List, Optional
 
-from src.thermo_agents.models.search import DatabaseRecord
-from src.thermo_agents.filtering.filter_pipeline import (
+from thermo_agents.models.search import DatabaseRecord
+from thermo_agents.filtering.filter_pipeline import (
     FilterPipeline, FilterContext, FilterResult, FilterStage, FilterPipelineBuilder
 )
-from src.thermo_agents.filtering.filter_stages import TemperatureFilterStage
-from src.thermo_agents.filtering.temperature_resolver import TemperatureResolver
+from thermo_agents.filtering.filter_stages import TemperatureFilterStage
+from thermo_agents.filtering.temperature_resolver import TemperatureResolver
 
 
 class MockFilterStage(FilterStage):
@@ -340,8 +340,8 @@ class TestFilterPipelineBuilder:
 
     def test_builder_with_multiple_stages(self):
         """Test building pipeline with multiple stages."""
-        from src.thermo_agents.filtering.filter_stages import ReliabilityPriorityStage
-        from src.thermo_agents.filtering.phase_resolver import PhaseResolver
+        from thermo_agents.filtering.filter_stages import ReliabilityPriorityStage
+        from thermo_agents.filtering.phase_resolver import PhaseResolver
 
         temp_resolver = TemperatureResolver()
         phase_resolver = PhaseResolver()
