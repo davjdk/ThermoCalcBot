@@ -1,8 +1,8 @@
 """
-Оркестратор для координации работы термодинамических агентов.
+Оркестратор для координации работы термодинамической системы v2.0.
 
-Реализует паттерн координатора из PydanticAI для управления
-взаимодействием между агентами через хранилище.
+Рефакторингованная версия с использованием детерминированной логики
+вместо LLM-агентов для поиска, фильтрации и агрегации данных.
 """
 
 from __future__ import annotations
@@ -10,17 +10,33 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent, RunContext
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.openai import OpenAIProvider
 
 from .agent_storage import AgentStorage, get_storage
 from .operations import OperationType
 from .thermo_agents_logger import SessionLogger
-from .timeout_manager import get_timeout_manager, OperationType as TimeoutOperationType
+from .thermodynamic_agent import ThermodynamicAgent
+from .search.compound_searcher import CompoundSearcher
+from .search.database_connector import DatabaseConnector
+from .search.sql_builder import SQLBuilder
+from .filtering.filter_pipeline import FilterPipeline, FilterContext, FilterResult
+from .filtering.temperature_resolver import TemperatureResolver
+from .filtering.phase_resolver import PhaseResolver
+from .filtering.filter_stages import (
+    TemperatureFilterStage,
+    PhaseSelectionStage,
+    ReliabilityPriorityStage,
+    TemperatureCoverageStage
+)
+from .filtering.complex_search_stage import ComplexFormulaSearchStage
+from .aggregation.reaction_aggregator import ReactionAggregator
+from .aggregation.table_formatter import TableFormatter
+from .aggregation.statistics_formatter import StatisticsFormatter
+from .models.search import CompoundSearchResult, FilterStatistics
+from .models.aggregation import AggregatedReactionData
+from .models.extraction import ExtractedReactionParameters
 
 
 class OrchestratorRequest(BaseModel):
@@ -44,724 +60,274 @@ class OrchestratorResponse(BaseModel):
 class OrchestratorConfig:
     """Конфигурация оркестратора."""
 
-    llm_api_key: str
-    llm_base_url: str
-    llm_model: str
     storage: AgentStorage = field(default_factory=get_storage)
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     session_logger: Optional[SessionLogger] = None
-    max_retries: int = 2  # Обновлено до 2 попыток согласно новой политике
-    timeout_seconds: int = 90  # Увеличено до 90с для операций с реакциями на основе анализа
+    max_retries: int = 2
+    timeout_seconds: int = 90
 
 
 class ThermoOrchestrator:
     """
-    Оркестратор для координации работы термодинамических агентов.
+    Упрощённый оркестратор термодинамической системы v2.0.
 
     Основные обязанности:
-    - Маршрутизация запросов к соответствующим агентам
-    - Координация взаимодействия между агентами через хранилище
-    - Управление состоянием обработки запросов
-    - Обработка ошибок и повторные попытки
+    - Извлечение параметров через ThermodynamicAgent (LLM)
+    - Поиск и фильтрация через детерминированные модули
+    - Агрегация результатов и форматирование ответов
     """
 
-    def __init__(self, config: OrchestratorConfig):
+    def __init__(
+        self,
+        thermodynamic_agent: ThermodynamicAgent,
+        compound_searcher: CompoundSearcher,
+        filter_pipeline: FilterPipeline,
+        reaction_aggregator: ReactionAggregator,
+        table_formatter: TableFormatter,
+        statistics_formatter: StatisticsFormatter,
+        config: Optional[OrchestratorConfig] = None
+    ):
         """
-        Инициализация оркестратора.
+        Инициализация оркестратора с новыми компонентами.
 
         Args:
+            thermodynamic_agent: Агент извлечения параметров
+            compound_searcher: Модуль поиска соединений
+            filter_pipeline: Конвейер фильтрации
+            reaction_aggregator: Агрегатор данных реакции
+            table_formatter: Форматирование таблиц
+            statistics_formatter: Форматирование статистики
             config: Конфигурация оркестратора
         """
-        self.config = config
-        self.storage = config.storage
-        self.logger = config.logger
-        self.agent = self._initialize_agent()
+        self.thermodynamic_agent = thermodynamic_agent
+        self.compound_searcher = compound_searcher
+        self.filter_pipeline = filter_pipeline
+        self.reaction_aggregator = reaction_aggregator
+        self.table_formatter = table_formatter
+        self.statistics_formatter = statistics_formatter
 
-        # Инициализация TimeoutManager
-        self.timeout_manager = get_timeout_manager(
-            logger=self.config.logger,
-            session_logger=self.config.session_logger,
-            llm_base_url=self.config.llm_base_url
-        )
+        self.config = config or OrchestratorConfig()
+        self.storage = self.config.storage
+        self.logger = self.config.logger
 
         # Регистрация в хранилище
-        self.agent_id = "orchestrator"
+        self.agent_id = "orchestrator_v2"
         self.storage.start_session(self.agent_id, {"status": "ready"})
 
-    def _initialize_agent(self) -> Agent:
-        """Инициализация PydanticAI агента для оркестратора."""
-        provider = OpenAIProvider(
-            api_key=self.config.llm_api_key,
-            base_url=self.config.llm_base_url,
+    async def process_query(self, user_query: str) -> str:
+        """
+        Обработка запроса пользователя.
+
+        Новый поток:
+        1. Извлечение параметров (LLM)
+        2. Поиск для каждого вещества (детерминированный)
+        3. Фильтрация для каждого вещества (детерминированный)
+        4. Агрегация результатов
+        5. Форматирование ответа
+
+        Args:
+            user_query: Запрос на естественном языке
+
+        Returns:
+            Отформатированный текстовый ответ
+        """
+        try:
+            # Шаг 1: Извлечение параметров
+            params = await self.thermodynamic_agent.extract_parameters(user_query)
+
+            # Шаг 2-3: Поиск и фильтрация для каждого вещества
+            compound_results = []
+            for compound in params.all_compounds:
+                result = await self._search_and_filter_compound(
+                    compound, params.temperature_range_k
+                )
+                compound_results.append(result)
+
+            # Шаг 4: Агрегация
+            aggregated_data = self.reaction_aggregator.aggregate_reaction_data(
+                reaction_equation=params.balanced_equation,
+                compounds_results=compound_results
+            )
+
+            # Форматирование таблицы
+            aggregated_data.summary_table_formatted = \
+                self.table_formatter.format_summary_table(compound_results)
+
+            # Шаг 5: Форматирование ответа
+            response = self._format_response(aggregated_data)
+
+            return response
+
+        except Exception as e:
+            return self._format_error_response(str(e))
+
+    async def _search_and_filter_compound(
+        self,
+        compound: str,
+        temperature_range: Tuple[float, float]
+    ) -> CompoundSearchResult:
+        """Поиск и фильтрация для одного вещества."""
+        # Поиск
+        search_result = self.compound_searcher.search_compound(
+            compound, temperature_range
         )
 
-        model = OpenAIChatModel(self.config.llm_model, provider=provider)
-
-        agent = Agent(
-            model,
-            deps_type=OrchestratorConfig,
-            output_type=OrchestratorResponse,
-            system_prompt="""You are an orchestrator coordinating thermodynamic agents.
-            Route requests to appropriate agents and manage their interactions through the storage system.
-            Ensure all agents communicate via messages, not direct calls.""",
-            retries=self.config.max_retries,
+        # Фильтрация
+        filter_context = FilterContext(
+            temperature_range=temperature_range,
+            compound_formula=compound
         )
 
-        # Добавляем инструменты для управления агентами
-        @agent.tool
-        async def route_to_thermo_agent(
-            ctx: RunContext[OrchestratorConfig], user_query: str
-        ) -> Dict[str, Any]:
-            """
-            Направить запрос к термодинамическому агенту для извлечения параметров.
+        filter_result = self.filter_pipeline.execute(
+            search_result.records_found,
+            filter_context
+        )
 
-            Args:
-                ctx: Контекст выполнения
-                user_query: Запрос пользователя
+        # Обновление результата
+        search_result.records_found = filter_result.filtered_records
+        search_result.filter_statistics = self._build_filter_statistics(
+            filter_result
+        )
 
-            Returns:
-                Результат обработки агентом
-            """
-            # Отправляем сообщение термо-агенту через хранилище
-            message_id = ctx.deps.storage.send_message(
-                source_agent="orchestrator",
-                target_agent="thermo_agent",
-                message_type="extract_parameters",
-                payload={"user_query": user_query},
+        return search_result
+
+    def _build_filter_statistics(
+        self,
+        filter_result: FilterResult
+    ) -> FilterStatistics:
+        """Преобразование FilterResult в FilterStatistics."""
+        stats = filter_result.stage_statistics
+
+        return FilterStatistics(
+            stage_1_initial_matches=stats[0]['records_before'] if stats else 0,
+            stage_1_description=stats[0]['stage_name'] if stats else "",
+
+            stage_2_temperature_filtered=stats[1]['records_after'] if len(stats) > 1 else 0,
+            stage_2_description=stats[1]['stage_name'] if len(stats) > 1 else "",
+
+            stage_3_phase_selected=stats[2]['records_after'] if len(stats) > 2 else 0,
+            stage_3_description=stats[2]['stage_name'] if len(stats) > 2 else "",
+
+            stage_4_final_selected=stats[3]['records_after'] if len(stats) > 3 else 0,
+            stage_4_description=stats[3]['stage_name'] if len(stats) > 3 else "",
+
+            is_found=filter_result.is_found,
+            failure_stage=filter_result.failure_stage,
+            failure_reason=filter_result.failure_reason
+        )
+
+    def _format_response(self, data: AggregatedReactionData) -> str:
+        """
+        Форматирование финального ответа пользователю.
+
+        Формат:
+        ✅ Термодинамические данные для реакции:
+           [equation] при [T_range]K
+
+        📊 Найденные данные (tabulate):
+        [таблица]
+
+        📈 Детальная статистика фильтрации:
+        [дерево статистики]
+
+        ⚠️ Предупреждения:
+        [список предупреждений]
+
+        ❌ Ненайденные вещества:
+        [список]
+        """
+        lines = []
+
+        # Заголовок
+        if data.completeness_status == "complete":
+            lines.append("✅ Термодинамические данные для реакции:")
+        elif data.completeness_status == "partial":
+            lines.append("⚠️ Частичные термодинамические данные для реакции:")
+        else:
+            lines.append("❌ Термодинамические данные для реакции:")
+
+        lines.append(f"   {data.reaction_equation}")
+        lines.append("")
+
+        # Таблица данных (только если есть найденные вещества)
+        if data.found_compounds:
+            lines.append("📊 Найденные данные:")
+            lines.append(data.summary_table_formatted)
+            lines.append("")
+
+        # Детальная статистика
+        lines.append(
+            self.statistics_formatter.format_detailed_statistics(
+                data.detailed_statistics
             )
+        )
 
-            ctx.deps.logger.info(f"Sent message {message_id} to thermo_agent")
+        # Предупреждения
+        if data.warnings:
+            lines.append("⚠️ Предупреждения:")
+            for warning in data.warnings:
+                lines.append(f"   - {warning}")
+            lines.append("")
 
-            # Сохраняем в хранилище для агента
-            ctx.deps.storage.set(
-                f"request_{message_id}",
-                {"query": user_query, "status": "pending"},
-                ttl_seconds=300,
-            )
+        # Ненайденные вещества
+        if data.missing_compounds:
+            lines.append("❌ Ненайденные вещества:")
+            lines.append(f"   {', '.join(data.missing_compounds)}")
+            lines.append("")
 
-            return {
-                "message_id": message_id,
-                "status": "sent",
-                "target": "thermo_agent",
-            }
+        # Рекомендации
+        if data.recommendations:
+            lines.append("💡 Рекомендация:")
+            for rec in data.recommendations:
+                lines.append(f"   {rec}")
+            lines.append("")
 
-        @agent.tool
-        async def route_to_sql_agent(
-            ctx: RunContext[OrchestratorConfig],
-            sql_hint: str,
-            extracted_params: Dict[str, Any],
-        ) -> Dict[str, Any]:
-            """
-            Направить запрос к SQL агенту для генерации запроса.
+        return "\n".join(lines)
 
-            Args:
-                ctx: Контекст выполнения
-                sql_hint: Подсказка для SQL генерации
-                extracted_params: Извлеченные параметры
+    def _format_error_response(self, error_message: str) -> str:
+        """Форматирование ответа об ошибке."""
+        return f"""
+❌ Ошибка обработки запроса:
+   {error_message}
 
-            Returns:
-                Результат обработки агентом
-            """
-            # Отправляем сообщение SQL агенту через хранилище
-            message_id = ctx.deps.storage.send_message(
-                source_agent="orchestrator",
-                target_agent="sql_agent",
-                message_type="generate_query",
-                payload={"sql_hint": sql_hint, "extracted_params": extracted_params},
-            )
-
-            ctx.deps.logger.info(f"Sent message {message_id} to sql_agent")
-
-            # Сохраняем в хранилище для агента
-            ctx.deps.storage.set(
-                f"sql_request_{message_id}",
-                {"sql_hint": sql_hint, "params": extracted_params, "status": "pending"},
-                ttl_seconds=300,
-            )
-
-            return {"message_id": message_id, "status": "sent", "target": "sql_agent"}
-
-        @agent.tool
-        async def check_agent_response(
-            ctx: RunContext[OrchestratorConfig], agent_id: str, message_id: str
-        ) -> Optional[Dict[str, Any]]:
-            """
-            Проверить ответ от агента.
-
-            Args:
-                ctx: Контекст выполнения
-                agent_id: ID агента
-                message_id: ID исходного сообщения
-
-            Returns:
-                Ответ агента или None если еще не готов
-            """
-            # Получаем сообщения от агента
-            messages = ctx.deps.storage.receive_messages(
-                "orchestrator", message_type="response"
-            )
-
-            # Ищем ответ на наше сообщение
-            for msg in messages:
-                if msg.correlation_id == message_id:
-                    ctx.deps.logger.info(f"Received response from {msg.source_agent}")
-                    return msg.payload
-
-            return None
-
-        @agent.tool
-        async def get_storage_data(
-            ctx: RunContext[OrchestratorConfig], key: str
-        ) -> Any:
-            """
-            Получить данные из хранилища.
-
-            Args:
-                ctx: Контекст выполнения
-                key: Ключ для доступа к данным
-
-            Returns:
-                Данные из хранилища
-            """
-            return ctx.deps.storage.get(key)
-
-        @agent.tool
-        async def set_storage_data(
-            ctx: RunContext[OrchestratorConfig],
-            key: str,
-            value: Any,
-            ttl_seconds: Optional[int] = None,
-        ) -> bool:
-            """
-            Сохранить данные в хранилище.
-
-            Args:
-                ctx: Контекст выполнения
-                key: Ключ для сохранения
-                value: Данные
-                ttl_seconds: Время жизни в секундах
-
-            Returns:
-                True если успешно сохранено
-            """
-            ctx.deps.storage.set(key, value, ttl_seconds)
-            return True
-
-        return agent
+💡 Попробуйте:
+   - Уточнить формулы веществ
+   - Указать температурный диапазон
+   - Упростить запрос
+"""
 
     async def process_request(
         self, request: OrchestratorRequest
     ) -> OrchestratorResponse:
         """
-        Обработать запрос пользователя.
-
-        Координирует работу агентов через хранилище:
-        1. Направляет запрос к thermo_agent для извлечения параметров
-        2. Получает результат через хранилище
-        3. Направляет параметры к sql_agent для генерации SQL
-        4. Возвращает полный результат
+        Обработать запрос пользователя для обратной совместимости.
 
         Args:
             request: Запрос пользователя
 
         Returns:
-            Результат обработки всеми агентами
+            Результат обработки
         """
-        # Используем операцию для логирования координации
-        operation_context = None
-        if self.config.session_logger and self.config.session_logger.is_operations_enabled():
-            operation_context = self.config.session_logger.create_operation_context(
-                agent_name=self.agent_id,
-                operation_type=OperationType.PROCESS_REQUEST,
-                correlation_id=f"orch_req_{id(request)}",
-            )
-            operation_context.set_storage_snapshot_provider(lambda: self.storage.get_storage_snapshot(include_content=True))
-            operation = operation_context.__enter__()
-        else:
-            operation = None
-
         try:
-            # Инициализация трассировки
-            trace = []
-
-            # Устанавливаем входные данные для операции
-            input_data = {
-                "user_query": request.user_query[:200],  # Ограничиваем для лога
-                "request_type": request.request_type,
-            }
-
-            if operation:
-                operation.set_input_data(input_data)
-
-            # Сохраняем запрос в хранилище
-            request_id = f"orchestrator_request_{id(request)}"
-            self.storage.set(request_id, request.model_dump(), ttl_seconds=600)
-
-            # Шаг 1: Отправляем запрос thermo_agent
-            thermo_message_id = self.storage.send_message(
-                source_agent=self.agent_id,
-                target_agent="thermo_agent",
-                message_type="extract_parameters",
-                payload={"user_query": request.user_query},
-            )
-
-            # Ждем ответа от thermo_agent через сообщения с улучшенным логированием
-            extracted_params = None
-            start_time = asyncio.get_event_loop().time()
-            self.logger.info(f"DEBUG: Waiting for thermo_agent response, timeout={self.config.timeout_seconds}s, message_id={thermo_message_id}")
-
-            while (
-                asyncio.get_event_loop().time() - start_time
-            ) < self.config.timeout_seconds:
-                # Получаем сообщения от thermo агента (и response, и error)
-                response_messages = self.storage.receive_messages(
-                    self.agent_id, message_type="response"
-                )
-                error_messages = self.storage.receive_messages(
-                    self.agent_id, message_type="error"
-                )
-
-                all_messages = response_messages + error_messages
-
-                if all_messages:
-                    self.logger.debug(f"DEBUG: Found {len(all_messages)} messages for thermo_agent")
-
-                # Ищем ответ на наше сообщение
-                for msg in all_messages:
-                    if msg.correlation_id == thermo_message_id and msg.source_agent == "thermo_agent":
-                        status = msg.payload.get("status")
-                        self.logger.info(f"DEBUG: Received {msg.message_type} from thermo_agent: {status}")
-
-                        if msg.message_type == "error" or status == "error":
-                            error_msg = msg.payload.get("error", "Unknown error")
-                            self.logger.error(f"DEBUG: Thermo agent returned error: {error_msg}")
-                            trace.append(f"Thermo agent error: {error_msg}")
-                            if self.config.session_logger:
-                                self.config.session_logger.log_error(f"Thermo agent error: {error_msg}")
-
-                            # Завершаем операцию с ошибкой
-                            if operation_context:
-                                operation_context.__exit__(ValueError, ValueError(error_msg), None)
-
-                            return OrchestratorResponse(
-                                success=False,
-                                result={},
-                                errors=[f"Не удалось извлечь параметры из запроса: {error_msg}"],
-                                trace=trace,
-                            )
-
-                        elif status == "success":
-                            extracted_params = msg.payload.get("extracted_params")
-                            if self.config.session_logger:
-                                self.config.session_logger.log_info(f"THERMO AGENT RESPONSE: Success with {len(extracted_params.get('compounds', []))} compounds")
-                            break
-
-                if extracted_params:
-                    break
-                # Уменьшаем задержку для ускорения реакции
-                await asyncio.sleep(0.05)  # Уменьшено с 0.1 до 0.05 секунд
-
-            if extracted_params:
-                trace.append("Received parameters from thermo_agent")
-
-                # Валидация извлеченных параметров
-                compounds = extracted_params.get("compounds", [])
-                intent = extracted_params.get("intent", "lookup")
-
-                # Проверяем, что извлечены соединения
-                if not compounds or len(compounds) == 0:
-                    trace.append("No compounds extracted - cannot proceed")
-                    if self.config.session_logger:
-                        self.config.session_logger.log_error(
-                            f"No compounds extracted from query: {request.user_query[:100]}"
-                        )
-
-                    # Завершаем операцию с ошибкой извлечения
-                    if operation_context:
-                        operation_context.__exit__(ValueError, ValueError("No compounds extracted"), None)
-
-                    return OrchestratorResponse(
-                        success=False,
-                        result={},
-                        errors=["Не удалось извлечь химические соединения из запроса. Пожалуйста, уточните запрос, используя химические формулы или названия веществ."],
-                        trace=trace,
-                    )
-
-                # Для реакций должно быть как минимум 2 соединения
-                if intent == "reaction" and len(compounds) < 2:
-                    trace.append(f"Reaction intent with only {len(compounds)} compounds - insufficient")
-                    if self.config.session_logger:
-                        self.config.session_logger.log_error(
-                            f"Reaction query with insufficient compounds: {len(compounds)} compounds from query: {request.user_query[:100]}"
-                        )
-
-                    # Завершаем операцию с ошибкой
-                    if operation_context:
-                        operation_context.__exit__(ValueError, ValueError("Insufficient compounds for reaction"), None)
-
-                    return OrchestratorResponse(
-                        success=False,
-                        result={},
-                        errors=[f"Для анализа реакции необходимо указать как минимум 2 соединения. Извлечено соединений: {len(compounds)}."],
-                        trace=trace,
-                    )
-
-                # Определяем тип обработки на основе intent
-
-                if intent == "reaction" and extracted_params.get("compounds"):
-                    # Для реакций используем Individual Search Agent
-                    trace.append("Processing reaction via Individual Search Agent")
-
-                    # Ждем результата от Individual Search Agent с использованием TimeoutManager
-                    self.logger.info(f"DEBUG: Waiting for Individual Search Agent using TimeoutManager, correlation_id={thermo_message_id}")
-
-                    async def wait_for_individual_search():
-                        individual_result = None
-                        individual_start_time = asyncio.get_event_loop().time()
-                        timeout_seconds = self.timeout_manager.get_timeout(TimeoutOperationType.TOTAL_REQUEST)
-
-                        while (
-                            asyncio.get_event_loop().time() - individual_start_time
-                        ) < timeout_seconds:
-                            # Получаем сообщения от Individual Search Agent
-                            messages = self.storage.receive_messages(
-                                self.agent_id, message_type="individual_search_complete"
-                            )
-
-                            if messages:
-                                self.logger.debug(f"DEBUG: Found {len(messages)} individual search messages")
-
-                            # Ищем результат - принимаем любой correlation_id от Individual Search Agent
-                            # поскольку correlation_id может изменяться при передаче между агентами
-                            for msg in messages:
-                                if msg.source_agent == "individual_search_agent":
-                                    status = msg.payload.get("status")
-                                    self.logger.info(f"DEBUG: Received individual search result: {status}, correlation_id: {msg.correlation_id}")
-                                    if status == "success":
-                                        result_key = msg.payload.get("result_key")
-                                        if result_key:
-                                            # Получаем полный результат из хранилища
-                                            individual_result = self.storage.get(result_key)
-                                            if individual_result:
-                                                if self.config.session_logger:
-                                                    self.config.session_logger.log_info(f"INDIVIDUAL SEARCH COMPLETE: {len(individual_result.get('individual_results', []))} compounds processed")
-                                                self.logger.info(f"DEBUG: Successfully retrieved individual result with correlation_id: {msg.correlation_id}")
-                                            break
-                                    elif status == "error":
-                                        self.logger.error(f"DEBUG: Individual Search Agent error: {msg.payload.get('error')}")
-                                        trace.append(f"Individual Search Agent error: {msg.payload.get('error')}")
-                                        break
-
-                            if individual_result:
-                                break
-                            # Уменьшаем задержку для ускорения реакции
-                            await asyncio.sleep(0.05)  # Уменьшено с 0.1 до 0.05 секунд
-
-                        return individual_result
-
-                    # Используем TimeoutManager для выполнения с retry механизмом
-                    try:
-                        individual_result = await self.timeout_manager.execute_with_retry(
-                            wait_for_individual_search,
-                            TimeoutOperationType.TOTAL_REQUEST
-                        )
-                    except Exception as e:
-                        self.logger.error(f"Individual search failed with TimeoutManager: {e}")
-                        individual_result = None
-
-                    if individual_result:
-                        trace.append("Received aggregated results from Individual Search Agent")
-
-                        # Проверяем полноту данных для реакции
-                        is_complete_reaction = individual_result.get("is_complete_reaction", True)
-                        missing_compounds = individual_result.get("missing_compounds", [])
-                        data_completeness_status = individual_result.get("data_completeness_status", "complete")
-
-                        # Готовим результат операции
-                        operation_result = {
-                            "request_id": request_id,
-                            "status": "success",
-                            "compounds_count": len(extracted_params.get("compounds", [])),
-                            "processing_type": "individual_search",
-                            "individual_results_count": len(individual_result.get("individual_results", [])),
-                            "overall_confidence": individual_result.get("overall_confidence"),
-                            "data_completeness_status": data_completeness_status,
-                            "is_complete_reaction": is_complete_reaction,
-                            "missing_compounds_count": len(missing_compounds),
-                        }
-
-                        # Устанавливаем результат операции
-                        if operation_context:
-                            operation_context.set_result(operation_result)
-
-                        # Формируем ответ в зависимости от полноты данных
-                        if not is_complete_reaction and len(extracted_params.get("compounds", [])) > 1:
-                            # Неполные данные для реакции - создаем специальный ответ
-                            response_result = {
-                                "extracted_parameters": extracted_params,
-                                "aggregated_results": individual_result.get("aggregated_results"),
-                                "summary_table": individual_result.get("summary_table"),
-                                "overall_confidence": individual_result.get("overall_confidence"),
-                                "individual_results": individual_result.get("individual_results"),
-                                "missing_compounds": missing_compounds,
-                                "warnings": individual_result.get("warnings"),
-                                "processing_type": "individual_search",
-                                "data_completeness_status": data_completeness_status,
-                                "is_complete_reaction": False,
-                                "user_message": self._format_incomplete_data_message(
-                                    extracted_params, individual_result, missing_compounds
-                                )
-                            }
-
-                            response = OrchestratorResponse(
-                                success=True,  # Технически успешно, но данные неполные
-                                result=response_result,
-                                trace=trace + ["Response formatted for incomplete reaction data"],
-                            )
-                        else:
-                            # Полные данные или одиночное соединение
-                            response = OrchestratorResponse(
-                                success=True,
-                                result={
-                                    "extracted_parameters": extracted_params,
-                                    "aggregated_results": individual_result.get("aggregated_results"),
-                                    "summary_table": individual_result.get("summary_table"),
-                                    "overall_confidence": individual_result.get("overall_confidence"),
-                                    "individual_results": individual_result.get("individual_results"),
-                                    "missing_compounds": missing_compounds,
-                                    "warnings": individual_result.get("warnings"),
-                                    "processing_type": "individual_search",
-                                    "data_completeness_status": data_completeness_status,
-                                    "is_complete_reaction": is_complete_reaction,
-                                },
-                                trace=trace,
-                            )
-
-                        # Завершаем операцию успешно
-                        if operation_context:
-                            operation_context.__exit__(None, None, None)
-
-                        return response
-                    else:
-                        trace.append("Individual Search Agent result not ready")
-                        if self.config.session_logger:
-                            self.config.session_logger.log_error(
-                                "Individual Search Agent did not complete processing in time"
-                            )
-
-                        # Завершаем операцию с ошибкой
-                        if operation_context:
-                            operation_context.__exit__(TimeoutError, TimeoutError("Individual Search Agent timeout"), None)
-
-                        return OrchestratorResponse(
-                            success=False,
-                            result={},
-                            errors=["Individual Search Agent did not complete processing in time"],
-                            trace=trace,
-                        )
-
-                elif extracted_params.get("sql_query_hint"):
-                    # Для нерекакционных запросов используем стандартный SQL агент
-                    trace.append("Waiting for SQL agent result (triggered by thermo_agent)")
-
-                    # Ждем сообщения "sql_ready" от SQL агента
-                    sql_result = None
-                    sql_start_time = asyncio.get_event_loop().time()
-                    while (
-                        asyncio.get_event_loop().time() - sql_start_time
-                    ) < self.config.timeout_seconds:
-                        # Получаем сообщения от SQL агента
-                        messages = self.storage.receive_messages(
-                            self.agent_id, message_type="sql_ready"
-                        )
-
-                        # Ищем результат с правильным correlation_id
-                        for msg in messages:
-                            if msg.correlation_id == thermo_message_id and msg.source_agent == "sql_agent":
-                                self.logger.info(f"Received sql_ready from sql_agent: {msg.payload}")
-                                result_key = msg.payload.get("result_key")
-                                if result_key:
-                                    # Получаем полный результат из хранилища
-                                    sql_result = self.storage.get(result_key)
-                                    break
-
-                        if sql_result:
-                            break
-                        await asyncio.sleep(0.1)
-
-                    if sql_result:
-                        trace.append("Received SQL query and execution result from sql_agent")
-
-                        # Готовим результат операции
-                        operation_result = {
-                            "request_id": request_id,
-                            "status": "success",
-                            "compounds_count": len(extracted_params.get("compounds", [])),
-                            "processing_type": "standard_search",
-                            "sql_success": bool(sql_result.get("execution_result", {}).get("success")),
-                            "row_count": sql_result.get("execution_result", {}).get("row_count", 0),
-                        }
-
-                        # Устанавливаем результат операции
-                        if operation_context:
-                            operation_context.set_result(operation_result)
-
-                        # Собираем полный результат
-                        response = OrchestratorResponse(
-                            success=True,
-                            result={
-                                "extracted_parameters": extracted_params,
-                                "sql_query": sql_result.get("sql_query"),
-                                "explanation": sql_result.get("explanation"),
-                                "expected_columns": sql_result.get("expected_columns"),
-                                "execution_result": sql_result.get("execution_result"),
-                                "processing_type": "standard_search",
-                            },
-                            trace=trace,
-                        )
-
-                        # Завершаем операцию успешно
-                        if operation_context:
-                            operation_context.__exit__(None, None, None)
-
-                        return response
-                    else:
-                        trace.append("SQL agent result not ready")
-                        if self.config.session_logger:
-                            self.config.session_logger.log_error(
-                                "SQL agent did not complete processing in time"
-                            )
-
-                        # Завершаем операцию с ошибкой
-                        if operation_context:
-                            operation_context.__exit__(TimeoutError, TimeoutError("SQL agent timeout"), None)
-
-                        return OrchestratorResponse(
-                            success=False,
-                            result={},
-                            errors=["SQL agent did not complete processing in time"],
-                            trace=trace,
-                        )
-                else:
-                    # Только извлечение параметров, SQL не требуется
-                    # Готовим результат операции
-                    operation_result = {
-                        "request_id": request_id,
-                        "status": "success",
-                        "compounds_count": len(extracted_params.get("compounds", [])),
-                        "processing_type": "parameter_extraction_only",
-                    }
-
-                    # Устанавливаем результат операции
-                    if operation_context:
-                        operation_context.set_result(operation_result)
-
-                    response = OrchestratorResponse(
-                        success=True,
-                        result={"extracted_parameters": extracted_params},
-                        trace=trace,
-                    )
-
-                    # Завершаем операцию успешно
-                    if operation_context:
-                        operation_context.__exit__(None, None, None)
-
-                    return response
-            else:
-                trace.append("Thermo agent response not ready")
-                # Логируем в сессионный лог
-                if self.config.session_logger:
-                    self.config.session_logger.log_error(
-                        "Thermo agent did not respond to orchestrator"
-                    )
-
-                # Завершаем операцию с ошибкой
-                if operation_context:
-                    operation_context.__exit__(TimeoutError, TimeoutError("Thermo agent timeout"), None)
-
-                return OrchestratorResponse(
-                    success=False,
-                    result={},
-                    errors=["Не удалось извлечь параметры из запроса - превышено время ожидания. Пожалуйста, попробуйте упростить запрос или использовать более точные химические формулы."],
-                    trace=trace,
-                )
-        except Exception as e:
-            self.logger.error(f"Error processing request: {e}")
-
-            # Завершаем операцию с ошибкой
-            if operation_context:
-                operation_context.__exit__(type(e), e, e.__traceback__)
-
+            response_text = await self.process_query(request.user_query)
             return OrchestratorResponse(
-                success=False, result={}, errors=[str(e)], trace=trace
+                success=True,
+                result={"response": response_text},
+                trace=["Processed via new orchestrator v2"]
+            )
+        except Exception as e:
+            return OrchestratorResponse(
+                success=False,
+                result={},
+                errors=[str(e)],
+                trace=["Error in new orchestrator v2"]
             )
 
 
     async def shutdown(self):
         """Завершить работу оркестратора."""
-        self.logger.info("Shutting down orchestrator")
+        self.logger.info("Shutting down orchestrator v2")
         self.storage.end_session(self.agent_id)
-
-    def _format_incomplete_data_message(
-        self,
-        extracted_params: Dict,
-        individual_result: Dict,
-        missing_compounds: List[str]
-    ) -> str:
-        """
-        Форматирует сообщение для пользователя при неполных данных реакции.
-
-        Args:
-            extracted_params: Извлеченные параметры
-            individual_result: Результаты индивидуального поиска
-            missing_compounds: Список отсутствующих соединений
-
-        Returns:
-            Отформатированное сообщение для пользователя
-        """
-        all_compounds = extracted_params.get("compounds", [])
-        found_compounds = [c for c in all_compounds if c not in missing_compounds]
-        reaction_equation = extracted_params.get("reaction_equation", " → ".join(all_compounds))
-
-        message_parts = [
-            f"⚠️  **НЕПОЛНЫЕ ДАННЫЕ ДЛЯ РЕАКЦИИ**",
-            "",
-            f"Для реакции: {reaction_equation}",
-            f"Не найдены термодинамические данные для {len(missing_compounds)} из {len(all_compounds)} веществ:",
-            f"**Отсутствуют:** {', '.join(missing_compounds)}",
-            ""
-        ]
-
-        if found_compounds:
-            message_parts.extend([
-                f"**Найдены данные для:** {', '.join(found_compounds)}",
-                "",
-                "Рекомендуемые действия:",
-                "",
-            ])
-        else:
-            message_parts.extend([
-                "Данные не найдены ни для одного вещества в реакции.",
-                "",
-                "Рекомендуемые действия:",
-                "",
-            ])
-
-        suggestions = [
-            "1. **Проверьте химические формулы** - убедитесь, что все вещества написаны корректно",
-            "2. **Используйте альтернативные названия** некоторые вещества могут быть записаны по-разному",
-            "3. **Укажите фазовые состояния** например, 'CaO(тв)' вместо 'CaO'",
-            "4. **Измените температурный диапазон** данные могут отсутствовать в указанном диапазоне",
-            "5. **Разбейте реакцию на части** проанализируйте отдельно вещества, для которых найдены данные"
-        ]
-
-        message_parts.extend(suggestions)
-        message_parts.extend([
-            "",
-            "Ниже представлены таблицы с данными, которые удалось найти:"
-        ])
-
-        return "\n".join(message_parts)
 
     def get_status(self) -> Dict[str, Any]:
         """Получить статус оркестратора и системы."""
