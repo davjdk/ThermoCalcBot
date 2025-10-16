@@ -75,8 +75,15 @@ def create_orchestrator(db_path: str = "data/thermo_data.db") -> ThermoOrchestra
     db_connector = DatabaseConnector(db_path)
     compound_searcher = CompoundSearcher(sql_builder, db_connector, session_logger=session_logger)  # НОВОЕ
 
-    # Конвейер фильтрации с логированием
-    filter_pipeline = FilterPipeline(session_logger=session_logger)  # НОВОЕ
+    # Конвейер фильтрации с валидацией реакции (Stage 0)
+    from thermo_agents.filtering.filter_pipeline import FilterPipelineBuilder
+    from thermo_agents.filtering.reaction_validation_stage import ReactionValidationStage
+
+    filter_pipeline = (FilterPipelineBuilder(session_logger=session_logger)
+                      .with_reaction_validation(min_confidence_threshold=0.5)
+                      .build())
+
+    # Добавляем остальные стадии напрямую
     filter_pipeline.add_stage(ComplexFormulaSearchStage())
     filter_pipeline.add_stage(TemperatureFilterStage())
     filter_pipeline.add_stage(PhaseSelectionStage(PhaseResolver()))
@@ -174,7 +181,7 @@ async def main_test():
 
     # Тестовый запрос
     test_query = (
-        "Возможно ли взаимодействие фторида титана (TiF4) с магнием (Mg) при температуре 900-1500K?"
+        "Возможно ли взаимодействие CeO2 + 2NH4Cl → CeCl3 + 2H2O + 2NH3 при 300 - 600 цельсия?"
     )
 
     # НОВОЕ: Логирование запроса пользователя

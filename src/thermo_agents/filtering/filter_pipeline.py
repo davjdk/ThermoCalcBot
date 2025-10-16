@@ -12,6 +12,7 @@ import psutil
 import os
 
 from ..models.search import DatabaseRecord
+from ..models.extraction import ExtractedReactionParameters
 
 
 class PerformanceMonitor:
@@ -53,6 +54,7 @@ class FilterContext:
     compound_formula: str
     user_query: Optional[str] = None
     additional_params: Optional[Dict[str, Any]] = None
+    reaction_params: Optional[ExtractedReactionParameters] = None  # НОВОЕ
 
     def __post_init__(self):
         """Валидация контекста после инициализации."""
@@ -298,6 +300,12 @@ class FilterPipelineBuilder:
 
     def __init__(self, session_logger: Optional[Any] = None):
         self.pipeline = FilterPipeline(session_logger=session_logger)
+
+    def with_reaction_validation(self, **kwargs) -> 'FilterPipelineBuilder':
+        """Добавить стадию валидации реакции (Stage 0)."""
+        from .reaction_validation_stage import ReactionValidationStage
+        self.pipeline.add_stage(ReactionValidationStage(**kwargs))
+        return self
 
     def with_temperature_filter(self, **kwargs) -> 'FilterPipelineBuilder':
         """Добавить стадию температурной фильтрации."""

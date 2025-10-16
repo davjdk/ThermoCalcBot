@@ -106,8 +106,8 @@ class PhaseSelectionStage(FilterStage):
         # Сортировка по соответствию фазе
         phase_scores.sort(key=lambda x: x[1], reverse=True)
 
-        # Выбор записей с ненулевым score
-        filtered = [r for r, score in phase_scores if score > 0]
+        # Выбор записей с score >= 0.3 (минимально приемлемые данные)
+        filtered = [r for r, score in phase_scores if score >= 0.3]
 
         execution_time = (time.time() - start_time) * 1000
 
@@ -129,16 +129,40 @@ class PhaseSelectionStage(FilterStage):
     ) -> float:
         """Расчёт соответствия фазы (0-1)."""
         if expected_phase is None:
-            return 0.5  # Неизвестная ожидаемая фаза
+            return 0.8  # Неизвестная ожидаемая фаза - высокий приоритет
 
         record_phase = self._extract_phase(record)
 
         if record_phase == expected_phase:
             return 1.0
         elif record_phase is None:
-            return 0.5  # Неизвестная фаза - средний приоритет
+            return 0.8  # Неизвестная фаза - высокий приоритет
         else:
-            return 0.0  # Неправильная фаза
+            # Неправильная фаза, но даём шанс если есть термодинамические данные
+            # и температурный диапазон подходит
+            if self._has_adequate_thermodynamic_data(record):
+                return 0.6  # Неправильная фаза, но хорошие данные
+            else:
+                return 0.3  # Неправильная фаза и плохие данные
+
+    def _has_adequate_thermodynamic_data(self, record: DatabaseRecord) -> bool:
+        """Проверяет, имеет ли запись адекватные термодинамические данные."""
+        # Проверяем наличие ключевых термодинамических свойств
+        has_basic_data = (
+            record.h298 is not None and
+            record.s298 is not None and
+            record.f1 is not None and
+            record.f2 is not None and
+            record.f3 is not None
+        )
+
+        # Проверяем надежность данных
+        good_reliability = record.reliability_class is not None and record.reliability_class <= 3
+
+        # Проверяем наличие фазовых переходов
+        has_phase_transitions = record.tmelt is not None and record.tboil is not None
+
+        return has_basic_data and (good_reliability or has_phase_transitions)
 
     def _extract_phase(self, record: DatabaseRecord) -> Optional[str]:
         """Извлечь фазу из записи."""

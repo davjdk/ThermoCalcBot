@@ -39,6 +39,7 @@ from .aggregation.table_formatter import TableFormatter
 from .filtering.filter_pipeline import FilterContext, FilterPipeline, FilterResult
 from .models.aggregation import AggregatedReactionData, FilterStatistics
 from .models.search import CompoundSearchResult
+from .models.extraction import ExtractedReactionParameters
 from .search.compound_searcher import CompoundSearcher
 from .thermodynamic_agent import ThermodynamicAgent
 
@@ -142,7 +143,7 @@ class ThermoOrchestrator:
             compound_results = []
             for compound in params.all_compounds:
                 result = await self._search_and_filter_compound(
-                    compound, params.temperature_range_k
+                    compound, params.temperature_range_k, params
                 )
                 compound_results.append(result)
 
@@ -172,7 +173,10 @@ class ThermoOrchestrator:
             return self._format_error_response(str(e))
 
     async def _search_and_filter_compound(
-        self, compound: str, temperature_range: Tuple[float, float]
+        self,
+        compound: str,
+        temperature_range: Tuple[float, float],
+        reaction_params: Optional[ExtractedReactionParameters] = None
     ) -> CompoundSearchResult:
         """Поиск и фильтрация для одного вещества."""
         # Поиск
@@ -180,9 +184,11 @@ class ThermoOrchestrator:
             compound, temperature_range
         )
 
-        # Фильтрация
+        # Фильтрация с параметрами реакции
         filter_context = FilterContext(
-            temperature_range=temperature_range, compound_formula=compound
+            temperature_range=temperature_range,
+            compound_formula=compound,
+            reaction_params=reaction_params
         )
 
         filter_result = self.filter_pipeline.execute(

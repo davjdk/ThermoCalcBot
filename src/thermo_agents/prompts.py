@@ -96,12 +96,13 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
 3. **Реагенты** (левая часть уравнения)
 4. **Продукты** (правая часть уравнения)
 5. **Температурный диапазон** в Кельвинах (tmin, tmax)
+6. **Названия веществ** — IUPAC и тривиальные названия для каждого соединения
 
 # Важные правила:
-- Стехиометрические коэффициенты НЕ используются в дальнейшей логике поиска
 - Максимум 10 веществ в реакции
 - Температурный диапазон обязателен (если не указан, используй 298-1000K по умолчанию)
 - Формулы веществ — без фаз в скобках (например, "H2O", а не "H2O(g)")
+- Для каждого вещества укажи официальное IUPAC название и возможные тривиальные названия
 
 # Примеры:
 
@@ -115,7 +116,13 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
   "products": ["TiCl4", "O2"],
   "temperature_range_k": [600, 900],
   "extraction_confidence": 0.95,
-  "missing_fields": []
+  "missing_fields": [],
+  "compound_names": {{
+    "TiO2": ["Titanium dioxide", "Titanium(IV) oxide"],
+    "Cl2": ["Chlorine"],
+    "TiCl4": ["Titanium tetrachloride", "Titanium(IV) chloride"],
+    "O2": ["Oxygen"]
+  }}
 }}
 
 ## Пример 2:
@@ -128,7 +135,13 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
   "products": ["Fe", "H2O"],
   "temperature_range_k": [298, 1000],
   "extraction_confidence": 0.85,
-  "missing_fields": ["temperature_range"]
+  "missing_fields": [],
+  "compound_names": {{
+    "Fe2O3": ["Iron(III) oxide", "Ferric oxide"],
+    "H2": ["Hydrogen"],
+    "Fe": ["Iron"],
+    "H2O": ["Water"]
+  }}
 }}
 
 ## Пример 3 (сложная реакция):
@@ -141,7 +154,12 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
   "products": ["NH3"],
   "temperature_range_k": [673, 773],
   "extraction_confidence": 1.0,
-  "missing_fields": []
+  "missing_fields": [],
+  "compound_names": {{
+    "N2": ["Nitrogen"],
+    "H2": ["Hydrogen"],
+    "NH3": ["Ammonia"]
+  }}
 }}
 
 # Твой ответ (JSON):
