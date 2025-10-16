@@ -36,7 +36,8 @@ class CompoundSearcher:
     def __init__(
         self,
         sql_builder: SQLBuilder,
-        db_connector: DatabaseConnector
+        db_connector: DatabaseConnector,
+        session_logger: Optional[Any] = None
     ):
         """
         Initialize compound searcher.
@@ -44,9 +45,11 @@ class CompoundSearcher:
         Args:
             sql_builder: SQL builder instance for query generation
             db_connector: Database connector for query execution
+            session_logger: Optional session logger for detailed logging
         """
         self.sql_builder = sql_builder
         self.db_connector = db_connector
+        self.session_logger = session_logger  # НОВОЕ
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def search_compound(
@@ -74,6 +77,10 @@ class CompoundSearcher:
         start_time = time.time()
         self.logger.info(f"Searching for compound: {formula}")
 
+        # НОВОЕ: Логирование начала поиска
+        if self.session_logger:
+            self.session_logger.log_info(f"Начало поиска для {formula}")
+
         # Initialize result
         result = CompoundSearchResult(
             compound_formula=formula,
@@ -94,6 +101,20 @@ class CompoundSearcher:
             )
 
             self.logger.debug(f"Generated SQL query: {query[:100]}...")
+
+            # НОВОЕ: Логирование SQL запроса
+            if self.session_logger:
+                self.session_logger.log_info("")
+                separator = "═" * 63
+                self.session_logger.log_info(separator)
+                self.session_logger.log_info(f"ПОИСК: {formula}")
+                self.session_logger.log_info("─" * 63)
+                self.session_logger.log_info("SQL запрос:")
+                # Форматируем SQL для красивого вывода
+                formatted_query = query.replace("SELECT", "  SELECT").replace("FROM", "\n  FROM").replace("WHERE", "\n  WHERE").replace("ORDER BY", "\n  ORDER BY").replace("LIMIT", "\n  LIMIT")
+                self.session_logger.log_info(formatted_query)
+                if params:
+                    self.session_logger.log_info(f"Параметры: {params}")
 
             # Execute query
             raw_results = self.db_connector.execute_query(query, params)
@@ -117,6 +138,13 @@ class CompoundSearcher:
 
             # Calculate execution time
             result.execution_time_ms = (time.time() - start_time) * 1000
+
+            # НОВОЕ: Логирование результатов поиска
+            if self.session_logger:
+                self.session_logger.log_info(f"Найдено записей: {len(records)}")
+                self.session_logger.log_info(f"Время выполнения: {result.execution_time_ms:.1f} мс")
+                separator = "═" * 63
+                self.session_logger.log_info(separator)
 
             self.logger.info(
                 f"Search completed: {len(records)} records found in "

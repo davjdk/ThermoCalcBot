@@ -219,6 +219,206 @@ class SessionLogger:
         for key, value in metadata.items():
             self.log_info(f"  {key}: {value}")
 
+    def log_stage_header(self, stage_number: int, stage_name: str, compound_formula: str):
+        """
+        Логировать заголовок стадии фильтрации с визуальными разделителями.
+
+        Args:
+            stage_number: Номер стадии
+            stage_name: Название стадии
+            compound_formula: Формула вещества
+        """
+        separator = "═" * 63
+        self.log_info(separator)
+        self.log_info(f"СТАДИЯ {stage_number}: {stage_name} | Вещество: {compound_formula}")
+        self.log_info("─" * 63)
+
+    def log_stage_statistics(self, stats: Dict[str, Any]):
+        """
+        Логировать статистику стадии фильтрации.
+
+        Args:
+            stats: Словарь со статистикой стадии
+        """
+        # Основные метрики
+        records_before = stats.get('records_before', 0)
+        records_after = stats.get('records_after', 0)
+        reduction_rate = stats.get('reduction_rate', 0.0)
+        execution_time_ms = stats.get('execution_time_ms', 0.0)
+
+        self.log_info(f"Записей до фильтрации: {records_before}")
+        self.log_info(f"Записей после фильтрации: {records_after}")
+        self.log_info(f"Процент отсева: {reduction_rate:.1f}%")
+        self.log_info(f"Время выполнения: {execution_time_ms:.1f} мс")
+
+        # Специфичная информация для разных типов стадий
+        stage_name = stats.get('stage_name', '').lower()
+
+        if 'температур' in stage_name or 'temperature' in stage_name.lower():
+            # Температурная фильтрация
+            temp_range = stats.get('temperature_range')
+            if temp_range:
+                self.log_info(f"Температурный диапазон: {temp_range[0]:.1f} - {temp_range[1]:.1f} K")
+            in_range = stats.get('records_in_range', 0)
+            out_range = stats.get('records_out_range', 0)
+            self.log_info(f"Записей в диапазоне: {in_range}")
+            self.log_info(f"Записей вне диапазона: {out_range}")
+
+        elif 'фаз' in stage_name or 'phase' in stage_name.lower():
+            # Выбор фазового состояния
+            phase_distribution = stats.get('phase_distribution', {})
+            if phase_distribution:
+                self.log_info("Распределение по фазам:")
+                for phase, count in phase_distribution.items():
+                    phase_name = self._get_phase_description(phase)
+                    self.log_info(f"  {phase} ({phase_name}): {count} записей")
+
+            expected_phase = stats.get('expected_phase')
+            if expected_phase:
+                expected_phase_name = self._get_phase_description(expected_phase)
+                self.log_info(f"Ожидаемая фаза: {expected_phase} ({expected_phase_name})")
+
+            correct_phases = stats.get('correct_phases', 0)
+            incorrect_phases = stats.get('incorrect_phases', 0)
+            if correct_phases > 0 or incorrect_phases > 0:
+                self.log_info(f"Корректных фаз: {correct_phases}")
+                self.log_info(f"Некорректных фаз: {incorrect_phases}")
+
+        elif 'надежност' in stage_name or 'reliability' in stage_name.lower():
+            # Приоритизация по классу надежности
+            reliability_distribution = stats.get('reliability_distribution', {})
+            if reliability_distribution:
+                self.log_info("Распределение по классам надежности:")
+                for rel_class, count in sorted(reliability_distribution.items()):
+                    self.log_info(f"  Класс {rel_class}: {count} записей")
+
+            max_records = stats.get('max_records', 0)
+            if max_records > 0:
+                self.log_info(f"Максимальное количество записей: {max_records}")
+
+        elif 'покрыт' in stage_name or 'coverage' in stage_name.lower():
+            # Проверка температурного покрытия
+            coverage_percent = stats.get('coverage_percentage', 0.0)
+            self.log_info(f"Покрытие диапазона: {coverage_percent:.1f}%")
+
+            gaps = stats.get('temperature_gaps', [])
+            if gaps:
+                self.log_info(f"Пробелы в данных: {len(gaps)}")
+                for i, gap in enumerate(gaps[:3], 1):  # Показываем первые 3 пробела
+                    self.log_info(f"  Пробел {i}: {gap[0]:.1f} - {gap[1]:.1f} K")
+
+        # Дополнительная статистика из метода get_statistics()
+        additional_stats = {k: v for k, v in stats.items()
+                          if k not in ['stage_number', 'stage_name', 'records_before',
+                                     'records_after', 'reduction_rate', 'execution_time_ms']}
+
+        if additional_stats:
+            self.log_info("Дополнительная статистика:")
+            for key, value in additional_stats.items():
+                if isinstance(value, (int, float)):
+                    self.log_info(f"  {key}: {value}")
+                elif isinstance(value, dict):
+                    self.log_info(f"  {key}:")
+                    for sub_key, sub_value in value.items():
+                        self.log_info(f"    {sub_key}: {sub_value}")
+
+    def format_records_table(self, records: List[Any], max_rows: int = 15) -> str:
+        """
+        Форматирует DatabaseRecord в таблицу согласно спецификации.
+
+        Args:
+            records: Список записей из БД (DatabaseRecord)
+            max_rows: Максимальное количество строк (по умолчанию 15)
+
+        Returns:
+            Отформатированная таблица в формате grid
+        """
+        if not records:
+            return "Нет данных для отображения"
+
+        headers = ["Formula", "FirstName", "Phase", "Tmin-Tmax (K)"]
+        rows = []
+
+        for record in records[:max_rows]:
+            # Извлекаем данные из DatabaseRecord
+            formula = getattr(record, 'formula', 'N/A')
+            first_name = getattr(record, 'name', 'N/A')  # в модели поле 'name', в БД 'FirstName'
+            phase = getattr(record, 'phase', 'N/A')
+            tmin = getattr(record, 'tmin', None)
+            tmax = getattr(record, 'tmax', None)
+
+            # Форматируем температурный диапазон
+            if tmin is not None and tmax is not None:
+                temp_range = f"{tmin:.2f} - {tmax:.2f}"
+            else:
+                temp_range = "N/A"
+
+            rows.append([formula, first_name, phase, temp_range])
+
+        return tabulate(
+            rows,
+            headers=headers,
+            tablefmt="grid",
+            floatfmt=".2f",
+            missingval="N/A"
+        )
+
+    def log_filter_stage_table(self, records: List[Any], compound_formula: str, stage_name: str):
+        """
+        Логировать таблицу результатов стадии фильтрации.
+
+        Args:
+            records: Список записей для отображения
+            compound_formula: Формула вещества
+            stage_name: Название стадии
+        """
+        if not records:
+            return
+
+        # Форматируем таблицу
+        table = self.format_records_table(records[:15])  # Первые 15 записей
+
+        # Добавляем информацию о количестве
+        total_records = len(records)
+        shown_records = min(total_records, 15)
+
+        self.log_info("")  # Пустая строка перед таблицей
+
+        if total_records > 15:
+            self.log_info(f"Таблица данных (показано {shown_records} из {total_records} записей):")
+        else:
+            self.log_info(f"Таблица данных ({total_records} записей):")
+
+        self.log_info(table)
+
+        # Если есть еще записи, показываем их количество
+        if total_records > 15:
+            self.log_info(f"[показаны первые {shown_records} из {total_records} записей]")
+
+    def _get_phase_description(self, phase: str) -> str:
+        """
+        Получить описание фазы на русском языке.
+
+        Args:
+            phase: Код фазы (s, l, g, aq, etc.)
+
+        Returns:
+            Описание фазы на русском языке
+        """
+        phase_descriptions = {
+            's': 'твёрдая',
+            'l': 'жидкая',
+            'g': 'газообразная',
+            'aq': 'водный раствор',
+            'a': 'аморфная',
+            'ao': 'аморфная оксидная',
+            'ai': 'аморфная интерметаллида',
+            'cr': 'кристаллическая',
+            'liq': 'жидкость',
+            'gas': 'газ'
+        }
+        return phase_descriptions.get(phase.lower(), phase.lower())
+
     @property
     def current_session_file(self) -> Optional[Path]:
         """Получить путь к текущему файлу сессии."""

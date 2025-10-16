@@ -79,10 +79,11 @@ class FilterResult:
 class FilterPipeline:
     """Конвейер фильтрации с возможностью добавления новых стадий."""
 
-    def __init__(self):
+    def __init__(self, session_logger: Optional[Any] = None):
         self.stages: List[FilterStage] = []
         self.statistics: List[Dict[str, Any]] = []
         self._last_execution_time_ms: Optional[float] = None
+        self.session_logger = session_logger  # НОВОЕ
 
     def add_stage(self, stage: FilterStage) -> 'FilterPipeline':
         """
@@ -142,6 +143,14 @@ class FilterPipeline:
         for i, stage in enumerate(self.stages, start=1):
             stage_start_time = time.time()
 
+            # НОВОЕ: логирование заголовка стадии
+            if self.session_logger:
+                self.session_logger.log_stage_header(
+                    stage_number=i,
+                    stage_name=stage.get_stage_name(),
+                    compound_formula=context.compound_formula
+                )
+
             # Применить фильтр
             filtered = stage.filter(current_records, context)
             stage_execution_time = (time.time() - stage_start_time) * 1000
@@ -157,6 +166,17 @@ class FilterPipeline:
                 'execution_time_ms': stage_execution_time
             })
             self.statistics.append(stats)
+
+            # НОВОЕ: логирование статистики и таблицы
+            if self.session_logger:
+                self.session_logger.log_stage_statistics(stats)
+
+                if len(filtered) > 0:
+                    self.session_logger.log_filter_stage_table(
+                        records=filtered[:15],  # первые 15
+                        compound_formula=context.compound_formula,
+                        stage_name=stage.get_stage_name()
+                    )
 
             # Проверка провала
             if len(filtered) == 0:

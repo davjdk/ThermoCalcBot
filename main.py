@@ -5,6 +5,12 @@ import os
 import sys
 from pathlib import Path
 
+# Устанавливаем кодировку для Windows
+if sys.platform == "win32":
+    import codecs
+    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
+    sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())
+
 # Добавляем src в путь
 src_path = Path(__file__).parent / "src"
 if str(src_path) not in sys.path:
@@ -50,6 +56,9 @@ def create_orchestrator(db_path: str = "data/thermo_data.db") -> ThermoOrchestra
     # Инициализация хранилища
     storage = AgentStorage()
 
+    # Единый session_logger для всей системы
+    session_logger = create_session_logger()
+
     # LLM для извлечения параметров
     thermo_config = ThermoAgentConfig(
         agent_id="thermo_agent",
@@ -57,17 +66,17 @@ def create_orchestrator(db_path: str = "data/thermo_data.db") -> ThermoOrchestra
         llm_base_url=os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1"),
         llm_model=os.getenv("LLM_DEFAULT_MODEL", "openai/gpt-4o"),
         storage=storage,
-        session_logger=create_session_logger(),
+        session_logger=session_logger,  # НОВОЕ: используем тот же logger
     )
     thermodynamic_agent = ThermodynamicAgent(thermo_config)
 
     # Поиск в БД
     sql_builder = SQLBuilder()
     db_connector = DatabaseConnector(db_path)
-    compound_searcher = CompoundSearcher(sql_builder, db_connector)
+    compound_searcher = CompoundSearcher(sql_builder, db_connector, session_logger=session_logger)  # НОВОЕ
 
-    # Конвейер фильтрации
-    filter_pipeline = FilterPipeline()
+    # Конвейер фильтрации с логированием
+    filter_pipeline = FilterPipeline(session_logger=session_logger)  # НОВОЕ
     filter_pipeline.add_stage(ComplexFormulaSearchStage())
     filter_pipeline.add_stage(TemperatureFilterStage())
     filter_pipeline.add_stage(PhaseSelectionStage(PhaseResolver()))
@@ -135,6 +144,12 @@ async def main_test():
     db_path = Path(__file__).parent / "data" / "thermo_data.db"
     orchestrator = create_orchestrator(str(db_path))
 
+    # Получаем session_logger из orchestrator для логирования начала сессии
+    session_logger = orchestrator.thermodynamic_agent.config.session_logger
+    if session_logger:
+        session_logger.log_info("SESSION STARTED")
+        session_logger.log_info("Термодинамическая система v2.0")
+
     print("\n" + "=" * 80)
     print("Термодинамическая система v2.0 - ТЕСТОВЫЙ РЕЖИМ")
     print("=" * 80)
@@ -144,16 +159,23 @@ async def main_test():
         "Возможно ли взаимодействие фторида титана (TiF4) с магнием (Mg) при температуре 900-1500K?"
     )
 
+    # НОВОЕ: Логирование запроса пользователя
+    if session_logger:
+        session_logger.log_info(f"Запрос пользователя: {test_query}")
+
     try:
         # Обработка запроса
         response = await orchestrator.process_query(test_query)
 
-        # Убираем эмодзи для совместимости с Windows
+        # Убираем эмодзи и Unicode символы для совместимости с Windows
         response_clean = response.replace("✅", "[OK]").replace("❌", "[ОШИБКА]")
         response_clean = response_clean.replace("⚠️", "[ВНИМАНИЕ]").replace(
             "📊", "[ДАННЫЕ]"
         )
         response_clean = response_clean.replace("💡", "[СОВЕТ]")
+        # Дополнительная замена Unicode символов
+        response_clean = response_clean.replace("→", "->")
+        response_clean = response_clean.replace("°", " deg ")
 
         print("\n[РЕЗУЛЬТАТ]")
         print(response_clean)
@@ -161,9 +183,19 @@ async def main_test():
         print("[ТЕСТ ЗАВЕРШЁН УСПЕШНО]")
         print("=" * 80)
 
+        # НОВОЕ: Логирование завершения сессии
+        if session_logger:
+            session_logger.log_info("Общее время обработки: успешно завершено")
+            session_logger.log_info("SESSION ENDED")
+
     except Exception as e:
         print(f"\n[ОШИБКА] Ошибка обработки: {e}")
         import traceback
+
+        # НОВОЕ: Логирование ошибки в сессии
+        if session_logger:
+            session_logger.log_error(f"Ошибка обработки: {e}")
+            session_logger.log_info("SESSION ENDED")
 
         traceback.print_exc()
     finally:
