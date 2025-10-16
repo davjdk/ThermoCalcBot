@@ -50,13 +50,82 @@ class SessionLogger:
 
         return logger
 
+    def _sanitize_message(self, message: str) -> str:
+        """
+        Очистить сообщение от проблемных Unicode символов.
+
+        Args:
+            message: Исходное сообщение
+
+        Returns:
+            Очищенное сообщение, безопасное для логирования
+        """
+        if not message:
+            return message
+
+        try:
+            # Проверяем, можно ли закодировать в UTF-8
+            message.encode('utf-8')
+            return message
+        except UnicodeEncodeError:
+            # Заменяем проблемные символы
+            sanitized = message.encode('utf-8', errors='replace').decode('utf-8')
+            self.logger.warning(f"MESSAGE SANITIZED: Original contained problematic Unicode characters")
+            return sanitized
+
+    def _sanitize_header(self, header: str) -> str:
+        """
+        Очистить заголовок таблицы от проблемных Unicode символов.
+
+        Args:
+            header: Заголовок таблицы
+
+        Returns:
+            Очищенный заголовок
+        """
+        try:
+            header.encode('utf-8')
+            return header
+        except UnicodeEncodeError:
+            # Заменяем проблемные символы в заголовках
+            return header.encode('utf-8', errors='replace').decode('utf-8')
+
+    def _sanitize_cell(self, cell: str) -> str:
+        """
+        Очистить ячейку таблицы от проблемных Unicode символов.
+
+        Args:
+            cell: Содержимое ячейки
+
+        Returns:
+            Очищенное содержимое
+        """
+        try:
+            cell.encode('utf-8')
+            return cell
+        except UnicodeEncodeError:
+            # Заменяем проблемные символы в ячейках
+            return cell.encode('utf-8', errors='replace').decode('utf-8')
+
     def log_info(self, message: str):
         """Логирование информационного сообщения (не операции)."""
-        self.logger.info(f"INFO: {message}")
+        sanitized_message = self._sanitize_message(message)
+        try:
+            self.logger.info(f"INFO: {sanitized_message}")
+        except Exception as e:
+            # Fallback логирование
+            fallback_message = f"INFO: [LOGGING ERROR: {str(e)}] {message.encode('ascii', errors='ignore').decode('ascii')}"
+            self.logger.info(fallback_message)
 
     def log_error(self, message: str):
         """Логирование сообщения об ошибке (не операции)."""
-        self.logger.error(f"ERROR: {message}")
+        sanitized_message = self._sanitize_message(message)
+        try:
+            self.logger.error(f"ERROR: {sanitized_message}")
+        except Exception as e:
+            # Fallback логирование
+            fallback_message = f"ERROR: [LOGGING ERROR: {str(e)}] {message.encode('ascii', errors='ignore').decode('ascii')}"
+            self.logger.error(fallback_message)
 
     def create_operation_context(
         self,
@@ -112,10 +181,20 @@ class SessionLogger:
         display_rows = rows[:max_rows] if max_rows else rows
 
         try:
+            # Очищаем заголовки и данные от проблемных Unicode
+            clean_headers = [self._sanitize_header(str(h)) for h in headers]
+            clean_rows = []
+            for row in display_rows:
+                clean_row = []
+                for cell in row:
+                    clean_cell = self._sanitize_cell(str(cell))
+                    clean_row.append(clean_cell)
+                clean_rows.append(clean_row)
+
             # Используем tabulate для форматирования
             formatted = tabulate(
-                display_rows,
-                headers=headers,
+                clean_rows,
+                headers=clean_headers,
                 tablefmt="grid",  # Используем grid для красивого форматирования
                 floatfmt=".4g",   # Форматирование чисел с плавающей точкой
                 missingval="N/A"  # Значение для пустых ячеек
@@ -123,11 +202,12 @@ class SessionLogger:
             return formatted
         except Exception as e:
             self.logger.error(f"Error formatting table: {e}")
-            # Fallback - простой формат без tabulate
-            result = "| " + " | ".join(headers) + " |\n"
-            result += "|" + "|".join(["-" * (len(h) + 2) for h in headers]) + "|\n"
+            # Fallback - простой формат без tabulate, с очисткой
+            result = "| " + " | ".join(self._sanitize_header(str(h)) for h in headers) + " |\n"
+            result += "|" + "|".join(["-" * (len(str(h)) + 2) for h in headers]) + "|\n"
             for row in display_rows:
-                result += "| " + " | ".join(str(cell) for cell in row) + " |\n"
+                safe_row = [self._sanitize_cell(str(cell)) for cell in row]
+                result += "| " + " | ".join(safe_row) + " |\n"
             return result
 
     def log_compound_data_table(self, compound_results: List[Dict], title: str = "COMPOUND SEARCH RESULTS"):
@@ -342,7 +422,8 @@ class SessionLogger:
         for record in records[:max_rows]:
             # Извлекаем данные из DatabaseRecord
             formula = getattr(record, 'formula', 'N/A')
-            first_name = getattr(record, 'name', 'N/A')  # в модели поле 'name', в БД 'FirstName'
+            # Сначала пробуем first_name (FirstName из БД), потом name
+            first_name = getattr(record, 'first_name', None) or getattr(record, 'name', 'N/A')
             phase = getattr(record, 'phase', 'N/A')
             tmin = getattr(record, 'tmin', None)
             tmax = getattr(record, 'tmax', None)

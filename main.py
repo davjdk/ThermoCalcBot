@@ -125,10 +125,28 @@ async def main_interactive():
             try:
                 # Обработка запроса
                 response = await orchestrator.process_query(query)
+
+                # НОВОЕ: Логирование ответа в сессию
+                session_logger = orchestrator.thermodynamic_agent.config.session_logger
+                if session_logger:
+                    session_logger.log_info("")
+                    session_logger.log_info("=" * 60)
+                    session_logger.log_info("РЕЗУЛЬТАТ:")
+                    # Логируем response как есть, с эмодзи и таблицами
+                    for line in response.split('\n'):
+                        if line.strip():  # Пропускаем пустые строки
+                            session_logger.log_info(line)
+                    session_logger.log_info("=" * 60)
+
                 print(response)
                 print()
             except Exception as e:
                 print(f"Ошибка обработки: {e}\n")
+
+                # НОВОЕ: Логирование ошибки в сессию
+                session_logger = orchestrator.thermodynamic_agent.config.session_logger
+                if session_logger:
+                    session_logger.log_error(f"Ошибка обработки: {e}")
 
     except KeyboardInterrupt:
         print("\n\nЗавершение работы...")
@@ -166,6 +184,18 @@ async def main_test():
     try:
         # Обработка запроса
         response = await orchestrator.process_query(test_query)
+
+        # НОВОЕ: Логирование summary ответа в сессию
+        if session_logger:
+            session_logger.log_info("")
+            session_logger.log_info("=" * 80)
+            session_logger.log_info("СВОДНЫЕ РЕЗУЛЬТАТЫ СЕССИИ:")
+            session_logger.log_info("=" * 80)
+            # Логируем response как есть, с эмодзи и таблицами
+            for line in response.split('\n'):
+                if line.strip():  # Пропускаем пустые строки
+                    session_logger.log_info(line)
+            session_logger.log_info("=" * 80)
 
         # Убираем эмодзи и Unicode символы для совместимости с Windows
         response_clean = response.replace("✅", "[OK]").replace("❌", "[ОШИБКА]")

@@ -47,6 +47,8 @@ class DatabaseRecord(BaseModel):
         ..., description="Chemical formula (may include phase in parentheses)"
     )
     name: Optional[str] = Field(None, description="Compound name")
+    first_name: Optional[str] = Field(None, description="First name from database (FirstName field)", alias="FirstName")
+    second_name: Optional[str] = Field(None, description="Second name from database (SecondName field)", alias="SecondName")
     phase: Optional[str] = Field(
         None, description="Thermodynamic phase (s, l, g, a, ao, ai, aq)"
     )

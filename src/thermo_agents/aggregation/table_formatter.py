@@ -17,6 +17,7 @@ class TableFormatter:
         """Инициализация форматера таблиц."""
         self.headers = [
             "Формула",
+            "Название",
             "Фаза",
             "T_диапазон (K)",
             "H298 (кДж/моль)",
@@ -58,6 +59,7 @@ class TableFormatter:
 
             row = [
                 self._format_formula(record),
+                self._format_name(record),
                 self._format_phase(record),
                 self._format_temperature_range(record),
                 self._format_h298(record),
@@ -95,12 +97,13 @@ class TableFormatter:
                 continue
 
             # Добавить заголовок вещества
-            table_data.append([f"** {result.compound_formula} **", "", "", "", "", "", ""])
+            table_data.append([f"** {result.compound_formula} **", "", "", "", "", "", "", ""])
 
             # Добавить записи вещества
             for i, record in enumerate(result.records_found[:max_records_per_compound]):
                 row = [
                     self._format_formula(record) if i == 0 else "",
+                    self._format_name(record),
                     self._format_phase(record),
                     self._format_temperature_range(record),
                     self._format_h298(record),
@@ -111,10 +114,10 @@ class TableFormatter:
                 table_data.append(row)
 
             # Добавить разделитель
-            table_data.append(["", "", "", "", "", "", ""])
+            table_data.append(["", "", "", "", "", "", "", ""])
 
         # Удалить последний разделитель
-        if table_data and table_data[-1] == ["", "", "", "", "", "", ""]:
+        if table_data and table_data[-1] == ["", "", "", "", "", "", "", ""]:
             table_data.pop()
 
         if not table_data:
@@ -188,6 +191,18 @@ class TableFormatter:
 
         return ", ".join(formatted) + ", ..."
 
+    def _format_name(self, record: DatabaseRecord) -> str:
+        """Форматирование названия соединения."""
+        # Используем first_name (FirstName из базы), если доступно
+        if hasattr(record, 'first_name') and record.first_name and record.first_name != "N/A":
+            return record.first_name
+
+        # Fallback на name, если доступно
+        if hasattr(record, 'name') and record.name and record.name != "N/A":
+            return record.name
+
+        return "N/A"
+
     def _format_reliability(self, record: DatabaseRecord) -> str:
         """Форматирование класса надёжности."""
         if record.reliability_class is None:
@@ -203,10 +218,11 @@ class TableFormatter:
 
         Колонки:
         1. Формула
-        2. Фаза
-        3. T_диапазон (K)
-        4. H298 (кДж/моль)
-        5. Надёжность
+        2. Название
+        3. Фаза
+        4. T_диапазон (K)
+        5. H298 (кДж/моль)
+        6. Надёжность
 
         Args:
             compounds_results: Результаты поиска по веществам
@@ -216,6 +232,7 @@ class TableFormatter:
         """
         compact_headers = [
             "Формула",
+            "Название",
             "Фаза",
             "T_диапазон (K)",
             "H298 (кДж/моль)",
@@ -231,6 +248,7 @@ class TableFormatter:
             record = result.records_found[0]
             row = [
                 self._format_formula(record),
+                self._format_name(record),
                 self._format_phase(record),
                 self._format_temperature_range(record),
                 self._format_h298(record),

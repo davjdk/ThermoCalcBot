@@ -8,8 +8,42 @@
 from typing import Protocol, List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
+import psutil
+import os
 
 from ..models.search import DatabaseRecord
+
+
+class PerformanceMonitor:
+    """Мониторинг производительности для стадий фильтрации."""
+
+    def __init__(self):
+        self.process = psutil.Process(os.getpid())
+
+    def get_memory_usage(self) -> Dict[str, float]:
+        """Получить информацию о памяти в MB."""
+        memory_info = self.process.memory_info()
+        return {
+            'rss_mb': memory_info.rss / 1024 / 1024,  # Resident Set Size
+            'vms_mb': memory_info.vms / 1024 / 1024,  # Virtual Memory Size
+            'percent': self.process.memory_percent()
+        }
+
+    def get_cpu_percent(self) -> float:
+        """Получить загрузку CPU."""
+        return self.process.cpu_percent()
+
+    def get_data_volume_mb(self, records: List[DatabaseRecord]) -> float:
+        """Оценить объем данных в записях."""
+        if not records:
+            return 0.0
+
+        # Приблизительная оценка размера одной записи
+        # Formula: 50 байт, Phase: 10 байт, floats: 8*8 байт, другие поля: 100 байт
+        estimated_size_per_record = 50 + 10 + (8 * 8) + 100  # ~214 байт
+
+        total_size = len(records) * estimated_size_per_record
+        return total_size / 1024 / 1024  # в MB
 
 
 @dataclass
@@ -84,6 +118,7 @@ class FilterPipeline:
         self.statistics: List[Dict[str, Any]] = []
         self._last_execution_time_ms: Optional[float] = None
         self.session_logger = session_logger  # НОВОЕ
+        self.performance_monitor = PerformanceMonitor()  # НОВОЕ
 
     def add_stage(self, stage: FilterStage) -> 'FilterPipeline':
         """
@@ -151,9 +186,19 @@ class FilterPipeline:
                     compound_formula=context.compound_formula
                 )
 
+            # Собрать метрики перед фильтрацией
+            memory_before = self.performance_monitor.get_memory_usage()
+            cpu_before = self.performance_monitor.get_cpu_percent()
+            data_volume_before = self.performance_monitor.get_data_volume_mb(current_records)
+
             # Применить фильтр
             filtered = stage.filter(current_records, context)
             stage_execution_time = (time.time() - stage_start_time) * 1000
+
+            # Собрать метрики после фильтрации
+            memory_after = self.performance_monitor.get_memory_usage()
+            cpu_after = self.performance_monitor.get_cpu_percent()
+            data_volume_after = self.performance_monitor.get_data_volume_mb(filtered)
 
             # Собрать статистику
             stats = stage.get_statistics()
@@ -163,7 +208,19 @@ class FilterPipeline:
                 'records_before': len(current_records),
                 'records_after': len(filtered),
                 'reduction_rate': (len(current_records) - len(filtered)) / len(current_records) if current_records else 0.0,
-                'execution_time_ms': stage_execution_time
+                'execution_time_ms': stage_execution_time,
+                # НОВЫЕ метрики производительности
+                'performance': {
+                    'memory_before_mb': memory_before['rss_mb'],
+                    'memory_after_mb': memory_after['rss_mb'],
+                    'memory_delta_mb': memory_after['rss_mb'] - memory_before['rss_mb'],
+                    'cpu_before_percent': cpu_before,
+                    'cpu_after_percent': cpu_after,
+                    'data_volume_before_mb': data_volume_before,
+                    'data_volume_after_mb': data_volume_after,
+                    'data_volume_reduction_mb': data_volume_before - data_volume_after,
+                    'records_per_ms': len(current_records) / stage_execution_time if stage_execution_time > 0 else 0
+                }
             })
             self.statistics.append(stats)
 
@@ -239,8 +296,8 @@ class FilterPipeline:
 class FilterPipelineBuilder:
     """Builder для создания и конфигурации конвейера фильтрации."""
 
-    def __init__(self):
-        self.pipeline = FilterPipeline()
+    def __init__(self, session_logger: Optional[Any] = None):
+        self.pipeline = FilterPipeline(session_logger=session_logger)
 
     def with_temperature_filter(self, **kwargs) -> 'FilterPipelineBuilder':
         """Добавить стадию температурной фильтрации."""
