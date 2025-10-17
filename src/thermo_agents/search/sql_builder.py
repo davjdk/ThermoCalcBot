@@ -16,6 +16,8 @@ import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
+from .common_compounds import CommonCompoundResolver
+
 
 @dataclass
 class FilterPriorities:
@@ -52,6 +54,7 @@ class SQLBuilder:
             priorities: Custom filtering priorities, defaults to standard config
         """
         self.priorities = priorities or FilterPriorities()
+        self.common_resolver = CommonCompoundResolver()
 
     def build_compound_search_query(
         self,
@@ -136,10 +139,24 @@ class SQLBuilder:
         - CH4: exact match → 0 records, prefix search → 1352 records
 
         Also searches by compound names (FirstName field) if provided.
+
+        ПРИОРИТЕТ: Для распространенных веществ (H2O, CO2, O2 и т.д.) используется
+        специальная точная логика через CommonCompoundResolver, чтобы избежать
+        ложных совпадений (например, H2O2 вместо H2O).
         """
         # Clean and escape formula
         clean_formula = formula.strip()
 
+        # ПРИОРИТЕТ 1: Проверка на распространенное вещество
+        if self.common_resolver.is_common_compound(clean_formula):
+            common_condition = self.common_resolver.build_sql_condition(
+                clean_formula, compound_names
+            )
+            if common_condition:
+                # Используем точную логику для распространенных веществ
+                return common_condition
+
+        # ПРИОРИТЕТ 2: Обычная логика для остальных веществ
         # Build comprehensive search condition
         conditions = [
             f"TRIM(Formula) = '{self._escape_sql(clean_formula)}'",

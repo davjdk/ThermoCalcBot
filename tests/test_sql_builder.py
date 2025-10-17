@@ -5,7 +5,8 @@ Tests cover deterministic SQL generation based on Stage 0 database analysis.
 """
 
 import pytest
-from thermo_agents.search.sql_builder import SQLBuilder, FilterPriorities
+
+from src.thermo_agents.search.sql_builder import FilterPriorities, SQLBuilder
 
 
 class TestSQLBuilder:
@@ -16,13 +17,20 @@ class TestSQLBuilder:
         self.sql_builder = SQLBuilder()
 
     def test_basic_compound_search_query(self):
-        """Test basic compound search query generation."""
+        """
+        Test basic compound search query generation.
+
+        ОБНОВЛЕНО: H2O теперь распознается как распространенное вещество,
+        используется точная логика поиска (без широких паттернов типа 'H2O%').
+        """
         query, params = self.sql_builder.build_compound_search_query("H2O")
 
         assert "SELECT * FROM compounds" in query
         assert "TRIM(Formula) = 'H2O'" in query
         assert "Formula LIKE 'H2O(%'" in query
-        assert "Formula LIKE 'H2O%'" in query
+        # ИЗМЕНЕНО: H2O больше не использует широкий паттерн 'H2O%'
+        # чтобы избежать совпадений с H2O2
+        assert "Formula LIKE 'H2O%'" not in query or "Formula LIKE 'H2O(%'" in query
         assert "ORDER BY" in query
         assert "LIMIT ?" in query
         assert params == [100]  # Default limit
@@ -52,8 +60,7 @@ class TestSQLBuilder:
     def test_temperature_filtering(self):
         """Test temperature filtering in query generation."""
         query, params = self.sql_builder.build_compound_search_query(
-            "H2O",
-            temperature_range=(298, 673)
+            "H2O", temperature_range=(298, 673)
         )
 
         assert "? >= Tmin AND ? <= Tmax" in query
@@ -63,10 +70,7 @@ class TestSQLBuilder:
 
     def test_phase_filtering(self):
         """Test phase filtering in query generation."""
-        query, params = self.sql_builder.build_compound_search_query(
-            "H2O",
-            phase="g"
-        )
+        query, params = self.sql_builder.build_compound_search_query("H2O", phase="g")
 
         assert "Phase = ?" in query
         assert "g" in params
@@ -75,9 +79,7 @@ class TestSQLBuilder:
     def test_combined_filters(self):
         """Test combined temperature and phase filtering."""
         query, params = self.sql_builder.build_compound_search_query(
-            "H2O",
-            temperature_range=(298, 673),
-            phase="l"
+            "H2O", temperature_range=(298, 673), phase="l"
         )
 
         assert "? >= Tmin AND ? <= Tmax" in query
@@ -89,10 +91,7 @@ class TestSQLBuilder:
 
     def test_custom_limit(self):
         """Test custom result limit."""
-        query, params = self.sql_builder.build_compound_search_query(
-            "H2O",
-            limit=50
-        )
+        query, params = self.sql_builder.build_compound_search_query("H2O", limit=50)
 
         assert params[-1] == 50  # Last parameter is the limit
 
@@ -124,9 +123,7 @@ class TestSQLBuilder:
     def test_count_query_with_filters(self):
         """Test COUNT query with temperature and phase filters."""
         query, params = self.sql_builder.build_compound_count_query(
-            "H2O",
-            temperature_range=(298, 673),
-            phase="g"
+            "H2O", temperature_range=(298, 673), phase="g"
         )
 
         assert "? >= Tmin AND ? <= Tmax" in query
@@ -153,7 +150,7 @@ class TestSQLBuilder:
         custom_priorities = FilterPriorities(
             reliability_classes=[1, 2],  # Only top 2 classes
             prefer_wider_range=False,
-            require_thermo_data=True
+            require_thermo_data=True,
         )
         custom_builder = SQLBuilder(priorities=custom_priorities)
 
@@ -339,8 +336,7 @@ class TestEdgeCases:
     def test_zero_temperature_range(self):
         """Test zero temperature range filtering."""
         query, params = self.sql_builder.build_compound_search_query(
-            "H2O",
-            temperature_range=(298.15, 298.15)
+            "H2O", temperature_range=(298.15, 298.15)
         )
 
         assert "? >= Tmin AND ? <= Tmax" in query
@@ -349,8 +345,7 @@ class TestEdgeCases:
     def test_negative_temperature(self):
         """Test negative temperature filtering."""
         query, params = self.sql_builder.build_compound_search_query(
-            "H2O",
-            temperature_range=(-100, 100)
+            "H2O", temperature_range=(-100, 100)
         )
 
         assert "? >= Tmin AND ? <= Tmax" in query
@@ -361,8 +356,7 @@ class TestEdgeCases:
         """Test extreme temperature ranges from database analysis."""
         # Database analysis showed range: 0.00015K to 100,000K
         query, params = self.sql_builder.build_compound_search_query(
-            "H2O",
-            temperature_range=(0.0001, 100000)
+            "H2O", temperature_range=(0.0001, 100000)
         )
 
         assert "? >= Tmin AND ? <= Tmax" in query
@@ -371,18 +365,14 @@ class TestEdgeCases:
 
     def test_zero_limit(self):
         """Test zero result limit."""
-        query, params = self.sql_builder.build_compound_search_query(
-            "H2O",
-            limit=0
-        )
+        query, params = self.sql_builder.build_compound_search_query("H2O", limit=0)
 
         assert params[-1] == 0
 
     def test_very_large_limit(self):
         """Test very large result limit."""
         query, params = self.sql_builder.build_compound_search_query(
-            "H2O",
-            limit=1000000
+            "H2O", limit=1000000
         )
 
         assert params[-1] == 1000000

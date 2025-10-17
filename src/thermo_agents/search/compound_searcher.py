@@ -79,9 +79,18 @@ class CompoundSearcher:
         start_time = time.time()
         self.logger.info(f"Searching for compound: {formula}")
 
-        # НОВОЕ: Логирование начала поиска
+        # НОВОЕ: Логирование начала поиска + проверка на распространенное вещество
         if self.session_logger:
             self.session_logger.log_info(f"Начало поиска для {formula}")
+            # Проверка через резолвер распространенных веществ
+            if self.sql_builder.common_resolver.is_common_compound(formula):
+                description = self.sql_builder.common_resolver.get_description(formula)
+                self.session_logger.log_info(
+                    f"⚡ Обнаружено распространенное вещество: {description}"
+                )
+                self.session_logger.log_info(
+                    "   Используется точная логика поиска (без широких паттернов)"
+                )
 
         # Initialize result
         result = CompoundSearchResult(
