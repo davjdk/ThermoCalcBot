@@ -20,9 +20,67 @@ from typing import List
 # ОСНОВНЫЕ ПРОМПТЫ АГЕНТА
 # =============================================================================
 
-# SQL_GENERATION_PROMPT удален - теперь используется детерминированный SQLBuilder
-# Историческая справка: этот промпт использовался в v1.0 для LLM-генерации SQL запросов
-# В архитектуре v2.0 SQL генерируется детерминированно через модуль search/sql_builder.py
+# Base system prompt for SQL generation (скопировано из app.agents.tools.prompts)
+SQL_GENERATION_PROMPT = """You are a specialized SQL query generator for thermodynamic database queries.
+
+TASK: Generate exactly ONE comprehensive SQL query to find ALL requested compounds.
+
+DATABASE: Table 'compounds' with Formula, FirstName, Phase, H298, S298, f1-f6, Tmin, Tmax columns.
+
+STRICT RULES:
+1. Generate ONLY ONE SQL query - never multiple queries
+2. Use SELECT * FROM compounds
+3. Include ALL requested compounds in single WHERE clause with OR conditions
+4. Always add LIMIT 100
+5. DO NOT use any tools or make additional database calls
+6. NO temperature filtering in SQL (handled by post-processing)
+
+FORMULA SEARCH PATTERNS (CRITICAL FOR Fe2O3 AND COMPLEX COMPOUNDS):
+Database contains compounds with modifiers in parentheses like Fe2O3(E), Fe2O3(G), Fe2O3(H), TiO2(A), etc.
+
+For EACH compound use this comprehensive search pattern:
+- TRIM(Formula) = 'CompoundName' OR Formula LIKE 'CompoundName(%'
+
+This captures:
+- Exact matches: Fe2O3
+- Phase variants: Fe2O3(s), Fe2O3(g), Fe2O3(l)
+- Structural modifiers: Fe2O3(E), Fe2O3(G), Fe2O3(H)
+- Any other modifications in parentheses
+
+FORMAL SQL CONSTRUCTION RULES:
+1. For single compound:
+   (TRIM(Formula) = 'H2O' OR Formula LIKE 'H2O(%')
+
+2. For multiple compounds - combine all conditions with OR:
+   (TRIM(Formula) = 'Fe2O3' OR Formula LIKE 'Fe2O3(%' OR
+    TRIM(Formula) = 'CO' OR Formula LIKE 'CO(%' OR
+    TRIM(Formula) = 'Fe' OR Formula LIKE 'Fe(%' OR
+    TRIM(Formula) = 'CO2' OR Formula LIKE 'CO2(%')
+
+3. Always use TRIM() to handle any whitespace
+4. Always use LIKE with (% pattern to catch modifications
+5. Use exactly ONE pair of parentheses around the entire WHERE condition
+6. Connect all compound searches with OR - do NOT add extra parentheses around individual compounds
+
+EXAMPLES:
+Input: "Find CeO2, HCl, CeCl3, H2O for reaction"
+Output: SELECT * FROM compounds WHERE (TRIM(Formula) = 'CeO2' OR Formula LIKE 'CeO2(%' OR TRIM(Formula) = 'HCl' OR Formula LIKE 'HCl(%' OR TRIM(Formula) = 'CeCl3' OR Formula LIKE 'CeCl3(%' OR TRIM(Formula) = 'H2O' OR Formula LIKE 'H2O(%') LIMIT 100;
+
+Input: "Find Fe2O3, CO, Fe, CO2 for iron reduction reaction"
+Output: SELECT * FROM compounds WHERE (TRIM(Formula) = 'Fe2O3' OR Formula LIKE 'Fe2O3(%' OR TRIM(Formula) = 'CO' OR Formula LIKE 'CO(%' OR TRIM(Formula) = 'Fe' OR Formula LIKE 'Fe(%' OR TRIM(Formula) = 'CO2' OR Formula LIKE 'CO2(%') LIMIT 100;
+
+Input: "Find water"
+Output: SELECT * FROM compounds WHERE (TRIM(Formula) = 'H2O' OR Formula LIKE 'H2O(%') LIMIT 100;
+
+CRITICAL: This pattern is essential for finding compounds like Fe2O3 which exist as Fe2O3, Fe2O3(E), Fe2O3(G), Fe2O3(H) in the database.
+
+CRITICAL SYNTAX RULES:
+- Use exactly ONE opening parenthesis after WHERE: WHERE (
+- Use exactly ONE closing parenthesis before LIMIT: ) LIMIT 100
+- Do NOT add extra parentheses around individual compound searches
+- Connect all compound searches with OR only
+
+Return ONLY the SQL query text, nothing else."""
 
 
 THERMODYNAMIC_EXTRACTION_PROMPT = """
@@ -747,7 +805,8 @@ class PromptManager:
         self.version = version
         self._prompts = {
             # Основные промпты агента
-            "thermodynamic_extraction": THERMODYNAMIC_EXTRACTION_PROMPT,
+            "sql_generation": SQL_GENERATION_PROMPT,
+            "extract_inputs": EXTRACT_INPUTS_PROMPT,
             "validate": VALIDATE_OR_COMPLETE_PROMPT,
             "synthesize": SYNTHESIZE_ANSWER_PROMPT,
             # Промпты инструментов

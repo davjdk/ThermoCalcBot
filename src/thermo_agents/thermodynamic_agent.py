@@ -24,49 +24,6 @@ from .prompts import THERMODYNAMIC_EXTRACTION_PROMPT
 from .thermo_agents_logger import SessionLogger
 
 
-class ExtractedParameters(BaseModel):
-    """Извлеченные параметры из запроса пользователя."""
-
-    intent: str  # "lookup", "calculation", "reaction", "comparison"
-    compounds: List[str]  # Химические формулы (включая все реагенты и продукты)
-    temperature_k: float  # Температура в Кельвинах
-    temperature_range_k: List[float]  # Диапазон температур [min, max]
-    phases: List[str]  # Фазовые состояния ["s", "l", "g", "aq"]
-    properties: List[str]  # Требуемые свойства ["basic", "all", "thermal"]
-    sql_query_hint: str  # Подсказка для генерации SQL
-    reaction_equation: Optional[str] = None  # Уравнение реакции (для intent="reaction")
-
-
-class IndividualSearchRequest(BaseModel):
-    """Запрос на индивидуальный поиск соединений."""
-
-    compounds: List[str]  # Список соединений для поиска
-    common_params: Dict  # Общие параметры (температура, фазы)
-    search_strategy: str  # Стратегия поиска
-    correlation_id: str  # ID для корреляции
-    original_query: str  # Оригинальный запрос пользователя
-
-
-class IndividualCompoundResult(BaseModel):
-    """Результат поиска для одного соединения."""
-
-    compound: str  # Химическая формула
-    search_results: List[Dict]  # Результаты поиска
-    selected_records: List[Dict]  # Отобранные записи
-    confidence: float  # Уверенность в результате
-    errors: List[str]  # Ошибки поиска
-
-
-class AggregatedResults(BaseModel):
-    """Агрегированные результаты по всем соединениям."""
-
-    individual_results: List[IndividualCompoundResult]  # Результаты по веществам
-    summary_table: List[Dict]  # Сводная таблица
-    overall_confidence: float  # Общая уверенность
-    missing_compounds: List[str]  # Отсутствующие вещества
-    warnings: List[str]  # Предупреждения
-    data_completeness_status: str = "complete"  # "complete" или "incomplete"
-    is_complete_reaction: bool = True  # True если все данные найдены
 
 
 @dataclass
@@ -401,15 +358,8 @@ class ThermodynamicAgent:
                 "result_key": result_key,
             }
 
-            # Добавляем информацию о маршрутизации
-            next_agent = None
-            if extracted_params.compounds and extracted_params.intent == "reaction":
-                next_agent = "individual_search_agent"
-            elif extracted_params.sql_query_hint:
-                next_agent = "sql_agent"
-
-            if next_agent:
-                operation_result["next_agent"] = next_agent
+            # В архитектуре v2.0 маршрутизация выполняется через ThermoOrchestrator
+            # Информация о next_agent больше не нужна здесь
 
             # Устанавливаем результат операции
             if operation_context:
@@ -421,52 +371,9 @@ class ThermodynamicAgent:
                     f"EXTRACTION COMPLETE: {extracted_params.intent}, {len(extracted_params.compounds)} compounds"
                 )
 
-            # Если найдены соединения и нужна индивидуальная обработка, отправляем запрос Individual Search Agent
-            if extracted_params.compounds and extracted_params.intent == "reaction":
-                # Создаем запрос на индивидуальный поиск
-                search_request = IndividualSearchRequest(
-                    compounds=extracted_params.compounds,
-                    common_params={
-                        "temperature_k": extracted_params.temperature_k,
-                        "temperature_range_k": extracted_params.temperature_range_k,
-                        "phases": extracted_params.phases,
-                        "properties": extracted_params.properties,
-                    },
-                    search_strategy="individual_compound_search",
-                    correlation_id=message.id,
-                    original_query=user_query,
-                )
-
-                # Отправляем запрос Individual Search Agent
-                individual_search_message_id = self.storage.send_message(
-                    source_agent=self.agent_id,
-                    target_agent="individual_search_agent",
-                    message_type="individual_search_request",
-                    correlation_id=message.id,
-                    payload={
-                        "search_request": search_request.model_dump(),
-                        "extracted_params": extracted_params.model_dump(),
-                        "original_query": user_query,
-                    },
-                )
-                self.logger.info(
-                    f"Forwarded to Individual Search Agent: {individual_search_message_id}"
-                )
-
-            # Если нужна генерация SQL (для нерекакционных запросов), отправляем сообщение SQL агенту
-            elif extracted_params.sql_query_hint:
-                sql_message_id = self.storage.send_message(
-                    source_agent=self.agent_id,
-                    target_agent="sql_agent",
-                    message_type="generate_query",
-                    correlation_id=message.id,
-                    payload={
-                        "sql_hint": extracted_params.sql_query_hint,
-                        "extracted_params": extracted_params.model_dump(),
-                        "original_query": user_query,
-                    },
-                )
-                self.logger.info(f"Forwarded to SQL agent: {sql_message_id}")
+            # В архитектуре v2.0 обработка выполняется напрямую через ThermoOrchestrator
+            # Message passing к individual_search_agent и sql_agent больше не используется
+            # Извлеченные параметры сохраняются и используются напрямую
 
             # Завершаем операцию успешно
             if operation_context:
