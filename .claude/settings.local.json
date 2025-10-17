@@ -28,7 +28,9 @@
       "Bash(gh pr edit:*)",
       "Bash(find:*)",
       "Bash(PYTHONPATH=. uv run pytest:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(PYTHONPATH=.. uv run python:*)",
+      "Bash(PYTHONPATH=../src uv run python:*)"
     ],
     "deny": [],
     "ask": []
