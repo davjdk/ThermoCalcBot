@@ -1,8 +1,11 @@
 """
 Хранилище для обмена данными между агентами (A2A Storage).
 
-Реализует паттерн Storage из PydanticAI для обеспечения слабой связанности
-между агентами и обмена состоянием через структурированные сообщения.
+РЕФАКТОРИНГ v2.0: Теперь использует SimpleAgentStorage как backend.
+Сохраняет backward compatibility с существующим API.
+
+Объединяет сложную Message Queue систему в простое Key-Value хранилище
+с поддержкой TTL для архитектуры v2.0.
 """
 
 from __future__ import annotations
@@ -14,6 +17,8 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
+
+from .storage.simple_storage import SimpleAgentStorage
 
 
 class AgentMessage(BaseModel):
@@ -30,7 +35,7 @@ class AgentMessage(BaseModel):
 
 
 class StorageEntry(BaseModel):
-    """Запись в хранилище."""
+    """Запись в хранилище (legacy compatibility)."""
 
     key: str  # Ключ для доступа к данным
     value: Any  # Сохраненные данные
@@ -44,24 +49,18 @@ class StorageEntry(BaseModel):
 class AgentStorage:
     """
     Централизованное хранилище для обмена данными между агентами.
-    
-    Основано на принципах Storage Architecture из PydanticAI:
-    - Агенты не вызывают друг друга напрямую
-    - Обмен происходит через структурированные сообщения
-    - Состояние сохраняется между вызовами
+
+    РЕФАКТОРИНГ v2.0: Использует SimpleAgentStorage как backend.
+    Сохраняет backward compatibility с существующим API.
+
+    В архитектуре v2.0:
+    - SimpleAgentStorage обеспечивает быстрое Key-Value хранение
+    - Message passing эмулируется через SimpleAgentStorage
+    - Сохраняется совместимость с существующим кодом
     """
 
-    # Хранилище данных
-    _storage: Dict[str, StorageEntry] = field(default_factory=dict)
-    
-    # Очередь сообщений между агентами
-    _message_queue: List[AgentMessage] = field(default_factory=list)
-    
-    # История обработанных сообщений
-    _message_history: List[AgentMessage] = field(default_factory=list)
-    
-    # Активные сессии агентов
-    _agent_sessions: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    # Backend хранилище
+    _backend: SimpleAgentStorage = field(default_factory=SimpleAgentStorage)
 
     # =============================================================================
     # УПРАВЛЕНИЕ ДАННЫМИ
@@ -70,67 +69,52 @@ class AgentStorage:
     def set(self, key: str, value: Any, ttl_seconds: Optional[int] = None, metadata: Optional[Dict] = None) -> None:
         """
         Сохранить данные в хранилище.
-        
+
         Args:
             key: Ключ для доступа к данным
             value: Данные для сохранения
             ttl_seconds: Время жизни в секундах (опционально)
             metadata: Дополнительные метаданные
         """
-        entry = StorageEntry(
-            key=key,
-            value=value,
-            ttl_seconds=ttl_seconds,
-            metadata=metadata or {}
-        )
-        self._storage[key] = entry
+        # Делегируем в SimpleAgentStorage backend
+        self._backend.set(key, value, ttl_seconds)
 
     def get(self, key: str, default: Any = None) -> Any:
         """
         Получить данные из хранилища.
-        
+
         Args:
             key: Ключ для доступа к данным
             default: Значение по умолчанию если ключ не найден
-            
+
         Returns:
             Сохраненные данные или значение по умолчанию
         """
-        entry = self._storage.get(key)
-        if entry is None:
-            return default
-            
-        # Проверка TTL
-        if entry.ttl_seconds is not None:
-            elapsed = (datetime.now() - entry.created_at).total_seconds()
-            if elapsed > entry.ttl_seconds:
-                del self._storage[key]
-                return default
-                
-        return entry.value
+        # Делегируем в SimpleAgentStorage backend
+        return self._backend.get(key, default)
 
     def delete(self, key: str) -> bool:
         """
-        Удалить данные из хранилища.
-        
+        Удалить данные из хранилище.
+
         Args:
             key: Ключ для удаления
-            
+
         Returns:
             True если ключ был удален, False если не найден
         """
-        if key in self._storage:
-            del self._storage[key]
-            return True
-        return False
+        # Делегируем в SimpleAgentStorage backend
+        return self._backend.delete(key)
 
     def exists(self, key: str) -> bool:
         """Проверить существование ключа в хранилище."""
-        return key in self._storage
+        # Делегируем в SimpleAgentStorage backend
+        return self._backend.exists(key)
 
     def clear(self) -> None:
         """Очистить все хранилище."""
-        self._storage.clear()
+        # Делегируем в SimpleAgentStorage backend
+        self._backend.clear()
 
     # =============================================================================
     # ОБМЕН СООБЩЕНИЯМИ
@@ -159,22 +143,21 @@ class AgentStorage:
         Returns:
             ID отправленного сообщения
         """
-        message = AgentMessage(
+        # Делегируем в SimpleAgentStorage backend
+        message_id = self._backend.send_message(
             source_agent=source_agent,
             target_agent=target_agent,
             message_type=message_type,
-            payload=payload,
             correlation_id=correlation_id,
-            metadata=metadata or {}
+            payload=payload
         )
-        self._message_queue.append(message)
 
         # Улучшенное логирование для диагностики коммуникации
         import logging
         logger = logging.getLogger(__name__)
-        logger.debug(f"MESSAGE SENT: {source_agent} -> {target_agent} | Type: {message_type} | ID: {message.id} | Correlation: {correlation_id}")
+        logger.debug(f"MESSAGE SENT: {source_agent} -> {target_agent} | Type: {message_type} | ID: {message_id} | Correlation: {correlation_id}")
 
-        return message.id
+        return message_id
 
     def send_message_with_ack(
         self,
@@ -312,24 +295,23 @@ class AgentStorage:
         Returns:
             Список сообщений для агента
         """
+        # Делегируем в SimpleAgentStorage backend
+        raw_messages = self._backend.receive_messages(agent_id, message_type)
+
+        # Конвертируем в AgentMessage объекты для совместимости
         messages = []
-        remaining_queue = []
-
-        for msg in self._message_queue:
-            if msg.target_agent == agent_id:
-                # Применяем фильтры
-                type_match = message_type is None or msg.message_type == message_type
-                correlation_match = correlation_id is None or msg.correlation_id == correlation_id
-
-                if type_match and correlation_match:
-                    messages.append(msg)
-                    self._message_history.append(msg)
-                else:
-                    remaining_queue.append(msg)
-            else:
-                remaining_queue.append(msg)
-
-        self._message_queue = remaining_queue
+        for raw_msg in raw_messages:
+            message = AgentMessage(
+                id=raw_msg.get("message_id"),
+                timestamp=datetime.fromisoformat(raw_msg.get("created_at")),
+                source_agent=raw_msg.get("source_agent"),
+                target_agent=raw_msg.get("target_agent"),
+                message_type=raw_msg.get("message_type"),
+                payload=raw_msg.get("payload", {}),
+                correlation_id=raw_msg.get("correlation_id"),
+                metadata={}
+            )
+            messages.append(message)
 
         # Улучшенное логирование для диагностики коммуникации
         import logging
@@ -342,10 +324,6 @@ class AgentStorage:
                 # Дополнительное логирование для критических сообщений
                 if msg.message_type in ["individual_search_complete", "sql_ready", "response"]:
                     logger.info(f"IMPORTANT MESSAGE: {msg.source_agent} -> {agent_id} | Type: {msg.message_type} | ID: {msg.id} | Correlation: {msg.correlation_id}")
-
-                # Автоматически отправляем подтверждение для сообщений, которые это требуют
-                if msg.metadata.get("requires_ack", False):
-                    self.acknowledge_message(msg.id, agent_id, "received")
         else:
             # Логируем отсутствие сообщений для диагностики
             if message_type or correlation_id:
@@ -463,45 +441,47 @@ class AgentStorage:
     def start_session(self, agent_id: str, session_data: Optional[Dict] = None) -> None:
         """
         Начать сессию для агента.
-        
+
         Args:
             agent_id: ID агента
             session_data: Начальные данные сессии
         """
-        self._agent_sessions[agent_id] = session_data or {}
+        # Делегируем в SimpleAgentStorage backend
+        self._backend.start_session(agent_id, session_data)
 
     def get_session(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """
         Получить данные сессии агента.
-        
+
         Args:
             agent_id: ID агента
-            
+
         Returns:
             Данные сессии или None если сессия не найдена
         """
-        return self._agent_sessions.get(agent_id)
+        # Делегируем в SimpleAgentStorage backend
+        return self._backend.get_session(agent_id)
 
     def update_session(self, agent_id: str, updates: Dict[str, Any]) -> None:
         """
         Обновить данные сессии агента.
-        
+
         Args:
             agent_id: ID агента
             updates: Обновления для сессии
         """
-        if agent_id in self._agent_sessions:
-            self._agent_sessions[agent_id].update(updates)
+        # Делегируем в SimpleAgentStorage backend
+        self._backend.update_session(agent_id, updates)
 
     def end_session(self, agent_id: str) -> None:
         """
         Завершить сессию агента.
-        
+
         Args:
             agent_id: ID агента
         """
-        if agent_id in self._agent_sessions:
-            del self._agent_sessions[agent_id]
+        # Удаляем сессию из backend
+        self._backend.delete(f"session:{agent_id}")
 
     # =============================================================================
     # ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
@@ -509,34 +489,31 @@ class AgentStorage:
 
     def get_stats(self) -> Dict[str, Any]:
         """Получить статистику использования хранилища."""
+        # Делегируем в SimpleAgentStorage backend и добавляем legacy поля
+        backend_stats = self._backend.get_stats()
+
+        # Эмулируем статистику для совместимости
+        session_count = len([key for key in self._backend.keys() if key.startswith("session:")])
+        message_count = len([key for key in self._backend.keys() if key.startswith("message:")])
+
         return {
-            "storage_entries": len(self._storage),
-            "message_queue_size": len(self._message_queue),
-            "message_history_size": len(self._message_history),
-            "active_sessions": len(self._agent_sessions),
-            "agents": list(self._agent_sessions.keys())
+            "storage_entries": backend_stats["total_entries"],
+            "message_queue_size": message_count,
+            "message_history_size": 0,  # В v2.0 истории нет
+            "active_sessions": session_count,
+            "agents": [],  # В v2.0 агенты не отслеживаются отдельно
+            **backend_stats
         }
 
     def cleanup_expired(self) -> int:
         """
         Очистить просроченные записи с TTL.
-        
+
         Returns:
             Количество удаленных записей
         """
-        expired_keys = []
-        now = datetime.now()
-        
-        for key, entry in self._storage.items():
-            if entry.ttl_seconds is not None:
-                elapsed = (now - entry.created_at).total_seconds()
-                if elapsed > entry.ttl_seconds:
-                    expired_keys.append(key)
-                    
-        for key in expired_keys:
-            del self._storage[key]
-            
-        return len(expired_keys)
+        # Делегируем в SimpleAgentStorage backend
+        return self._backend.cleanup_expired()
 
     def get_storage_snapshot(self, include_content: bool = False) -> Dict[str, Any]:
         """
@@ -548,60 +525,8 @@ class AgentStorage:
         Returns:
             Словарь с состоянием хранилища
         """
-        snapshot = {
-            "timestamp": datetime.now().isoformat(),
-            "stats": self.get_stats(),
-        }
-
-        if include_content:
-            # Включаем полный контент для детального логирования при ошибках
-            snapshot["storage_entries"] = {}
-            for key, entry in self._storage.items():
-                snapshot["storage_entries"][key] = {
-                    "created_at": entry.created_at.isoformat(),
-                    "updated_at": entry.updated_at.isoformat(),
-                    "ttl_seconds": entry.ttl_seconds,
-                    "metadata": entry.metadata,
-                    "value_type": type(entry.value).__name__,
-                    "value_preview": str(entry.value)[:200] if entry.value else None,
-                }
-
-            # Сообщения в очереди
-            snapshot["message_queue"] = []
-            for msg in self._message_queue:
-                snapshot["message_queue"].append({
-                    "id": msg.id,
-                    "timestamp": msg.timestamp.isoformat(),
-                    "source_agent": msg.source_agent,
-                    "target_agent": msg.target_agent,
-                    "message_type": msg.message_type,
-                    "correlation_id": msg.correlation_id,
-                    "payload_preview": str(msg.payload)[:200] if msg.payload else None,
-                })
-
-            # Последние сообщения из истории (ограничено для размера)
-            snapshot["recent_history"] = []
-            for msg in self._message_history[-10:]:  # Последние 10 сообщений
-                snapshot["recent_history"].append({
-                    "id": msg.id,
-                    "timestamp": msg.timestamp.isoformat(),
-                    "source_agent": msg.source_agent,
-                    "target_agent": msg.target_agent,
-                    "message_type": msg.message_type,
-                    "correlation_id": msg.correlation_id,
-                })
-
-            # Активные сессии агентов
-            snapshot["agent_sessions"] = {}
-            for agent_id, session_data in self._agent_sessions.items():
-                snapshot["agent_sessions"][agent_id] = {
-                    "status": session_data.get("status", "unknown"),
-                    "capabilities": session_data.get("capabilities", []),
-                    "metadata": {k: v for k, v in session_data.items()
-                               if k not in ["status", "capabilities"]},
-                }
-
-        return snapshot
+        # Делегируем в SimpleAgentStorage backend
+        return self._backend.get_storage_snapshot(include_content)
 
     def to_dict(self) -> Dict[str, Any]:
         """Сериализовать хранилище в словарь."""
