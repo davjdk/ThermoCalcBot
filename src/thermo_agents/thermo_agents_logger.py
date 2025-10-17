@@ -3,53 +3,65 @@
 
 Создаёт отдельный лог-файл для каждой сессии общения.
 Все действия агентов записываются как операции в рамках сессии.
+
+РЕФАКТОРИНГ v2.0: Теперь использует UnifiedLogger как backend для
+объединения функциональности SessionLogger и OperationLogger.
 """
 
 import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from contextlib import contextmanager
 
 from tabulate import tabulate
 
-from .operations import OperationLogger, OperationType
+from .logging.unified_logger import UnifiedLogger, LogLevel, OperationTimer
+from .operations import OperationType
 
 
 class SessionLogger:
-    """Логгер для сессий общения с агентами на основе операций."""
+    """
+    Логгер для сессий общения с агентами.
 
-    def __init__(self, logs_dir: str = "logs/sessions", storage=None):
+    Backward compatible wrapper для UnifiedLogger.
+    Обеспечивает тот же API, но использует унифицированный логгер.
+    """
+
+    def __init__(self, logs_dir: str = "logs/sessions", storage=None, session_id: Optional[str] = None):
+        """
+        Инициализация сессионного логгера.
+
+        Args:
+            logs_dir: Директория для логов
+            storage: Хранилище (для backward compatibility)
+            session_id: ID сессии (генерируется если не указан)
+        """
         self.logs_dir = Path(logs_dir)
         self.logs_dir.mkdir(parents=True, exist_ok=True)
-        self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # Генерируем session_id если не указан
+        if session_id is None:
+            self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        else:
+            self.session_id = session_id
+
         self.log_file = self.logs_dir / f"session_{self.session_id}.log"
-        self.logger = self._setup_logger()
 
-        # Инициализация логгера операций
-        self.operation_logger = OperationLogger(self.logger, self.session_id)
+        # Инициализация UnifiedLogger как backend
+        self._logger = UnifiedLogger(
+            session_id=self.session_id,
+            log_level=LogLevel.INFO,
+            enable_file_logging=True,
+            enable_console_logging=True,
+            logs_dir=str(self.logs_dir)
+        )
 
-        # Хранилище для создания снимков
+        # Хранилище для создания снимков (backward compatibility)
         self.storage = storage
 
-    def _setup_logger(self) -> logging.Logger:
-        """Настройка логгера для сессии."""
-        logger = logging.getLogger(f"thermo_agents_session_{self.session_id}")
-        logger.setLevel(logging.INFO)
-
-        # Создание обработчика для файла
-        file_handler = logging.FileHandler(self.log_file, encoding="utf-8")
-        file_handler.setLevel(logging.INFO)
-
-        # Форматтер
-        formatter = logging.Formatter(
-            "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-        )
-        file_handler.setFormatter(formatter)
-
-        # Добавление обработчика
-        logger.addHandler(file_handler)
-
-        return logger
+        # Для backward compatibility - эмуляция operation_logger
+        self.operation_logger = self
 
     def _sanitize_message(self, message: str) -> str:
         """
@@ -113,22 +125,12 @@ class SessionLogger:
     def log_info(self, message: str):
         """Логирование информационного сообщения (не операции)."""
         sanitized_message = self._sanitize_message(message)
-        try:
-            self.logger.info(f"INFO: {sanitized_message}")
-        except Exception as e:
-            # Fallback логирование
-            fallback_message = f"INFO: [LOGGING ERROR: {str(e)}] {message.encode('ascii', errors='ignore').decode('ascii')}"
-            self.logger.info(fallback_message)
+        self._logger.info(sanitized_message)
 
     def log_error(self, message: str):
         """Логирование сообщения об ошибке (не операции)."""
         sanitized_message = self._sanitize_message(message)
-        try:
-            self.logger.error(f"ERROR: {sanitized_message}")
-        except Exception as e:
-            # Fallback логирование
-            fallback_message = f"ERROR: [LOGGING ERROR: {str(e)}] {message.encode('ascii', errors='ignore').decode('ascii')}"
-            self.logger.error(fallback_message)
+        self._logger.error(sanitized_message)
 
     def create_operation_context(
         self,
@@ -151,15 +153,18 @@ class SessionLogger:
         Returns:
             Контекстный менеджер операции
         """
-        from .operations import OperationContext
-
-        return OperationContext(
-            operation_logger=self.operation_logger,
-            agent_name=agent_name,
-            operation_type=operation_type,
+        operation_id = self._logger.start_operation(
+            operation_type=operation_type.value,
             correlation_id=correlation_id,
+            agent_name=agent_name,
             source_agent=source_agent,
-            target_agent=target_agent,
+            target_agent=target_agent
+        )
+
+        # Создаем context manager для совместимости
+        return OperationTimer(
+            logger=self._logger,
+            operation_id=operation_id
         )
 
     def is_operations_enabled(self) -> bool:
@@ -230,6 +235,10 @@ class SessionLogger:
             compound_results: Список результатов по соединениям
             title: Заголовок таблицы
         """
+        # Делегируем в UnifiedLogger
+        self._logger.log_compound_data_table(compound_results, title)
+
+        # Дополнительное форматирование для совместимости
         if not compound_results:
             self.log_info(f"{title}: No compounds found")
             return
@@ -327,6 +336,10 @@ class SessionLogger:
             metadata: Словарь с метаданными
             title: Заголовок
         """
+        # Делегируем в UnifiedLogger
+        self._logger.log_search_metadata(metadata, title)
+
+        # Дополнительное форматирование для совместимости
         self.log_info(f"{title}:")
         for key, value in metadata.items():
             self.log_info(f"  {key}: {value}")
@@ -568,6 +581,15 @@ class SessionLogger:
             extracted_params: Извлечённые параметры (ExtractedReactionParameters)
             extraction_time_ms: Время выполнения запроса в миллисекундах
         """
+        # Делегируем в UnifiedLogger
+        self._logger.log_llm_interaction(
+            user_query=user_query,
+            llm_response=llm_response,
+            extracted_params=extracted_params,
+            extraction_time_ms=extraction_time_ms
+        )
+
+        # Дополнительное детализированное логирование для совместимости
         separator = "═" * 63
         self.log_info(separator)
         self.log_info("LLM INTERACTION - ИЗВЛЕЧЕНИЕ ПАРАМЕТРОВ")
@@ -583,20 +605,7 @@ class SessionLogger:
             self.log_info(f"ВРЕМЯ ВЫПОЛНЕНИЯ: {extraction_time_ms:.1f} мс")
             self.log_info("")
 
-        # 3. Полный ответ LLM (если доступен)
-        if llm_response and hasattr(llm_response, "output"):
-            self.log_info("ОТВЕТ LLM (структурированный):")
-            # Выводим JSON-представление ответа
-            if hasattr(llm_response.output, "model_dump"):
-                import json
-
-                llm_data = llm_response.output.model_dump()
-                formatted_json = json.dumps(llm_data, indent=2, ensure_ascii=False)
-                for line in formatted_json.split("\n"):
-                    self.log_info(f"  {line}")
-            self.log_info("")
-
-        # 4. Валидация структуры и извлечённые параметры
+        # 3. Валидация структуры и извлечённые параметры
         if extracted_params:
             self.log_info("ИЗВЛЕЧЁННЫЕ ПАРАМЕТРЫ:")
             self.log_info("─" * 63)
@@ -629,31 +638,6 @@ class SessionLogger:
             if hasattr(extracted_params, "extraction_confidence"):
                 self.log_info(
                     f"Уверенность извлечения: {extracted_params.extraction_confidence:.2f}"
-                )
-
-            # 5. Названия веществ (критично для валидации)
-            if (
-                hasattr(extracted_params, "compound_names")
-                and extracted_params.compound_names
-            ):
-                self.log_info("")
-                self.log_info("НАЗВАНИЯ ВЕЩЕСТВ (для валидации):")
-                self.log_info("─" * 63)
-                for formula, names in extracted_params.compound_names.items():
-                    if names:
-                        names_str = ", ".join(names)
-                        self.log_info(f"  {formula}: {names_str}")
-                    else:
-                        self.log_info(f"  {formula}: [названия не извлечены]")
-
-            # 6. Проверка полноты
-            if (
-                hasattr(extracted_params, "missing_fields")
-                and extracted_params.missing_fields
-            ):
-                self.log_info("")
-                self.log_info(
-                    f"⚠ ПРЕДУПРЕЖДЕНИЕ: Отсутствуют поля: {', '.join(extracted_params.missing_fields)}"
                 )
 
             # 7. Статус полноты
@@ -698,14 +682,10 @@ class SessionLogger:
 
     def close(self):
         """Закрытие сессии."""
-        self.logger.info("SESSION ENDED")
+        self.log_info("SESSION ENDED")
 
-        # Отменяем все активные операции
-        self.operation_logger.cancel_all_operations("Session ended")
-
-        for handler in self.logger.handlers:
-            handler.close()
-            self.logger.removeHandler(handler)
+        # Закрываем UnifiedLogger
+        self._logger.close()
 
 
 def create_session_logger(
