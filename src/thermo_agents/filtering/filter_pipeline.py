@@ -219,7 +219,11 @@ class FilterPipeline:
             current_records = filtered
 
             # НОВОЕ: Оптимизация - если осталась 1 запись, дальнейшая фильтрация не нужна
-            if len(current_records) == 1:
+            # НО: не применяем до PhaseBasedTemperatureStage, так как фазовая фильтрация критична
+            stage_name = stage.get_stage_name()
+            is_before_phase_filter = "фазам" not in stage_name.lower()
+
+            if len(current_records) == 1 and not is_before_phase_filter:
                 total_time = (time.time() - start_time) * 1000
                 self._last_execution_time_ms = total_time
 
@@ -227,7 +231,7 @@ class FilterPipeline:
                     self.session_logger.log_info("")
                     self.session_logger.log_info(
                         f"✓ Осталась 1 запись после стадии {i} ({stage.get_stage_name()}). "
-                        f"Пропуск оставшихся {len(self.stages) - i} стадий."
+                        f"Пропуск оставшихся {len(self.stages) - i - 1} стадий."
                     )
                     self.session_logger.log_info("")
 
@@ -323,6 +327,13 @@ class FilterPipelineBuilder:
         from .filter_stages import TemperatureFilterStage
 
         self.pipeline.add_stage(TemperatureFilterStage(**kwargs))
+        return self
+
+    def with_phase_based_temperature_filter(self, **kwargs) -> "FilterPipelineBuilder":
+        """Добавить умную стадию фильтрации по фазам и температуре."""
+        from .phase_based_temperature_stage import PhaseBasedTemperatureStage
+
+        self.pipeline.add_stage(PhaseBasedTemperatureStage(**kwargs))
         return self
 
     def with_phase_selection(self, phase_resolver, **kwargs) -> "FilterPipelineBuilder":

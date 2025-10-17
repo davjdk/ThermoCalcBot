@@ -12,13 +12,13 @@
 
 import logging
 import re
-from typing import List, Dict, Set, Optional, Tuple
+import unicodedata
 from dataclasses import dataclass
 from difflib import SequenceMatcher
-import unicodedata
+from typing import Dict, List, Optional, Set, Tuple
 
-from ..models.search import DatabaseRecord
 from ..models.extraction import ExtractedReactionParameters
+from ..models.search import DatabaseRecord
 
 logger = logging.getLogger(__name__)
 
@@ -26,17 +26,19 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ValidationResult:
     """Результат валидации одного соединения."""
+
     record: DatabaseRecord
     formula_match_score: float  # 0.0 или 1.0
-    name_match_score: float     # 0.0 - 1.0
-    total_confidence: float     # взвешенная сумма
-    role_match: bool           # соответствует ли роль в реакции
-    reasoning: str            # объяснение результата
+    name_match_score: float  # 0.0 - 1.0
+    total_confidence: float  # взвешенная сумма
+    role_match: bool  # соответствует ли роль в реакции
+    reasoning: str  # объяснение результата
 
 
 @dataclass
 class CompoundValidationResult:
     """Результат валидации для одного целевого соединения."""
+
     target_formula: str
     target_role: str  # 'reactant' или 'product'
     all_results: List[ValidationResult]
@@ -53,7 +55,7 @@ class ReactionValidator:
     def validate_reaction_compounds(
         self,
         db_records: List[DatabaseRecord],
-        reaction_params: ExtractedReactionParameters
+        reaction_params: ExtractedReactionParameters,
     ) -> Tuple[List[DatabaseRecord], Dict[str, CompoundValidationResult]]:
         """
         Валидация всех соединений реакции против найденных записей в БД.
@@ -82,9 +84,7 @@ class ReactionValidator:
         # Валидируем каждое соединение
         for target_formula in reaction_params.all_compounds:
             target_records = records_by_formula.get(target_formula, [])
-            target_role = self._determine_compound_role(
-                target_formula, reaction_params
-            )
+            target_role = self._determine_compound_role(target_formula, reaction_params)
             target_names = reaction_params.compound_names.get(target_formula, [])
 
             validation_result = self._validate_single_compound(
@@ -93,12 +93,33 @@ class ReactionValidator:
 
             validation_results[target_formula] = validation_result
 
-            # Добавляем лучшие результаты в отфильтрованный список
-            if validation_result.best_result:
-                filtered_records.append(validation_result.best_result.record)
-                self.logger.info(
-                    f"✅ {target_formula}: выбрана запись с confidence={validation_result.best_result.total_confidence:.3f}"
-                )
+            # НОВАЯ ЛОГИКА: Добавляем топ-N результатов с разными фазами
+            # Это позволяет PhaseBasedTemperatureStage выбрать правильную фазу
+            if validation_result.all_results:
+                # Группируем по фазам и берём лучшую в каждой фазе
+                phase_best = {}
+                for val_result in validation_result.all_results:
+                    phase = val_result.record.phase or "unknown"
+                    if (
+                        phase not in phase_best
+                        or val_result.total_confidence
+                        > phase_best[phase].total_confidence
+                    ):
+                        phase_best[phase] = val_result
+
+                # Добавляем топ-3 лучшие фазы по confidence
+                top_phases = sorted(
+                    phase_best.values(), key=lambda x: x.total_confidence, reverse=True
+                )[:3]
+
+                for val_result in top_phases:
+                    filtered_records.append(val_result.record)
+
+                if validation_result.best_result:
+                    self.logger.info(
+                        f"✅ {target_formula}: выбрано {len(top_phases)} записей (разные фазы), "
+                        f"лучшая confidence={validation_result.best_result.total_confidence:.3f}"
+                    )
             else:
                 self.logger.warning(
                     f"❌ {target_formula}: не найдено подходящих записей"
@@ -111,9 +132,7 @@ class ReactionValidator:
         return filtered_records, validation_results
 
     def _group_records_by_target_formula(
-        self,
-        db_records: List[DatabaseRecord],
-        target_formulas: List[str]
+        self, db_records: List[DatabaseRecord], target_formulas: List[str]
     ) -> Dict[str, List[DatabaseRecord]]:
         """Группирует записи БД по целевым формулам с гибким сопоставлением."""
         grouped = {formula: [] for formula in target_formulas}
@@ -126,9 +145,7 @@ class ReactionValidator:
         return grouped
 
     def _find_best_formula_match(
-        self,
-        db_formula: str,
-        target_formulas: List[str]
+        self, db_formula: str, target_formulas: List[str]
     ) -> Optional[str]:
         """
         Находит лучшее сопоставление формулы из БД с целевыми формулами.
@@ -146,7 +163,7 @@ class ReactionValidator:
                 return target
 
             # Проверяем совпадение с модификаторами в скобках
-            if db_formula.startswith(target + '('):
+            if db_formula.startswith(target + "("):
                 return target
 
         return None
@@ -154,28 +171,26 @@ class ReactionValidator:
     def _clean_formula(self, formula: str) -> str:
         """Очищает формулу от фазовых обозначений и модификаторов."""
         # Удаляем фазовые обозначения в скобках
-        formula = re.sub(r'\(.*?\)', '', formula)
+        formula = re.sub(r"\(.*?\)", "", formula)
         return formula.strip()
 
     def _determine_compound_role(
-        self,
-        formula: str,
-        reaction_params: ExtractedReactionParameters
+        self, formula: str, reaction_params: ExtractedReactionParameters
     ) -> str:
         """Определяет роль соединения в реакции (reactant/product)."""
         if formula in reaction_params.reactants:
-            return 'reactant'
+            return "reactant"
         elif formula in reaction_params.products:
-            return 'product'
+            return "product"
         else:
-            return 'unknown'
+            return "unknown"
 
     def _validate_single_compound(
         self,
         target_formula: str,
         target_role: str,
         db_records: List[DatabaseRecord],
-        target_names: List[str]
+        target_names: List[str],
     ) -> CompoundValidationResult:
         """
         Валидация одного соединения против найденных записей.
@@ -186,7 +201,7 @@ class ReactionValidator:
                 target_role=target_role,
                 all_results=[],
                 best_result=None,
-                validation_summary=f"Нет записей для {target_formula}"
+                validation_summary=f"Нет записей для {target_formula}",
             )
 
         validation_results = []
@@ -205,7 +220,8 @@ class ReactionValidator:
         summary = (
             f"Для {target_formula} ({target_role}) найдено {len(db_records)} записей, "
             f"лучшая имеет confidence={best_result.total_confidence:.3f}"
-            if best_result else f"Для {target_formula} нет подходящих записей"
+            if best_result
+            else f"Для {target_formula} нет подходящих записей"
         )
 
         return CompoundValidationResult(
@@ -213,7 +229,7 @@ class ReactionValidator:
             target_role=target_role,
             all_results=validation_results,
             best_result=best_result,
-            validation_summary=summary
+            validation_summary=summary,
         )
 
     def _validate_single_record(
@@ -221,7 +237,7 @@ class ReactionValidator:
         record: DatabaseRecord,
         target_formula: str,
         target_role: str,
-        target_names: List[str]
+        target_names: List[str],
     ) -> ValidationResult:
         """
         Валидация одной записи БД.
@@ -242,7 +258,7 @@ class ReactionValidator:
 
         # 2. Проверка сопоставления названий (дополнительный критерий - 30% веса)
         name_match_score = self._calculate_name_match_score(
-            getattr(record, 'first_name', ''), target_names
+            getattr(record, "first_name", ""), target_names
         )
 
         # 3. Общий confidence score
@@ -262,10 +278,12 @@ class ReactionValidator:
             name_match_score=name_match_score,
             total_confidence=total_confidence,
             role_match=role_match,
-            reasoning=reasoning
+            reasoning=reasoning,
         )
 
-    def _calculate_formula_match_score(self, db_formula: str, target_formula: str) -> float:
+    def _calculate_formula_match_score(
+        self, db_formula: str, target_formula: str
+    ) -> float:
         """
         Рассчитывает score сопоставления формул.
         Возвращает 1.0 для точного совпадения, 0.0 для несовпадения.
@@ -280,12 +298,14 @@ class ReactionValidator:
             return 1.0
 
         # Проверяем совпадение с модификаторами
-        if db_formula.startswith(target_formula + '('):
+        if db_formula.startswith(target_formula + "("):
             return 1.0
 
         return 0.0
 
-    def _calculate_name_match_score(self, db_name: str, target_names: List[str]) -> float:
+    def _calculate_name_match_score(
+        self, db_name: str, target_names: List[str]
+    ) -> float:
         """
         Рассчитывает score сопоставления названий (мягкая валидация).
 
@@ -307,7 +327,9 @@ class ReactionValidator:
 
         return max_score
 
-    def _calculate_single_name_match_score(self, db_name: str, target_name: str) -> float:
+    def _calculate_single_name_match_score(
+        self, db_name: str, target_name: str
+    ) -> float:
         """
         Рассчитывает score сопоставления двух названий.
         """
@@ -316,7 +338,9 @@ class ReactionValidator:
             return 1.0
 
         # 2. Совпадение после удаления специальных символов
-        if self._remove_special_chars(db_name) == self._remove_special_chars(target_name):
+        if self._remove_special_chars(db_name) == self._remove_special_chars(
+            target_name
+        ):
             return 0.9
 
         # 3. Token overlap (проверка вхождения слов)
@@ -329,9 +353,9 @@ class ReactionValidator:
                 return 0.7 + overlap * 0.1
 
         # 4. Sequence similarity (Levenshtein-like)
-        similarity = SequenceMatcher(None,
-                                   self._normalize_name(db_name),
-                                   self._normalize_name(target_name)).ratio()
+        similarity = SequenceMatcher(
+            None, self._normalize_name(db_name), self._normalize_name(target_name)
+        ).ratio()
 
         if similarity >= 0.8:
             return 0.5 + similarity * 0.2
@@ -348,16 +372,20 @@ class ReactionValidator:
     def _normalize_name(self, name: str) -> str:
         """Нормализация названия для сравнения."""
         # Удаление диакритических знаков
-        name = unicodedata.normalize('NFKD', name).encode('ASCII', 'ignore').decode('ASCII')
+        name = (
+            unicodedata.normalize("NFKD", name)
+            .encode("ASCII", "ignore")
+            .decode("ASCII")
+        )
         # Приведение к нижнему регистру и удаление лишних пробелов
         return name.lower().strip()
 
     def _remove_special_chars(self, name: str) -> str:
         """Удаление специальных символов из названия."""
         # Удаляем скобки, римские цифры, знаки препинания
-        name = re.sub(r'[()0-9,\-\.]', ' ', name)
+        name = re.sub(r"[()0-9,\-\.]", " ", name)
         # Удаляем лишние пробелы
-        return ' '.join(name.split()).lower()
+        return " ".join(name.split()).lower()
 
     def _check_role_match(self, record: DatabaseRecord, target_role: str) -> bool:
         """
@@ -373,16 +401,20 @@ class ReactionValidator:
         target_formula: str,
         formula_score: float,
         name_score: float,
-        role_match: bool
+        role_match: bool,
     ) -> str:
         """Генерирует объяснение результата валидации."""
         parts = []
 
         # Формула
         if formula_score == 1.0:
-            parts.append(f"✅ Точное совпадение формулы: '{record.formula}' == '{target_formula}'")
+            parts.append(
+                f"✅ Точное совпадение формулы: '{record.formula}' == '{target_formula}'"
+            )
         else:
-            parts.append(f"❌ Несовпадение формулы: '{record.formula}' != '{target_formula}'")
+            parts.append(
+                f"❌ Несовпадение формулы: '{record.formula}' != '{target_formula}'"
+            )
 
         # Название
         if name_score >= 0.9:
@@ -391,7 +423,7 @@ class ReactionValidator:
             parts.append(f"🟡 Хорошее совпадение названия: {name_score:.2f}")
         elif name_score > 0.0:
             parts.append(f"🟠 Частичное совпадение названия: {name_score:.2f}")
-        elif name_score == 0.0 and hasattr(record, 'first_name'):
+        elif name_score == 0.0 and hasattr(record, "first_name"):
             parts.append(f"⚪ Нет совпадения названия с '{record.first_name}'")
 
         # Общий confidence
@@ -408,9 +440,7 @@ def create_reaction_validator() -> ReactionValidator:
 
 
 def validate_compound_names(
-    db_name: str,
-    llm_names: List[str],
-    min_score: float = 0.5
+    db_name: str, llm_names: List[str], min_score: float = 0.5
 ) -> Tuple[bool, float]:
     """
     Утилитарная функция для быстрой валидации названий.

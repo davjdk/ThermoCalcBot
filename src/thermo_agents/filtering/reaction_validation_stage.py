@@ -5,13 +5,13 @@
 и другими стадиями. Использует ReactionValidator для мягкой валидации по названиям.
 """
 
-from typing import List, Dict, Any, Optional
 import logging
+from typing import Any, Dict, List, Optional
 
-from .filter_pipeline import FilterStage, FilterContext
-from .reaction_validator import ReactionValidator, CompoundValidationResult
-from ..models.search import DatabaseRecord
 from ..models.extraction import ExtractedReactionParameters
+from ..models.search import DatabaseRecord
+from .filter_pipeline import FilterContext, FilterStage
+from .reaction_validator import CompoundValidationResult, ReactionValidator
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class ReactionValidationStage(FilterStage):
         self,
         min_confidence_threshold: float = 0.5,
         max_records_per_compound: int = 3,
-        enable_name_validation: bool = True
+        enable_name_validation: bool = True,
     ):
         """
         Args:
@@ -47,9 +47,7 @@ class ReactionValidationStage(FilterStage):
         self._last_validation_results: Dict[str, CompoundValidationResult] = {}
 
     def filter(
-        self,
-        records: List[DatabaseRecord],
-        context: FilterContext
+        self, records: List[DatabaseRecord], context: FilterContext
     ) -> List[DatabaseRecord]:
         """
         Применяет валидацию реакции к записям.
@@ -64,10 +62,10 @@ class ReactionValidationStage(FilterStage):
         if not context.reaction_params:
             logger.warning("Отсутствуют параметры реакции в контексте")
             self.last_stats = {
-                'validation_applied': False,
-                'reason': 'No reaction parameters in context',
-                'records_before': len(records),
-                'records_after': len(records)
+                "validation_applied": False,
+                "reason": "No reaction parameters in context",
+                "records_before": len(records),
+                "records_after": len(records),
             }
             return records
 
@@ -77,8 +75,8 @@ class ReactionValidationStage(FilterStage):
         )
 
         # Валидация соединений
-        filtered_records, validation_results = self.validator.validate_reaction_compounds(
-            records, context.reaction_params
+        filtered_records, validation_results = (
+            self.validator.validate_reaction_compounds(records, context.reaction_params)
         )
 
         # Сохраняем результаты для последующего анализа
@@ -89,7 +87,10 @@ class ReactionValidationStage(FilterStage):
         for record in filtered_records:
             # Находим соответствующий результат валидации
             validation_result = self._find_validation_result(record, validation_results)
-            if validation_result and validation_result.total_confidence >= self.min_confidence_threshold:
+            if (
+                validation_result
+                and validation_result.total_confidence >= self.min_confidence_threshold
+            ):
                 final_records.append(record)
 
         # Ограничиваем количество записей на соединение
@@ -101,18 +102,26 @@ class ReactionValidationStage(FilterStage):
         target_result = validation_results.get(target_compound)
 
         stats = {
-            'validation_applied': True,
-            'reaction_equation': context.reaction_params.balanced_equation,
-            'target_compound': target_compound,
-            'target_role': self._get_compound_role(target_compound, context.reaction_params),
-            'records_before': len(records),
-            'records_after_validation': len(filtered_records),
-            'records_after_threshold': len(final_records),
-            'confidence_threshold': self.min_confidence_threshold,
-            'name_validation_enabled': self.enable_name_validation,
-            'validation_summary': target_result.validation_summary if target_result else 'No validation result',
-            'best_confidence': target_result.best_result.total_confidence if target_result and target_result.best_result else 0.0,
-            'best_record_reasoning': target_result.best_result.reasoning if target_result and target_result.best_result else 'No best result'
+            "validation_applied": True,
+            "reaction_equation": context.reaction_params.balanced_equation,
+            "target_compound": target_compound,
+            "target_role": self._get_compound_role(
+                target_compound, context.reaction_params
+            ),
+            "records_before": len(records),
+            "records_after_validation": len(filtered_records),
+            "records_after_threshold": len(final_records),
+            "confidence_threshold": self.min_confidence_threshold,
+            "name_validation_enabled": self.enable_name_validation,
+            "validation_summary": target_result.validation_summary
+            if target_result
+            else "No validation result",
+            "best_confidence": target_result.best_result.total_confidence
+            if target_result and target_result.best_result
+            else 0.0,
+            "best_record_reasoning": target_result.best_result.reasoning
+            if target_result and target_result.best_result
+            else "No best result",
         }
 
         self.last_stats = stats
@@ -127,7 +136,7 @@ class ReactionValidationStage(FilterStage):
     def _find_validation_result(
         self,
         record: DatabaseRecord,
-        validation_results: Dict[str, CompoundValidationResult]
+        validation_results: Dict[str, CompoundValidationResult],
     ) -> Optional[Any]:
         """Находит результат валидации для конкретной записи."""
         for compound_result in validation_results.values():
@@ -137,11 +146,14 @@ class ReactionValidationStage(FilterStage):
         return None
 
     def _limit_records_per_compound(
-        self,
-        records: List[DatabaseRecord],
-        context: FilterContext
+        self, records: List[DatabaseRecord], context: FilterContext
     ) -> List[DatabaseRecord]:
-        """Ограничивает количество записей для одного соединения."""
+        """
+        Ограничивает количество записей для одного соединения.
+
+        ВАЖНО: Сохраняет разнообразие фаз, чтобы PhaseBasedTemperatureStage
+        мог выбрать правильную фазу для температурного диапазона.
+        """
         # Если записей меньше лимита, возвращаем как есть
         if len(records) <= self.max_records_per_compound:
             return records
@@ -149,15 +161,32 @@ class ReactionValidationStage(FilterStage):
         # Сортируем по confidence (используем результаты валидации)
         records_with_confidence = []
         for record in records:
-            validation_result = self._find_validation_result(record, self._last_validation_results)
-            confidence = validation_result.total_confidence if validation_result else 0.0
+            validation_result = self._find_validation_result(
+                record, self._last_validation_results
+            )
+            confidence = (
+                validation_result.total_confidence if validation_result else 0.0
+            )
             records_with_confidence.append((record, confidence))
 
         # Сортируем по confidence (убывание)
         records_with_confidence.sort(key=lambda x: x[1], reverse=True)
 
-        # Берем лучшие записи
-        limited_records = [record for record, _ in records_with_confidence[:self.max_records_per_compound]]
+        # НОВАЯ ЛОГИКА: Берем по 1 записи каждой уникальной фазы (до max_records_per_compound)
+        # Это гарантирует, что PhaseBasedTemperatureStage получит варианты разных фаз
+        limited_records = []
+        seen_phases = set()
+
+        for record, confidence in records_with_confidence:
+            phase = record.phase or "unknown"
+            if (
+                phase not in seen_phases
+                or len(limited_records) < self.max_records_per_compound
+            ):
+                limited_records.append(record)
+                seen_phases.add(phase)
+                if len(limited_records) >= self.max_records_per_compound:
+                    break
 
         logger.info(
             f"Ограничено количество записей для {context.compound_formula}: "
@@ -167,20 +196,18 @@ class ReactionValidationStage(FilterStage):
         return limited_records
 
     def _get_compound_role(
-        self,
-        compound: str,
-        reaction_params: Optional[ExtractedReactionParameters]
+        self, compound: str, reaction_params: Optional[ExtractedReactionParameters]
     ) -> str:
         """Определяет роль соединения в реакции."""
         if not reaction_params:
-            return 'unknown'
+            return "unknown"
 
         if compound in reaction_params.reactants:
-            return 'reactant'
+            return "reactant"
         elif compound in reaction_params.products:
-            return 'product'
+            return "product"
         else:
-            return 'unknown'
+            return "unknown"
 
     def get_stage_name(self) -> str:
         """Название стадии для отчётности."""
@@ -193,24 +220,34 @@ class ReactionValidationStage(FilterStage):
     def get_validation_summary(self) -> Dict[str, Any]:
         """Получить сводную информацию о валидации."""
         if not self._last_validation_results:
-            return {'validation_applied': False}
+            return {"validation_applied": False}
 
         summary = {
-            'validation_applied': True,
-            'total_compounds': len(self._last_validation_results),
-            'compounds_with_results': sum(1 for result in self._last_validation_results.values() if result.best_result),
-            'compounds_without_results': sum(1 for result in self._last_validation_results.values() if not result.best_result),
-            'average_confidence': self._calculate_average_confidence(),
-            'compounds_detail': {}
+            "validation_applied": True,
+            "total_compounds": len(self._last_validation_results),
+            "compounds_with_results": sum(
+                1
+                for result in self._last_validation_results.values()
+                if result.best_result
+            ),
+            "compounds_without_results": sum(
+                1
+                for result in self._last_validation_results.values()
+                if not result.best_result
+            ),
+            "average_confidence": self._calculate_average_confidence(),
+            "compounds_detail": {},
         }
 
         for compound, result in self._last_validation_results.items():
-            summary['compounds_detail'][compound] = {
-                'role': result.target_role,
-                'records_found': len(result.all_results),
-                'has_best_result': bool(result.best_result),
-                'best_confidence': result.best_result.total_confidence if result.best_result else 0.0,
-                'summary': result.validation_summary
+            summary["compounds_detail"][compound] = {
+                "role": result.target_role,
+                "records_found": len(result.all_results),
+                "has_best_result": bool(result.best_result),
+                "best_confidence": result.best_result.total_confidence
+                if result.best_result
+                else 0.0,
+                "summary": result.validation_summary,
             }
 
         return summary
