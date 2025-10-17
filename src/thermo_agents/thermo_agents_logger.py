@@ -467,7 +467,14 @@ class SessionLogger:
         if not records:
             return "Нет данных для отображения"
 
-        headers = ["Formula", "FirstName", "Phase", "Tmin-Tmax (K)"]
+        headers = [
+            "Formula",
+            "FirstName",
+            "Phase",
+            "Tmin-Tmax (K)",
+            "Tmelt (K)",
+            "Tboil (K)",
+        ]
         rows = []
 
         for record in records[:max_rows]:
@@ -480,6 +487,8 @@ class SessionLogger:
             phase = getattr(record, "phase", "N/A")
             tmin = getattr(record, "tmin", None)
             tmax = getattr(record, "tmax", None)
+            tmelt = getattr(record, "tmelt", None)
+            tboil = getattr(record, "tboil", None)
 
             # Форматируем температурный диапазон
             if tmin is not None and tmax is not None:
@@ -487,7 +496,19 @@ class SessionLogger:
             else:
                 temp_range = "N/A"
 
-            rows.append([formula, first_name, phase, temp_range])
+            # Форматируем Tmelt
+            if tmelt is not None and tmelt > 0:
+                tmelt_str = f"{int(tmelt)}"
+            else:
+                tmelt_str = "—"
+
+            # Форматируем Tboil
+            if tboil is not None and tboil > 0:
+                tboil_str = f"{int(tboil)}"
+            else:
+                tboil_str = "—"
+
+            rows.append([formula, first_name, phase, temp_range, tmelt_str, tboil_str])
 
         return tabulate(
             rows, headers=headers, tablefmt="grid", floatfmt=".2f", missingval="N/A"

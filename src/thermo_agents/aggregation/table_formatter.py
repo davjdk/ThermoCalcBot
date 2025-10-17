@@ -5,8 +5,10 @@ TableFormatter - форматирование результатов в табл
 для чтения таблицы с соблюдением строгого порядка колонок.
 """
 
-from tabulate import tabulate
 from typing import List
+
+from tabulate import tabulate
+
 from src.thermo_agents.models.search import CompoundSearchResult, DatabaseRecord
 
 
@@ -20,15 +22,16 @@ class TableFormatter:
             "Название",
             "Фаза",
             "T_диапазон (K)",
+            "Tmelt (K)",
+            "Tboil (K)",
             "H298 (кДж/моль)",
             "S298 (Дж/моль·K)",
             "Cp_коэффициенты (f1-f6)",
-            "Надёжность (класс)"
+            "Надёжность (класс)",
         ]
 
     def format_summary_table(
-        self,
-        compounds_results: List[CompoundSearchResult]
+        self, compounds_results: List[CompoundSearchResult]
     ) -> str:
         """
         Форматирование сводной таблицы термодинамических свойств.
@@ -54,21 +57,22 @@ class TableFormatter:
             if not result.records_found:
                 continue
 
-            # Взять первую (приоритетную) запись
-            record = result.records_found[0]
+            # Взять ВСЕ записи для вещества (могут быть разные фазы)
+            for record in result.records_found:
+                row = [
+                    self._format_formula(record),
+                    self._format_name(record),
+                    self._format_phase(record),
+                    self._format_temperature_range(record),
+                    self._format_melting_point(record),
+                    self._format_boiling_point(record),
+                    self._format_h298(record),
+                    self._format_s298(record),
+                    self._format_cp_coefficients(record),
+                    self._format_reliability(record),
+                ]
 
-            row = [
-                self._format_formula(record),
-                self._format_name(record),
-                self._format_phase(record),
-                self._format_temperature_range(record),
-                self._format_h298(record),
-                self._format_s298(record),
-                self._format_cp_coefficients(record),
-                self._format_reliability(record)
-            ]
-
-            table_data.append(row)
+                table_data.append(row)
 
         if not table_data:
             return "Нет данных для отображения"
@@ -78,7 +82,7 @@ class TableFormatter:
     def format_detailed_table(
         self,
         compounds_results: List[CompoundSearchResult],
-        max_records_per_compound: int = 3
+        max_records_per_compound: int = 3,
     ) -> str:
         """
         Форматирование детальной таблицы с несколькими записями на вещество.
@@ -97,7 +101,9 @@ class TableFormatter:
                 continue
 
             # Добавить заголовок вещества
-            table_data.append([f"** {result.compound_formula} **", "", "", "", "", "", "", ""])
+            table_data.append(
+                [f"** {result.compound_formula} **", "", "", "", "", "", "", "", "", ""]
+            )
 
             # Добавить записи вещества
             for i, record in enumerate(result.records_found[:max_records_per_compound]):
@@ -106,18 +112,20 @@ class TableFormatter:
                     self._format_name(record),
                     self._format_phase(record),
                     self._format_temperature_range(record),
+                    self._format_melting_point(record),
+                    self._format_boiling_point(record),
                     self._format_h298(record),
                     self._format_s298(record),
                     self._format_cp_coefficients(record),
-                    self._format_reliability(record)
+                    self._format_reliability(record),
                 ]
                 table_data.append(row)
 
             # Добавить разделитель
-            table_data.append(["", "", "", "", "", "", "", ""])
+            table_data.append(["", "", "", "", "", "", "", "", "", ""])
 
         # Удалить последний разделитель
-        if table_data and table_data[-1] == ["", "", "", "", "", "", "", ""]:
+        if table_data and table_data[-1] == ["", "", "", "", "", "", "", "", "", ""]:
             table_data.pop()
 
         if not table_data:
@@ -131,8 +139,8 @@ class TableFormatter:
             return "?"
 
         formula = record.formula
-        if '(' in formula:
-            return formula[:formula.index('(')].strip()
+        if "(" in formula:
+            return formula[: formula.index("(")].strip()
         return formula.strip()
 
     def _format_phase(self, record: DatabaseRecord) -> str:
@@ -141,9 +149,9 @@ class TableFormatter:
             return record.phase
 
         # Извлечь из формулы
-        if record.formula and '(' in record.formula and ')' in record.formula:
-            start = record.formula.index('(') + 1
-            end = record.formula.index(')')
+        if record.formula and "(" in record.formula and ")" in record.formula:
+            start = record.formula.index("(") + 1
+            end = record.formula.index(")")
             return record.formula[start:end].strip()
 
         return "?"
@@ -154,22 +162,34 @@ class TableFormatter:
             return "?"
 
         tmin = int(record.tmin) if record.tmin is not None else 0
-        tmax = int(record.tmax) if record.tmax is not None else float('inf')
+        tmax = int(record.tmax) if record.tmax is not None else float("inf")
 
-        if tmax == float('inf'):
+        if tmax == float("inf"):
             return f"{tmin}-∞"
         else:
             return f"{tmin}-{tmax}"
 
+    def _format_melting_point(self, record: DatabaseRecord) -> str:
+        """Форматирование температуры плавления."""
+        if not hasattr(record, "tmelt") or record.tmelt is None or record.tmelt <= 0:
+            return "—"
+        return f"{int(record.tmelt)}"
+
+    def _format_boiling_point(self, record: DatabaseRecord) -> str:
+        """Форматирование температуры кипения."""
+        if not hasattr(record, "tboil") or record.tboil is None or record.tboil <= 0:
+            return "—"
+        return f"{int(record.tboil)}"
+
     def _format_h298(self, record: DatabaseRecord) -> str:
         """Форматирование энтальпии."""
-        if record.h298 is None or not hasattr(record, 'h298'):
+        if record.h298 is None or not hasattr(record, "h298"):
             return "—"
         return f"{record.h298:.1f}"
 
     def _format_s298(self, record: DatabaseRecord) -> str:
         """Форматирование энтропии."""
-        if record.s298 is None or not hasattr(record, 's298'):
+        if record.s298 is None or not hasattr(record, "s298"):
             return "—"
         return f"{record.s298:.1f}"
 
@@ -194,11 +214,15 @@ class TableFormatter:
     def _format_name(self, record: DatabaseRecord) -> str:
         """Форматирование названия соединения."""
         # Используем first_name (FirstName из базы), если доступно
-        if hasattr(record, 'first_name') and record.first_name and record.first_name != "N/A":
+        if (
+            hasattr(record, "first_name")
+            and record.first_name
+            and record.first_name != "N/A"
+        ):
             return record.first_name
 
         # Fallback на name, если доступно
-        if hasattr(record, 'name') and record.name and record.name != "N/A":
+        if hasattr(record, "name") and record.name and record.name != "N/A":
             return record.name
 
         return "N/A"
@@ -210,8 +234,7 @@ class TableFormatter:
         return str(record.reliability_class)
 
     def format_compact_table(
-        self,
-        compounds_results: List[CompoundSearchResult]
+        self, compounds_results: List[CompoundSearchResult]
     ) -> str:
         """
         Форматирование компактной таблицы только с основной информацией.
@@ -236,7 +259,7 @@ class TableFormatter:
             "Фаза",
             "T_диапазон (K)",
             "H298 (кДж/моль)",
-            "Надёжность"
+            "Надёжность",
         ]
 
         table_data = []
@@ -252,7 +275,7 @@ class TableFormatter:
                 self._format_phase(record),
                 self._format_temperature_range(record),
                 self._format_h298(record),
-                self._format_reliability(record)
+                self._format_reliability(record),
             ]
             table_data.append(row)
 
