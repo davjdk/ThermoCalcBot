@@ -11,6 +11,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ..models.extraction import ExtractedReactionParameters
 from ..models.search import DatabaseRecord
+from ..utils.chem_utils import (
+    is_ionic_formula,
+    is_ionic_name,
+    query_contains_charge,
+    expand_composite_candidates,
+)
 
 
 @dataclass
@@ -93,6 +99,122 @@ class FilterPipeline:
         self._last_execution_time_ms: Optional[float] = None
         self.session_logger = session_logger
 
+    def _prefilter_exclude_ions(
+        self, records: List[DatabaseRecord], query: Optional[str] = None
+    ) -> Tuple[List[DatabaseRecord], List[DatabaseRecord]]:
+        """
+        Prefilter: Исключить ионные формы, если пользователь не запрашивал их явно.
+
+        Args:
+            records: Список записей для фильтрации
+            query: Поисковый запрос пользователя
+
+        Returns:
+            Tuple[non_ionic_records, ionic_records]
+        """
+        if not query or query_contains_charge(query):
+            # Пользователь явно запросил ионную форму или запрос пуст
+            return records, []
+
+        # Разделяем записи на ионные и неионные
+        ionic_records = []
+        non_ionic_records = []
+
+        for record in records:
+            is_ionic = False
+
+            # Проверяем формулу на ионность
+            if record.formula and is_ionic_formula(record.formula):
+                is_ionic = True
+
+            # Проверяем название на ионность
+            if not is_ionic and hasattr(record, 'first_name') and record.first_name and is_ionic_name(record.first_name):
+                is_ionic = True
+
+            if is_ionic:
+                ionic_records.append(record)
+            else:
+                non_ionic_records.append(record)
+
+        if ionic_records and self.session_logger:
+            self.session_logger.log_info(
+                f"Prefilter: исключено {len(ionic_records)} ионных записей из {len(records)}"
+            )
+
+        return non_ionic_records, ionic_records
+
+    def _apply_fallback(
+        self,
+        initial_records: List[DatabaseRecord],
+        ionic_records: List[DatabaseRecord],
+        prefilter_applied: bool,
+        context: FilterContext,
+    ) -> List[DatabaseRecord]:
+        """
+        Применить fallback-стратегии для восстановления записей.
+
+        Args:
+            initial_records: Исходные записи до фильтрации
+            ionic_records: Исключённые ионные записи
+            prefilter_applied: Был ли применен prefilter
+            context: Контекст фильтрации
+
+        Returns:
+            Список восстановленных записей или пустой список
+        """
+        query = context.user_query or context.compound_formula
+        fallback_applied = False
+        result_records = []
+
+        # Fallback 1: Восстановление ионных записей (если они были исключены)
+        if prefilter_applied and ionic_records:
+            if self.session_logger:
+                self.session_logger.log_info(
+                    f"Fallback: пробуем восстановить {len(ionic_records)} исключённых ионных записей"
+                )
+
+            # Ионные записи - это крайняя мера, но если ничего больше не работает
+            result_records.extend(ionic_records)
+            fallback_applied = True
+            fallback_reason = "восстановлены ионные записи"
+
+        # Fallback 2: Поиск составных формул (например, Li2O*TiO2 для Li2TiO3)
+        if not result_records and initial_records:
+            if self.session_logger:
+                self.session_logger.log_info(
+                    f"Fallback: пробуем найти составные формулы для '{query}'"
+                )
+
+            composite_candidates = expand_composite_candidates(query, initial_records)
+            if composite_candidates:
+                result_records.extend(composite_candidates)
+                fallback_applied = True
+                fallback_reason = "найдены составные формулы"
+
+        # Fallback 3: Вернуть top-N исходных записей с пометкой relaxed
+        if not result_records and initial_records:
+            if self.session_logger:
+                self.session_logger.log_info(
+                    f"Fallback: возвращаем top-3 исходных записей для '{query}'"
+                )
+
+            # Сортируем по надёжности и берём top-3
+            sorted_records = sorted(
+                initial_records,
+                key=lambda r: getattr(r, 'ReliabilityClass', 'D'),
+            )[:3]
+
+            result_records.extend(sorted_records)
+            fallback_applied = True
+            fallback_reason = "relaxed top-N"
+
+        if fallback_applied and self.session_logger:
+            self.session_logger.log_info(
+                f"Fallback успешен: {fallback_reason}, найдено {len(result_records)} записей"
+            )
+
+        return result_records
+
     def add_stage(self, stage: FilterStage) -> "FilterPipeline":
         """
         Добавить стадию в конвейер (поддержка fluent API).
@@ -116,10 +238,12 @@ class FilterPipeline:
         Выполнить конвейер фильтрации.
 
         Проходит по всем стадиям последовательно:
+        0. Prefilter: исключение ионов (если необходимо)
         1. FormulaMatchStage (уже выполнена в CompoundSearcher)
         2. TemperatureFilterStage
         3. PhaseSelectionStage
         4. ReliabilityPriorityStage
+        Fallback: восстановление исключённых записей (если необходимо)
 
         Собирает статистику на каждой стадии.
 
@@ -133,9 +257,11 @@ class FilterPipeline:
         import time
 
         start_time = time.time()
-
+        initial_records = records.copy()  # Сохраняем исходные данные для fallback
         current_records = records
         self.statistics = []
+        ionic_records = []  # Сохраняем исключённые ионные записи
+        prefilter_applied = False
 
         # Добавляем начальную статистику
         self.statistics.append(
@@ -148,6 +274,35 @@ class FilterPipeline:
                 "execution_time_ms": 0.0,
             }
         )
+
+        # Prefilter: исключение ионов
+        query = context.user_query or context.compound_formula
+        if query and not query_contains_charge(query):
+            current_records, ionic_records = self._prefilter_exclude_ions(
+                current_records, query
+            )
+            prefilter_applied = len(ionic_records) > 0
+
+            if prefilter_applied:
+                # Добавляем статистику prefilter
+                self.statistics.append(
+                    {
+                        "stage_number": 0.5,
+                        "stage_name": "Prefilter: исключение ионов",
+                        "records_before": len(initial_records),
+                        "records_after": len(current_records),
+                        "reduction_rate": len(ionic_records) / len(initial_records)
+                        if initial_records
+                        else 0.0,
+                        "execution_time_ms": 0.0,
+                        "ionic_records_excluded": len(ionic_records),
+                    }
+                )
+
+                if self.session_logger:
+                    self.session_logger.log_info(
+                        f"Prefilter исключил {len(ionic_records)} ионных записей"
+                    )
 
         for i, stage in enumerate(self.stages, start=1):
             stage_start_time = time.time()
@@ -205,16 +360,47 @@ class FilterPipeline:
 
             # Проверка провала
             if len(filtered) == 0:
-                total_time = (time.time() - start_time) * 1000
-                self._last_execution_time_ms = total_time
-
-                return FilterResult(
-                    filtered_records=[],
-                    stage_statistics=self.statistics.copy(),
-                    is_found=False,
-                    failure_stage=i,
-                    failure_reason=f"Нет записей после стадии: {stage.get_stage_name()}",
+                # Fallback: пробуем восстановить записи если все стадии провалились
+                fallback_records = self._apply_fallback(
+                    initial_records, ionic_records, prefilter_applied, context
                 )
+
+                if fallback_records:
+                    total_time = (time.time() - start_time) * 1000
+                    self._last_execution_time_ms = total_time
+
+                    # Добавляем статистику fallback
+                    self.statistics.append(
+                        {
+                            "stage_number": i + 0.5,
+                            "stage_name": "Fallback: восстановление записей",
+                            "records_before": 0,
+                            "records_after": len(fallback_records),
+                            "reduction_rate": 0.0,
+                            "execution_time_ms": 0.0,
+                            "fallback_applied": True,
+                            "fallback_records_found": len(fallback_records),
+                        }
+                    )
+
+                    return FilterResult(
+                        filtered_records=fallback_records,
+                        stage_statistics=self.statistics.copy(),
+                        is_found=True,
+                        failure_reason=None,
+                    )
+                else:
+                    # Fallback не помог, возвращаем провал
+                    total_time = (time.time() - start_time) * 1000
+                    self._last_execution_time_ms = total_time
+
+                    return FilterResult(
+                        filtered_records=[],
+                        stage_statistics=self.statistics.copy(),
+                        is_found=False,
+                        failure_stage=i,
+                        failure_reason=f"Нет записей после стадии: {stage.get_stage_name()}",
+                    )
 
             current_records = filtered
 
