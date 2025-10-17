@@ -9,6 +9,21 @@ import time
 from typing import Any, Dict, List, Optional
 
 from ..models.search import DatabaseRecord
+from .constants import (
+    DEFAULT_CACHE_SIZE,
+    MAX_RELIABILITY_CLASS,
+    MIN_TEMPERATURE_COVERAGE_RATIO,
+    MIN_TEMPERATURE_K,
+    MAX_TEMPERATURE_K,
+    SOLID_PHASE_MAX_TEMP,
+    LIQUID_PHASE_MIN_TEMP,
+    LIQUID_PHASE_MAX_TEMP,
+    GAS_PHASE_MIN_TEMP,
+    MELTING_POINT_MAX,
+    BOILING_POINT_MIN,
+    WATER_MELTING_POINT,
+    WATER_BOILING_POINT,
+)
 from .filter_pipeline import FilterContext, FilterStage
 from .phase_resolver import PhaseResolver
 from .temperature_resolver import TemperatureResolver
@@ -104,8 +119,8 @@ class PhaseSelectionStage(FilterStage):
         # Сортировка по соответствию фазе
         phase_scores.sort(key=lambda x: x[1], reverse=True)
 
-        # Выбор записей с score >= 0.3 (минимально приемлемые данные)
-        filtered = [r for r, score in phase_scores if score >= 0.3]
+        # Выбор записей с score >= MIN_TEMPERATURE_COVERAGE_RATIO (минимально приемлемые данные)
+        filtered = [r for r, score in phase_scores if score >= MIN_TEMPERATURE_COVERAGE_RATIO]
 
         execution_time = (time.time() - start_time) * 1000
 
@@ -152,7 +167,7 @@ class PhaseSelectionStage(FilterStage):
 
         # Проверяем надежность данных
         good_reliability = (
-            record.reliability_class is not None and record.reliability_class <= 3
+            record.reliability_class is not None and record.reliability_class <= MAX_RELIABILITY_CLASS
         )
 
         # Проверяем наличие фазовых переходов
@@ -253,7 +268,7 @@ class ReliabilityPriorityStage(FilterStage):
         # Критерий 4: Ширина температурного диапазона
         if record.tmin is not None and record.tmax is not None:
             range_width = record.tmax - record.tmin
-            score += min(range_width / 100, 10)  # Максимум 10 баллов за диапазон
+            score += min(range_width / DEFAULT_CACHE_SIZE, 10)  # Максимум 10 баллов за диапазон
 
         # Критерий 5: Наличие стандартных свойств
         if record.h298 is not None:

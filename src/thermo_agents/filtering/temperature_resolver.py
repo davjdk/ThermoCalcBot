@@ -10,6 +10,11 @@ from dataclasses import dataclass
 import math
 
 from ..models.search import DatabaseRecord
+from .constants import (
+    MAX_TEMPERATURE_K,
+    MIN_TEMPERATURE_K,
+    MIN_TEMPERATURE_COVERAGE_RATIO,
+)
 
 
 @dataclass
@@ -25,8 +30,10 @@ class TemperatureInterval:
         """Валидация интервала."""
         if self.tmin > self.tmax:
             raise ValueError("Минимальная температура не может быть больше максимальной")
-        if self.tmin <= 0 or self.tmax <= 0:
+        if self.tmin <= MIN_TEMPERATURE_K or self.tmax <= MIN_TEMPERATURE_K:
             raise ValueError("Температуры должны быть положительными")
+        if self.tmax > MAX_TEMPERATURE_K:
+            raise ValueError(f"Температура не может превышать {MAX_TEMPERATURE_K}K")
 
     @property
     def width(self) -> float:
@@ -121,7 +128,7 @@ class TemperatureResolver:
         coverage = total_covered / target_width if target_width > 0 else 0.0
 
         result = 'none'
-        if coverage >= 0.99:  # 99% покрытия = полное
+        if coverage >= (1.0 - MIN_TEMPERATURE_COVERAGE_RATIO):  # 99% покрытия = полное
             result = 'full'
         elif coverage > 0:
             result = 'partial'
@@ -219,7 +226,7 @@ class TemperatureResolver:
         for record in records:
             # В базе данных Tmin и Tmax всегда заполнены (100% покрытие)
             # Ограничиваем очень большие значения разумным максимумом
-            tmax = min(record.tmax, 10000.0)  # 10000K как разумный максимум
+            tmax = min(record.tmax, MAX_TEMPERATURE_K)  # MAX_TEMPERATURE_K как разумный максимум
 
             interval = TemperatureInterval(
                 tmin=record.tmin,

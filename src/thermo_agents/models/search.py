@@ -10,6 +10,11 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field, validator
+from ..filtering.constants import (
+    MIN_TEMPERATURE_K,
+    MAX_TEMPERATURE_K,
+    MAX_RELIABILITY_CLASS
+)
 
 
 class CoverageStatus(str, Enum):
@@ -87,15 +92,15 @@ class DatabaseRecord(BaseModel):
     @validator("reliability_class")
     def validate_reliability_class(cls, v):
         """Validate reliability class is in valid range."""
-        if v is not None and (v < 0 or v > 9):
-            raise ValueError("Reliability class must be between 0 and 9")
+        if v is not None and (v < 0 or v > MAX_RELIABILITY_CLASS):
+            raise ValueError(f"Reliability class must be between 0 and {MAX_RELIABILITY_CLASS}")
         return v
 
     @validator("tmin", "tmax")
     def validate_temperatures(cls, v):
-        """Validate temperatures are positive."""
-        if v is not None and v <= 0:
-            raise ValueError("Temperatures must be positive")
+        """Validate temperatures are within valid range."""
+        if v is not None and (v < MIN_TEMPERATURE_K or v > MAX_TEMPERATURE_K):
+            raise ValueError(f"Temperatures must be between {MIN_TEMPERATURE_K} and {MAX_TEMPERATURE_K}K")
         return v
 
     class Config:
@@ -104,6 +109,77 @@ class DatabaseRecord(BaseModel):
         from_attributes = True  # Allow creation from ORM objects
         extra = "allow"  # Allow additional fields from database
         populate_by_name = True  # Allow population by both field name and alias
+
+    # Backward compatibility properties for deprecated field names
+    @property
+    def MeltingPoint(self) -> Optional[float]:
+        """Legacy property for backward compatibility."""
+        return self.tmelt
+
+    @MeltingPoint.setter
+    def MeltingPoint(self, value: Optional[float]) -> None:
+        """Legacy setter for backward compatibility."""
+        self.tmelt = value
+
+    @property
+    def BoilingPoint(self) -> Optional[float]:
+        """Legacy property for backward compatibility."""
+        return self.tboil
+
+    @BoilingPoint.setter
+    def BoilingPoint(self, value: Optional[float]) -> None:
+        """Legacy setter for backward compatibility."""
+        self.tboil = value
+
+    @property
+    def Tmin(self) -> Optional[float]:
+        """Legacy property for backward compatibility."""
+        return self.tmin
+
+    @Tmin.setter
+    def Tmin(self, value: Optional[float]) -> None:
+        """Legacy setter for backward compatibility."""
+        self.tmin = value
+
+    @property
+    def Tmax(self) -> Optional[float]:
+        """Legacy property for backward compatibility."""
+        return self.tmax
+
+    @Tmax.setter
+    def Tmax(self, value: Optional[float]) -> None:
+        """Legacy setter for backward compatibility."""
+        self.tmax = value
+
+    @property
+    def H298(self) -> Optional[float]:
+        """Legacy property for backward compatibility."""
+        return self.h298
+
+    @H298.setter
+    def H298(self, value: Optional[float]) -> None:
+        """Legacy setter for backward compatibility."""
+        self.h298 = value
+
+    @property
+    def S298(self) -> Optional[float]:
+        """Legacy property for backward compatibility."""
+        return self.s298
+
+    @S298.setter
+    def S298(self, value: Optional[float]) -> None:
+        """Legacy setter for backward compatibility."""
+        self.s298 = value
+
+    @property
+    def ReliabilityClass(self) -> Optional[int]:
+        """Legacy property for backward compatibility."""
+        return self.reliability_class
+
+    @ReliabilityClass.setter
+    def ReliabilityClass(self, value: Optional[int]) -> None:
+        """Legacy setter for backward compatibility."""
+        self.reliability_class = value
 
 
 class TemperatureRange(BaseModel):

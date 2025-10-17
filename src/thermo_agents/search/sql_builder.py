@@ -16,6 +16,14 @@ import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..filtering.constants import (
+    DEFAULT_QUERY_LIMIT,
+    MAX_QUERY_LIMIT,
+    DEFAULT_CACHE_SIZE,
+    MAX_RELIABILITY_CLASS,
+    RELIABILITY_CLASS_EXCELLENT,
+    VALID_PHASES,
+)
 from .common_compounds import CommonCompoundResolver
 
 
@@ -34,7 +42,14 @@ class FilterPriorities:
 
     def __post_init__(self):
         if self.reliability_classes is None:
-            self.reliability_classes = [1, 2, 3, 0, 4, 5]
+            self.reliability_classes = [
+                RELIABILITY_CLASS_EXCELLENT,  # 1 - excellent
+                2,  # good
+                MAX_RELIABILITY_CLASS,  # 3 - fair
+                0,  # unknown/unspecified
+                4,  # poor
+                5,  # very poor
+            ]
 
 
 class SQLBuilder:
@@ -61,7 +76,7 @@ class SQLBuilder:
         formula: str,
         temperature_range: Optional[Tuple[float, float]] = None,
         phase: Optional[str] = None,
-        limit: int = 100,
+        limit: int = DEFAULT_QUERY_LIMIT,
         compound_names: Optional[List[str]] = None,
     ) -> str:
         """
@@ -229,10 +244,13 @@ class SQLBuilder:
         # Tertiary: Formula simplicity (prefer base formulas over modified ones)
         conditions.append("LENGTH(TRIM(Formula)) ASC")
 
-        # Quaternary: Phase priority (gas > liquid > solid > aqueous)
+        # Quaternary: Phase priority using constants for valid phases
         phase_priority = "CASE Phase "
-        for phase, priority in [("g", 0), ("l", 1), ("s", 2), ("aq", 3)]:
-            phase_priority += f"WHEN '{phase}' THEN {priority} "
+        # Define phase priority based on typical thermodynamic analysis needs
+        phase_priorities = [("g", 0), ("l", 1), ("s", 2), ("aq", 3)]
+        for phase, priority in phase_priorities:
+            if phase in VALID_PHASES:
+                phase_priority += f"WHEN '{phase}' THEN {priority} "
         phase_priority += "ELSE 4 END"
         conditions.append(phase_priority)
 

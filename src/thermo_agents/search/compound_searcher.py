@@ -10,6 +10,13 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..filtering.constants import (
+    DEFAULT_QUERY_LIMIT,
+    MAX_QUERY_LIMIT,
+    DEFAULT_CACHE_SIZE,
+    MAX_RELIABILITY_CLASS,
+    SLOW_OPERATION_THRESHOLD_MS,
+)
 from ..models.search import (
     CompoundSearchResult,
     CoverageStatus,
@@ -57,7 +64,7 @@ class CompoundSearcher:
         formula: str,
         temperature_range: Optional[Tuple[float, float]] = None,
         phase: Optional[str] = None,
-        limit: int = 100,
+        limit: int = DEFAULT_QUERY_LIMIT,
         compound_names: Optional[List[str]] = None,
     ) -> CompoundSearchResult:
         """
@@ -185,7 +192,7 @@ class CompoundSearcher:
         formula: str,
         temperature_range: Optional[Tuple[float, float]] = None,
         phase: Optional[str] = None,
-        limit: int = 100,
+        limit: int = DEFAULT_QUERY_LIMIT,
     ) -> Tuple[CompoundSearchResult, SearchPipeline]:
         """
         Search compound with detailed pipeline tracking.
@@ -551,7 +558,7 @@ class CompoundSearcher:
 
         # Check for low reliability data
         low_reliability = [
-            r for r in records if r.reliability_class and r.reliability_class > 3
+            r for r in records if r.reliability_class and r.reliability_class > MAX_RELIABILITY_CLASS
         ]
         if low_reliability:
             result.add_warning(

@@ -10,6 +10,16 @@ import re
 from dataclasses import dataclass
 
 from ..models.search import DatabaseRecord
+from .constants import (
+    SOLID_PHASE_MAX_TEMP,
+    LIQUID_PHASE_MIN_TEMP,
+    LIQUID_PHASE_MAX_TEMP,
+    GAS_PHASE_MIN_TEMP,
+    WATER_MELTING_POINT,
+    WATER_BOILING_POINT,
+    TEMPERATURE_EXTENSION_MARGIN,
+    VALID_PHASES,
+)
 
 
 @dataclass
@@ -27,8 +37,8 @@ class PhaseResolver:
     def __init__(self):
         self._cache: Dict[str, str] = {}
 
-        # Валидные фазы
-        self.valid_phases: Set[str] = {'s', 'l', 'g', 'aq', 'cr', 'am'}
+        # Валидные фазы из констант
+        self.valid_phases: Set[str] = VALID_PHASES
 
         # Температурные приоритеты фаз (низкая температура -> высокая температура)
         self.phase_temperature_order = ['s', 'cr', 'am', 'l', 'g', 'aq']
@@ -137,16 +147,16 @@ class PhaseResolver:
     def _estimate_phase_by_temperature(self, record: DatabaseRecord, temperature: float) -> Optional[str]:
         """Эвристическая оценка фазы по температуре."""
 
-        # Очень низкие температуры (<200K) - вероятно твёрдое
-        if temperature < 200:
+        # Очень низкие температуры (<SOLID_PHASE_MAX_TEMP) - вероятно твёрдое
+        if temperature < SOLID_PHASE_MAX_TEMP:
             return 's'
 
-        # Высокие температуры (>1500K) - вероятно газ
-        if temperature > 1500:
+        # Высокие температуры (>GAS_PHASE_MIN_TEMP) - вероятно газ
+        if temperature > GAS_PHASE_MIN_TEMP:
             return 'g'
 
         # Средние температуры - вероятно жидкое
-        if 273 <= temperature <= 373:
+        if LIQUID_PHASE_MIN_TEMP <= temperature <= LIQUID_PHASE_MAX_TEMP:
             return 'l'
 
         return None
