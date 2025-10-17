@@ -12,9 +12,9 @@ Key findings from database analysis implemented:
 - Many compounds need prefix/suffix search (e.g., HCl, CO2, NH3, CH4)
 """
 
-from typing import Optional, Tuple, List, Dict, Any
 import re
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -58,7 +58,8 @@ class SQLBuilder:
         formula: str,
         temperature_range: Optional[Tuple[float, float]] = None,
         phase: Optional[str] = None,
-        limit: int = 100
+        limit: int = 100,
+        compound_names: Optional[List[str]] = None,
     ) -> str:
         """
         Generate SQL query for compound search with multi-level formula matching.
@@ -67,12 +68,14 @@ class SQLBuilder:
         - Many compounds require prefix search (e.g., HCl, CO2, NH3, CH4)
         - Complex formulas may have phase suffixes in parentheses
         - Need to handle formula variability comprehensively
+        - Can search by compound names to improve accuracy
 
         Args:
             formula: Chemical formula (e.g., 'H2O', 'HCl', 'TiO2')
             temperature_range: Optional (tmin, tmax) in Kelvin
             phase: Optional phase filter ('s', 'l', 'g', 'aq', etc.)
             limit: Maximum number of results to return
+            compound_names: Optional list of compound names (e.g., ['Ammonium chloride', 'Sal ammoniac'])
 
         Returns:
             SQL query string for compound search
@@ -82,7 +85,7 @@ class SQLBuilder:
         params = []
 
         # Multi-level formula search based on database analysis
-        formula_condition = self._build_formula_condition(formula)
+        formula_condition = self._build_formula_condition(formula, compound_names)
         where_conditions.append(formula_condition)
 
         # Temperature filtering (100% coverage in database)
@@ -117,7 +120,9 @@ class SQLBuilder:
 
         return query, params
 
-    def _build_formula_condition(self, formula: str) -> str:
+    def _build_formula_condition(
+        self, formula: str, compound_names: Optional[List[str]] = None
+    ) -> str:
         """
         Build comprehensive formula search condition.
 
@@ -129,6 +134,8 @@ class SQLBuilder:
         - CO2: exact match → 0 records, prefix search → 1428 records
         - NH3: exact match → 1 record, prefix search → 1710 records
         - CH4: exact match → 0 records, prefix search → 1352 records
+
+        Also searches by compound names (FirstName field) if provided.
         """
         # Clean and escape formula
         clean_formula = formula.strip()
@@ -137,20 +144,33 @@ class SQLBuilder:
         conditions = [
             f"TRIM(Formula) = '{self._escape_sql(clean_formula)}'",
             f"Formula LIKE '{self._escape_sql(clean_formula)}(%'",  # Formula with phase in parentheses
-            f"Formula LIKE '{self._escape_sql(clean_formula)}%'",   # Prefix search for compounds like HCl
+            f"Formula LIKE '{self._escape_sql(clean_formula)}%'",  # Prefix search for compounds like HCl
         ]
 
         # For complex formulas, also include containment search
-        if not re.match(r'^[A-Z][a-z]?[0-9]*$', clean_formula):
+        if not re.match(r"^[A-Z][a-z]?[0-9]*$", clean_formula):
             # Non-simple formula, add containment search
             conditions.append(f"Formula LIKE '%{self._escape_sql(clean_formula)}%'")
+
+        # Add name-based search if compound names are provided
+        if compound_names:
+            name_conditions = []
+            for name in compound_names:
+                if name and name.strip():
+                    escaped_name = self._escape_sql(name.strip())
+                    # Case-insensitive exact match on FirstName
+                    name_conditions.append(
+                        f"LOWER(TRIM(FirstName)) = LOWER('{escaped_name}')"
+                    )
+
+            if name_conditions:
+                # Add name search as additional OR conditions
+                conditions.extend(name_conditions)
 
         return "(" + " OR ".join(conditions) + ")"
 
     def _build_temperature_condition(
-        self,
-        tmin_user: float,
-        tmax_user: float
+        self, tmin_user: float, tmax_user: float
     ) -> Tuple[str, List[float]]:
         """
         Build temperature filtering condition.
@@ -159,8 +179,13 @@ class SQLBuilder:
         - 100% temperature range coverage (Tmin/Tmax always filled)
         - Temperature ranges: 0.00015K to 100,000K
         - No NULL values to handle
+
+        Использует логику пересечения диапазонов:
+        - Диапазон БД [Tmin, Tmax] пересекается с пользовательским [tmin_user, tmax_user]
+        - Условие: NOT (Tmax < tmin_user OR Tmin > tmax_user)
+        - Что эквивалентно: (Tmax >= tmin_user AND Tmin <= tmax_user)
         """
-        return "(? >= Tmin AND ? <= Tmax)", [tmin_user, tmax_user]
+        return "(Tmax >= ? AND Tmin <= ?)", [tmin_user, tmax_user]
 
     def _build_order_clause(self) -> str:
         """
@@ -189,7 +214,7 @@ class SQLBuilder:
 
         # Quaternary: Phase priority (gas > liquid > solid > aqueous)
         phase_priority = "CASE Phase "
-        for phase, priority in [('g', 0), ('l', 1), ('s', 2), ('aq', 3)]:
+        for phase, priority in [("g", 0), ("l", 1), ("s", 2), ("aq", 3)]:
             phase_priority += f"WHEN '{phase}' THEN {priority} "
         phase_priority += "ELSE 4 END"
         conditions.append(phase_priority)
@@ -216,7 +241,8 @@ class SQLBuilder:
         self,
         formula: str,
         temperature_range: Optional[Tuple[float, float]] = None,
-        phase: Optional[str] = None
+        phase: Optional[str] = None,
+        compound_names: Optional[List[str]] = None,
     ) -> str:
         """
         Generate COUNT query for compound search.
@@ -227,6 +253,7 @@ class SQLBuilder:
             formula: Chemical formula
             temperature_range: Optional (tmin, tmax) in Kelvin
             phase: Optional phase filter
+            compound_names: Optional list of compound names
 
         Returns:
             SQL COUNT query and parameters
@@ -235,7 +262,7 @@ class SQLBuilder:
         where_conditions = []
         params = []
 
-        formula_condition = self._build_formula_condition(formula)
+        formula_condition = self._build_formula_condition(formula, compound_names)
         where_conditions.append(formula_condition)
 
         if temperature_range:
@@ -311,28 +338,24 @@ class SQLBuilder:
             "formula": formula,
             "search_strategies": [],
             "estimated_difficulty": "easy",
-            "recommendations": []
+            "recommendations": [],
         }
 
         # Analyze formula complexity
         clean_formula = formula.strip()
 
         # Simple formula (e.g., H2O, Fe, NaCl)
-        if re.match(r'^[A-Z][a-z]?[0-9]*$', clean_formula):
-            suggestions["search_strategies"].extend([
-                "exact_match",
-                "phase_in_parentheses",
-                "prefix_search"
-            ])
+        if re.match(r"^[A-Z][a-z]?[0-9]*$", clean_formula):
+            suggestions["search_strategies"].extend(
+                ["exact_match", "phase_in_parentheses", "prefix_search"]
+            )
             suggestions["estimated_difficulty"] = "easy"
 
         # Compound with complex pattern (e.g., HCl, CO2, NH3, CH4)
-        elif re.match(r'^[A-Z][a-z]?[0-9]*[A-Z].*$', clean_formula):
-            suggestions["search_strategies"].extend([
-                "exact_match",
-                "prefix_search",
-                "containment_search"
-            ])
+        elif re.match(r"^[A-Z][a-z]?[0-9]*[A-Z].*$", clean_formula):
+            suggestions["search_strategies"].extend(
+                ["exact_match", "prefix_search", "containment_search"]
+            )
             suggestions["estimated_difficulty"] = "medium"
             suggestions["recommendations"].append(
                 "Many compounds with this pattern require prefix search"
@@ -340,23 +363,25 @@ class SQLBuilder:
 
         # Very complex formula
         else:
-            suggestions["search_strategies"].extend([
-                "exact_match",
-                "prefix_search",
-                "containment_search"
-            ])
+            suggestions["search_strategies"].extend(
+                ["exact_match", "prefix_search", "containment_search"]
+            )
             suggestions["estimated_difficulty"] = "hard"
-            suggestions["recommendations"].extend([
-                "Consider alternative formula notations",
-                "Check for ionized forms (+, - charges)",
-                "Verify compound exists in database"
-            ])
+            suggestions["recommendations"].extend(
+                [
+                    "Consider alternative formula notations",
+                    "Check for ionized forms (+, - charges)",
+                    "Verify compound exists in database",
+                ]
+            )
 
         # Add general recommendations based on database analysis
-        suggestions["recommendations"].extend([
-            "Use temperature filtering to reduce duplicates",
-            "Check ReliabilityClass = 1 for highest quality data",
-            "Consider phase transitions around MeltingPoint/BoilingPoint"
-        ])
+        suggestions["recommendations"].extend(
+            [
+                "Use temperature filtering to reduce duplicates",
+                "Check ReliabilityClass = 1 for highest quality data",
+                "Consider phase transitions around MeltingPoint/BoilingPoint",
+            ]
+        )
 
         return suggestions
