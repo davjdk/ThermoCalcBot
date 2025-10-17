@@ -53,18 +53,33 @@ class ReactionAggregator:
         # Разделение на найденные/ненайденные
         found_compounds = []
         missing_compounds = []
+        filtered_out_compounds = []  # Новая категория: найдены, но отфильтрованы
 
         for result in compounds_results:
-            # Используем records_found для определения статуса
-            if result.records_found and len(result.records_found) > 0:
-                found_compounds.append(result.compound_formula)
+            # Проверяем, были ли найдены данные изначально
+            # Используем stage_1_initial_matches из FilterStatistics
+            has_initial_data = (
+                result.filter_statistics and
+                result.filter_statistics.stage_1_initial_matches > 0
+            )
+
+            # Проверяем, остались ли данные после фильтрации
+            has_final_data = result.records_found and len(result.records_found) > 0
+
+            if has_initial_data:
+                if has_final_data:
+                    found_compounds.append(result.compound_formula)
+                else:
+                    # Данные были найдены, но отклонены при фильтрации
+                    filtered_out_compounds.append(result.compound_formula)
             else:
                 missing_compounds.append(result.compound_formula)
 
         # Определение статуса полноты
-        if len(missing_compounds) == 0:
+        total_compounds = len(compounds_results)
+        if len(found_compounds) == total_compounds:
             completeness_status = "complete"
-        elif len(found_compounds) > 0:
+        elif len(found_compounds) > 0 or len(filtered_out_compounds) > 0:
             completeness_status = "partial"
         else:
             completeness_status = "incomplete"
@@ -81,7 +96,7 @@ class ReactionAggregator:
 
         # Генерация рекомендаций
         recommendations = self._generate_recommendations(
-            missing_compounds, completeness_status
+            missing_compounds, completeness_status, filtered_out_compounds
         )
 
         return AggregatedReactionData.model_construct(
@@ -91,6 +106,7 @@ class ReactionAggregator:
             completeness_status=completeness_status,
             missing_compounds=missing_compounds,
             found_compounds=found_compounds,
+            filtered_out_compounds=filtered_out_compounds,  # Новое поле
             detailed_statistics=detailed_statistics,
             warnings=warnings,
             recommendations=recommendations,
@@ -103,6 +119,19 @@ class ReactionAggregator:
         warnings = []
 
         for result in compounds_results:
+            # Проверяем, были ли данные отфильтрованы
+            has_initial_data = (
+                result.filter_statistics and
+                result.filter_statistics.stage_1_initial_matches > 0
+            )
+            has_final_data = result.records_found and len(result.records_found) > 0
+
+            if has_initial_data and not has_final_data:
+                warnings.append(
+                    f"Для {result.compound_formula} данные были найдены, "
+                    f"но отклонены при фильтрации (возможно, несоответствие фазы)"
+                )
+
             # Предупреждение о частичном покрытии
             if result.coverage_status == "partial":
                 warnings.append(
@@ -126,7 +155,8 @@ class ReactionAggregator:
         return warnings
 
     def _generate_recommendations(
-        self, missing_compounds: List[str], completeness_status: str
+        self, missing_compounds: List[str], completeness_status: str,
+        filtered_out_compounds: List[str] = None
     ) -> List[str]:
         """Генерация рекомендаций пользователю."""
         recommendations = []
@@ -146,6 +176,14 @@ class ReactionAggregator:
             recommendations.append(
                 "Для некоторых веществ доступны только частичные данные. "
                 "Рассмотрите возможность расширения температурного диапазона."
+            )
+
+        # Новая рекомендация для отфильтрованных веществ
+        if filtered_out_compounds:
+            recommendations.append(
+                f"Для веществ {', '.join(filtered_out_compounds)} данные были найдены, "
+                "но отклонены из-за несоответствия фазы. "
+                "Попробуйте указать другую фазу в запросе или измените температурный диапазон."
             )
 
         # Рекомендация по проверке формул

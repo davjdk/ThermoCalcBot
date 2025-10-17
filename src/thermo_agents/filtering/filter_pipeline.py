@@ -5,59 +5,36 @@
 Каждая стадия собирает детальную статистику о своей работе.
 """
 
-from typing import Protocol, List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
-import psutil
-import os
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
+from ..models.extraction import ExtractedReactionParameters
 from ..models.search import DatabaseRecord
-
-
-class PerformanceMonitor:
-    """Мониторинг производительности для стадий фильтрации."""
-
-    def __init__(self):
-        self.process = psutil.Process(os.getpid())
-
-    def get_memory_usage(self) -> Dict[str, float]:
-        """Получить информацию о памяти в MB."""
-        memory_info = self.process.memory_info()
-        return {
-            'rss_mb': memory_info.rss / 1024 / 1024,  # Resident Set Size
-            'vms_mb': memory_info.vms / 1024 / 1024,  # Virtual Memory Size
-            'percent': self.process.memory_percent()
-        }
-
-    def get_cpu_percent(self) -> float:
-        """Получить загрузку CPU."""
-        return self.process.cpu_percent()
-
-    def get_data_volume_mb(self, records: List[DatabaseRecord]) -> float:
-        """Оценить объем данных в записях."""
-        if not records:
-            return 0.0
-
-        # Приблизительная оценка размера одной записи
-        # Formula: 50 байт, Phase: 10 байт, floats: 8*8 байт, другие поля: 100 байт
-        estimated_size_per_record = 50 + 10 + (8 * 8) + 100  # ~214 байт
-
-        total_size = len(records) * estimated_size_per_record
-        return total_size / 1024 / 1024  # в MB
+from ..utils.chem_utils import (
+    is_ionic_formula,
+    is_ionic_name,
+    query_contains_charge,
+    expand_composite_candidates,
+)
 
 
 @dataclass
 class FilterContext:
     """Контекст фильтрации, передаваемый между стадиями."""
+
     temperature_range: Tuple[float, float]
     compound_formula: str
     user_query: Optional[str] = None
     additional_params: Optional[Dict[str, Any]] = None
+    reaction_params: Optional[ExtractedReactionParameters] = None  # НОВОЕ
 
     def __post_init__(self):
         """Валидация контекста после инициализации."""
         if self.temperature_range[0] > self.temperature_range[1]:
-            raise ValueError("Минимальная температура не может быть больше максимальной")
+            raise ValueError(
+                "Минимальная температура не может быть больше максимальной"
+            )
         if not self.compound_formula:
             raise ValueError("Формула соединения не может быть пустой")
 
@@ -73,9 +50,7 @@ class FilterStage(ABC):
 
     @abstractmethod
     def filter(
-        self,
-        records: List[DatabaseRecord],
-        context: FilterContext
+        self, records: List[DatabaseRecord], context: FilterContext
     ) -> List[DatabaseRecord]:
         """Применить фильтр к записям."""
         pass
@@ -93,6 +68,7 @@ class FilterStage(ABC):
 @dataclass
 class FilterResult:
     """Результат выполнения конвейера фильтрации."""
+
     filtered_records: List[DatabaseRecord]
     stage_statistics: List[Dict[str, Any]]
     is_found: bool
@@ -107,7 +83,11 @@ class FilterResult:
     @property
     def successful_stages(self) -> int:
         """Количество успешно выполненных стадий."""
-        return len(self.stage_statistics) if self.is_found else (self.failure_stage or 0) - 1
+        return (
+            len(self.stage_statistics)
+            if self.is_found
+            else (self.failure_stage or 0) - 1
+        )
 
 
 class FilterPipeline:
@@ -117,10 +97,125 @@ class FilterPipeline:
         self.stages: List[FilterStage] = []
         self.statistics: List[Dict[str, Any]] = []
         self._last_execution_time_ms: Optional[float] = None
-        self.session_logger = session_logger  # НОВОЕ
-        self.performance_monitor = PerformanceMonitor()  # НОВОЕ
+        self.session_logger = session_logger
 
-    def add_stage(self, stage: FilterStage) -> 'FilterPipeline':
+    def _prefilter_exclude_ions(
+        self, records: List[DatabaseRecord], query: Optional[str] = None
+    ) -> Tuple[List[DatabaseRecord], List[DatabaseRecord]]:
+        """
+        Prefilter: Исключить ионные формы, если пользователь не запрашивал их явно.
+
+        Args:
+            records: Список записей для фильтрации
+            query: Поисковый запрос пользователя
+
+        Returns:
+            Tuple[non_ionic_records, ionic_records]
+        """
+        if not query or query_contains_charge(query):
+            # Пользователь явно запросил ионную форму или запрос пуст
+            return records, []
+
+        # Разделяем записи на ионные и неионные
+        ionic_records = []
+        non_ionic_records = []
+
+        for record in records:
+            is_ionic = False
+
+            # Проверяем формулу на ионность
+            if record.formula and is_ionic_formula(record.formula):
+                is_ionic = True
+
+            # Проверяем название на ионность
+            if not is_ionic and hasattr(record, 'first_name') and record.first_name and is_ionic_name(record.first_name):
+                is_ionic = True
+
+            if is_ionic:
+                ionic_records.append(record)
+            else:
+                non_ionic_records.append(record)
+
+        if ionic_records and self.session_logger:
+            self.session_logger.log_info(
+                f"Prefilter: исключено {len(ionic_records)} ионных записей из {len(records)}"
+            )
+
+        return non_ionic_records, ionic_records
+
+    def _apply_fallback(
+        self,
+        initial_records: List[DatabaseRecord],
+        ionic_records: List[DatabaseRecord],
+        prefilter_applied: bool,
+        context: FilterContext,
+    ) -> List[DatabaseRecord]:
+        """
+        Применить fallback-стратегии для восстановления записей.
+
+        Args:
+            initial_records: Исходные записи до фильтрации
+            ionic_records: Исключённые ионные записи
+            prefilter_applied: Был ли применен prefilter
+            context: Контекст фильтрации
+
+        Returns:
+            Список восстановленных записей или пустой список
+        """
+        query = context.user_query or context.compound_formula
+        fallback_applied = False
+        result_records = []
+
+        # Fallback 1: Восстановление ионных записей (если они были исключены)
+        if prefilter_applied and ionic_records:
+            if self.session_logger:
+                self.session_logger.log_info(
+                    f"Fallback: пробуем восстановить {len(ionic_records)} исключённых ионных записей"
+                )
+
+            # Ионные записи - это крайняя мера, но если ничего больше не работает
+            result_records.extend(ionic_records)
+            fallback_applied = True
+            fallback_reason = "восстановлены ионные записи"
+
+        # Fallback 2: Поиск составных формул (например, Li2O*TiO2 для Li2TiO3)
+        if not result_records and initial_records:
+            if self.session_logger:
+                self.session_logger.log_info(
+                    f"Fallback: пробуем найти составные формулы для '{query}'"
+                )
+
+            composite_candidates = expand_composite_candidates(query, initial_records)
+            if composite_candidates:
+                result_records.extend(composite_candidates)
+                fallback_applied = True
+                fallback_reason = "найдены составные формулы"
+
+        # Fallback 3: Вернуть top-N исходных записей с пометкой relaxed
+        if not result_records and initial_records:
+            if self.session_logger:
+                self.session_logger.log_info(
+                    f"Fallback: возвращаем top-3 исходных записей для '{query}'"
+                )
+
+            # Сортируем по надёжности и берём top-3
+            sorted_records = sorted(
+                initial_records,
+                key=lambda r: getattr(r, 'ReliabilityClass', 'D'),
+            )[:3]
+
+            result_records.extend(sorted_records)
+            fallback_applied = True
+            fallback_reason = "relaxed top-N"
+
+        if fallback_applied and self.session_logger:
+            self.session_logger.log_info(
+                f"Fallback успешен: {fallback_reason}, найдено {len(result_records)} записей"
+            )
+
+        return result_records
+
+    def add_stage(self, stage: FilterStage) -> "FilterPipeline":
         """
         Добавить стадию в конвейер (поддержка fluent API).
 
@@ -137,18 +232,18 @@ class FilterPipeline:
         return self
 
     def execute(
-        self,
-        records: List[DatabaseRecord],
-        context: FilterContext
+        self, records: List[DatabaseRecord], context: FilterContext
     ) -> FilterResult:
         """
         Выполнить конвейер фильтрации.
 
         Проходит по всем стадиям последовательно:
+        0. Prefilter: исключение ионов (если необходимо)
         1. FormulaMatchStage (уже выполнена в CompoundSearcher)
         2. TemperatureFilterStage
         3. PhaseSelectionStage
         4. ReliabilityPriorityStage
+        Fallback: восстановление исключённых записей (если необходимо)
 
         Собирает статистику на каждой стадии.
 
@@ -160,20 +255,54 @@ class FilterPipeline:
             Результат фильтрации с детальной статистикой
         """
         import time
-        start_time = time.time()
 
+        start_time = time.time()
+        initial_records = records.copy()  # Сохраняем исходные данные для fallback
         current_records = records
         self.statistics = []
+        ionic_records = []  # Сохраняем исключённые ионные записи
+        prefilter_applied = False
 
         # Добавляем начальную статистику
-        self.statistics.append({
-            'stage_number': 0,
-            'stage_name': 'Начальные данные',
-            'records_before': len(records),
-            'records_after': len(records),
-            'reduction_rate': 0.0,
-            'execution_time_ms': 0.0
-        })
+        self.statistics.append(
+            {
+                "stage_number": 0,
+                "stage_name": "Начальные данные",
+                "records_before": len(records),
+                "records_after": len(records),
+                "reduction_rate": 0.0,
+                "execution_time_ms": 0.0,
+            }
+        )
+
+        # Prefilter: исключение ионов
+        query = context.user_query or context.compound_formula
+        if query and not query_contains_charge(query):
+            current_records, ionic_records = self._prefilter_exclude_ions(
+                current_records, query
+            )
+            prefilter_applied = len(ionic_records) > 0
+
+            if prefilter_applied:
+                # Добавляем статистику prefilter
+                self.statistics.append(
+                    {
+                        "stage_number": 0.5,
+                        "stage_name": "Prefilter: исключение ионов",
+                        "records_before": len(initial_records),
+                        "records_after": len(current_records),
+                        "reduction_rate": len(ionic_records) / len(initial_records)
+                        if initial_records
+                        else 0.0,
+                        "execution_time_ms": 0.0,
+                        "ionic_records_excluded": len(ionic_records),
+                    }
+                )
+
+                if self.session_logger:
+                    self.session_logger.log_info(
+                        f"Prefilter исключил {len(ionic_records)} ионных записей"
+                    )
 
         for i, stage in enumerate(self.stages, start=1):
             stage_start_time = time.time()
@@ -183,91 +312,164 @@ class FilterPipeline:
                 self.session_logger.log_stage_header(
                     stage_number=i,
                     stage_name=stage.get_stage_name(),
-                    compound_formula=context.compound_formula
+                    compound_formula=context.compound_formula,
                 )
 
-            # Собрать метрики перед фильтрацией
-            memory_before = self.performance_monitor.get_memory_usage()
-            cpu_before = self.performance_monitor.get_cpu_percent()
-            data_volume_before = self.performance_monitor.get_data_volume_mb(current_records)
+                # НОВОЕ: логирование таблицы ДО фильтрации (чтобы видеть все записи)
+                if len(current_records) > 0:
+                    self.session_logger.log_info(
+                        f"Записей до фильтрации: {len(current_records)}"
+                    )
+                    self.session_logger.log_filter_stage_table(
+                        records=current_records[:10],  # первые 10 ДО фильтрации
+                        compound_formula=context.compound_formula,
+                        stage_name=f"{stage.get_stage_name()} (ДО фильтрации)",
+                    )
 
             # Применить фильтр
             filtered = stage.filter(current_records, context)
             stage_execution_time = (time.time() - stage_start_time) * 1000
 
-            # Собрать метрики после фильтрации
-            memory_after = self.performance_monitor.get_memory_usage()
-            cpu_after = self.performance_monitor.get_cpu_percent()
-            data_volume_after = self.performance_monitor.get_data_volume_mb(filtered)
-
             # Собрать статистику
             stats = stage.get_statistics()
-            stats.update({
-                'stage_number': i,
-                'stage_name': stage.get_stage_name(),
-                'records_before': len(current_records),
-                'records_after': len(filtered),
-                'reduction_rate': (len(current_records) - len(filtered)) / len(current_records) if current_records else 0.0,
-                'execution_time_ms': stage_execution_time,
-                # НОВЫЕ метрики производительности
-                'performance': {
-                    'memory_before_mb': memory_before['rss_mb'],
-                    'memory_after_mb': memory_after['rss_mb'],
-                    'memory_delta_mb': memory_after['rss_mb'] - memory_before['rss_mb'],
-                    'cpu_before_percent': cpu_before,
-                    'cpu_after_percent': cpu_after,
-                    'data_volume_before_mb': data_volume_before,
-                    'data_volume_after_mb': data_volume_after,
-                    'data_volume_reduction_mb': data_volume_before - data_volume_after,
-                    'records_per_ms': len(current_records) / stage_execution_time if stage_execution_time > 0 else 0
+            stats.update(
+                {
+                    "stage_number": i,
+                    "stage_name": stage.get_stage_name(),
+                    "records_before": len(current_records),
+                    "records_after": len(filtered),
+                    "reduction_rate": (len(current_records) - len(filtered))
+                    / len(current_records)
+                    if current_records
+                    else 0.0,
+                    "execution_time_ms": stage_execution_time,
                 }
-            })
+            )
             self.statistics.append(stats)
 
-            # НОВОЕ: логирование статистики и таблицы
+            # НОВОЕ: логирование статистики и таблицы ПОСЛЕ фильтрации
             if self.session_logger:
                 self.session_logger.log_stage_statistics(stats)
 
                 if len(filtered) > 0:
                     self.session_logger.log_filter_stage_table(
-                        records=filtered[:15],  # первые 15
+                        records=filtered[:10],  # первые 10 ПОСЛЕ фильтрации
                         compound_formula=context.compound_formula,
-                        stage_name=stage.get_stage_name()
+                        stage_name=f"{stage.get_stage_name()} (ПОСЛЕ фильтрации)",
                     )
 
             # Проверка провала
             if len(filtered) == 0:
+                # Fallback: пробуем восстановить записи если все стадии провалились
+                fallback_records = self._apply_fallback(
+                    initial_records, ionic_records, prefilter_applied, context
+                )
+
+                if fallback_records:
+                    total_time = (time.time() - start_time) * 1000
+                    self._last_execution_time_ms = total_time
+
+                    # Добавляем статистику fallback
+                    self.statistics.append(
+                        {
+                            "stage_number": i + 0.5,
+                            "stage_name": "Fallback: восстановление записей",
+                            "records_before": 0,
+                            "records_after": len(fallback_records),
+                            "reduction_rate": 0.0,
+                            "execution_time_ms": 0.0,
+                            "fallback_applied": True,
+                            "fallback_records_found": len(fallback_records),
+                        }
+                    )
+
+                    return FilterResult(
+                        filtered_records=fallback_records,
+                        stage_statistics=self.statistics.copy(),
+                        is_found=True,
+                        failure_reason=None,
+                    )
+                else:
+                    # Fallback не помог, возвращаем провал
+                    total_time = (time.time() - start_time) * 1000
+                    self._last_execution_time_ms = total_time
+
+                    return FilterResult(
+                        filtered_records=[],
+                        stage_statistics=self.statistics.copy(),
+                        is_found=False,
+                        failure_stage=i,
+                        failure_reason=f"Нет записей после стадии: {stage.get_stage_name()}",
+                    )
+
+            current_records = filtered
+
+            # НОВОЕ: Оптимизация - если осталась 1 запись, дальнейшая фильтрация не нужна
+            # НО: не применяем до PhaseBasedTemperatureStage, так как фазовая фильтрация критична
+            stage_name = stage.get_stage_name()
+            is_before_phase_filter = "фазам" not in stage_name.lower()
+
+            if len(current_records) == 1 and not is_before_phase_filter:
                 total_time = (time.time() - start_time) * 1000
                 self._last_execution_time_ms = total_time
 
-                return FilterResult(
-                    filtered_records=[],
-                    stage_statistics=self.statistics.copy(),
-                    is_found=False,
-                    failure_stage=i,
-                    failure_reason=f"Нет записей после стадии: {stage.get_stage_name()}"
-                )
+                if self.session_logger:
+                    self.session_logger.log_info("")
+                    self.session_logger.log_info(
+                        f"✓ Осталась 1 запись после стадии {i} ({stage.get_stage_name()}). "
+                        f"Пропуск оставшихся {len(self.stages) - i - 1} стадий."
+                    )
+                    self.session_logger.log_info("")
 
-            current_records = filtered
+                # Добавляем статистику о пропущенных стадиях
+                for j in range(i + 1, len(self.stages) + 1):
+                    skipped_stage = (
+                        self.stages[j - 1] if j - 1 < len(self.stages) else None
+                    )
+                    self.statistics.append(
+                        {
+                            "stage_number": j,
+                            "stage_name": skipped_stage.get_stage_name()
+                            if skipped_stage
+                            else "Unknown",
+                            "records_before": 1,
+                            "records_after": 1,
+                            "reduction_rate": 0.0,
+                            "execution_time_ms": 0.0,
+                            "skipped": True,
+                            "skip_reason": "Единственная запись найдена на предыдущей стадии",
+                        }
+                    )
+
+                return FilterResult(
+                    filtered_records=current_records,
+                    stage_statistics=self.statistics.copy(),
+                    is_found=True,
+                )
 
         total_time = (time.time() - start_time) * 1000
         self._last_execution_time_ms = total_time
 
         # Добавляем финальную статистику
-        self.statistics.append({
-            'stage_number': len(self.stages) + 1,
-            'stage_name': 'Завершение',
-            'records_before': len(records),
-            'records_after': len(current_records),
-            'total_reduction_rate': (len(records) - len(current_records)) / len(records) if records else 0.0,
-            'total_execution_time_ms': total_time,
-            'stages_executed': len(self.stages)
-        })
+        self.statistics.append(
+            {
+                "stage_number": len(self.stages) + 1,
+                "stage_name": "Завершение",
+                "records_before": len(records),
+                "records_after": len(current_records),
+                "total_reduction_rate": (len(records) - len(current_records))
+                / len(records)
+                if records
+                else 0.0,
+                "total_execution_time_ms": total_time,
+                "stages_executed": len(self.stages),
+            }
+        )
 
         return FilterResult(
             filtered_records=current_records,
             stage_statistics=self.statistics.copy(),
-            is_found=True
+            is_found=True,
         )
 
     def get_last_execution_time_ms(self) -> Optional[float]:
@@ -278,7 +480,7 @@ class FilterPipeline:
         """Получить названия всех стадий в конвейере."""
         return [stage.get_stage_name() for stage in self.stages]
 
-    def clear_stages(self) -> 'FilterPipeline':
+    def clear_stages(self) -> "FilterPipeline":
         """Очистить все стадии из конвейера."""
         self.stages.clear()
         return self
@@ -286,10 +488,10 @@ class FilterPipeline:
     def get_pipeline_summary(self) -> Dict[str, Any]:
         """Получить сводную информацию о конвейере."""
         return {
-            'total_stages': len(self.stages),
-            'stage_names': self.get_stage_names(),
-            'last_execution_time_ms': self._last_execution_time_ms,
-            'statistics_count': len(self.statistics)
+            "total_stages": len(self.stages),
+            "stage_names": self.get_stage_names(),
+            "last_execution_time_ms": self._last_execution_time_ms,
+            "statistics_count": len(self.statistics),
         }
 
 
@@ -299,21 +501,40 @@ class FilterPipelineBuilder:
     def __init__(self, session_logger: Optional[Any] = None):
         self.pipeline = FilterPipeline(session_logger=session_logger)
 
-    def with_temperature_filter(self, **kwargs) -> 'FilterPipelineBuilder':
+    def with_reaction_validation(self, **kwargs) -> "FilterPipelineBuilder":
+        """Добавить стадию валидации реакции (Stage 0)."""
+        from .reaction_validation_stage import ReactionValidationStage
+
+        self.pipeline.add_stage(ReactionValidationStage(**kwargs))
+        return self
+
+    def with_temperature_filter(self, **kwargs) -> "FilterPipelineBuilder":
         """Добавить стадию температурной фильтрации."""
         from .filter_stages import TemperatureFilterStage
+
         self.pipeline.add_stage(TemperatureFilterStage(**kwargs))
         return self
 
-    def with_phase_selection(self, phase_resolver, **kwargs) -> 'FilterPipelineBuilder':
-        """Добавить стадию выбора фазы."""
-        from .filter_stages import PhaseSelectionStage
-        self.pipeline.add_stage(PhaseSelectionStage(phase_resolver=phase_resolver, **kwargs))
+    def with_phase_based_temperature_filter(self, **kwargs) -> "FilterPipelineBuilder":
+        """Добавить умную стадию фильтрации по фазам и температуре."""
+        from .phase_based_temperature_stage import PhaseBasedTemperatureStage
+
+        self.pipeline.add_stage(PhaseBasedTemperatureStage(**kwargs))
         return self
 
-    def with_reliability_priority(self, **kwargs) -> 'FilterPipelineBuilder':
+    def with_phase_selection(self, phase_resolver, **kwargs) -> "FilterPipelineBuilder":
+        """Добавить стадию выбора фазы."""
+        from .filter_stages import PhaseSelectionStage
+
+        self.pipeline.add_stage(
+            PhaseSelectionStage(phase_resolver=phase_resolver, **kwargs)
+        )
+        return self
+
+    def with_reliability_priority(self, **kwargs) -> "FilterPipelineBuilder":
         """Добавить стадию приоритизации по надёжности."""
         from .filter_stages import ReliabilityPriorityStage
+
         self.pipeline.add_stage(ReliabilityPriorityStage(**kwargs))
         return self
 

@@ -76,6 +76,9 @@ class AggregatedReactionData(BaseModel):
     found_compounds: List[str] = Field(
         default_factory=list, description="Список найденных веществ"
     )
+    filtered_out_compounds: List[str] = Field(
+        default_factory=list, description="Список веществ, найденных но отфильтрованных"
+    )
     detailed_statistics: Dict[str, FilterStatistics] = Field(
         ..., description="Детальная статистика фильтрации по каждому веществу"
     )

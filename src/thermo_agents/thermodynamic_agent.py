@@ -18,10 +18,10 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from .agent_storage import AgentStorage, get_storage
+from .models.extraction import ExtractedReactionParameters
 from .operations import OperationType
 from .prompts import THERMODYNAMIC_EXTRACTION_PROMPT
 from .thermo_agents_logger import SessionLogger
-from .models.extraction import ExtractedReactionParameters
 
 
 class ExtractedParameters(BaseModel):
@@ -211,14 +211,19 @@ class ThermodynamicAgent:
         """
         # Используем операцию для логирования
         operation_context = None
-        if self.config.session_logger and self.config.session_logger.is_operations_enabled():
+        if (
+            self.config.session_logger
+            and self.config.session_logger.is_operations_enabled()
+        ):
             operation_context = self.config.session_logger.create_operation_context(
                 agent_name=self.agent_id,
                 operation_type=OperationType.EXTRACT_PARAMETERS,
                 source_agent=message.source_agent,
                 correlation_id=message.id,
             )
-            operation_context.set_storage_snapshot_provider(lambda: self.storage.get_storage_snapshot(include_content=True))
+            operation_context.set_storage_snapshot_provider(
+                lambda: self.storage.get_storage_snapshot(include_content=True)
+            )
             operation = operation_context.__enter__()
         else:
             operation = None
@@ -236,24 +241,46 @@ class ThermodynamicAgent:
 
             # Извлекаем параметры используя PydanticAI агента
             try:
-                self.logger.info(f"Starting parameter extraction for query: {user_query[:100]}...")
+                self.logger.info(
+                    f"Starting parameter extraction for query: {user_query[:100]}..."
+                )
                 # Увеличиваем таймаут до 30 секунд с учетом network задержек
                 import asyncio
+                import time
+
+                extraction_start = time.time()
                 result = await asyncio.wait_for(
                     self.agent.run(user_query, deps=self.config),
-                    timeout=30.0  # 30 секунд на ответ модели + network
+                    timeout=30.0,  # 30 секунд на ответ модели + network
                 )
+                extraction_time_ms = (time.time() - extraction_start) * 1000
                 extracted_params = result.output
 
                 self.logger.info(
                     f"Successfully extracted parameters: {extracted_params.intent}, compounds: {extracted_params.compounds}"
                 )
 
+                # НОВОЕ: Структурированное логирование LLM взаимодействия
+                if self.config.session_logger:
+                    self.config.session_logger.log_llm_interaction(
+                        user_query=user_query,
+                        llm_response=result,
+                        extracted_params=extracted_params,
+                        extraction_time_ms=extraction_time_ms,
+                    )
+
                 # Дополнительное логирование для реакции
-                if extracted_params.intent == "reaction" and extracted_params.reaction_equation:
+                if (
+                    extracted_params.intent == "reaction"
+                    and extracted_params.reaction_equation
+                ):
                     if self.config.session_logger:
-                        self.config.session_logger.log_info(f"EXTRACTED REACTION: {extracted_params.reaction_equation}")
-                    self.logger.info(f"Extracted reaction equation: {extracted_params.reaction_equation}")
+                        self.config.session_logger.log_info(
+                            f"EXTRACTED REACTION: {extracted_params.reaction_equation}"
+                        )
+                    self.logger.info(
+                        f"Extracted reaction equation: {extracted_params.reaction_equation}"
+                    )
 
                 # TEMPORARY DEBUG LOGGING - TO BE REMOVED LATER
                 # Логируем извлеченные параметры
@@ -263,34 +290,47 @@ class ThermodynamicAgent:
                         "query_intent": extracted_params.intent,
                         "compounds_count": len(extracted_params.compounds),
                         "compounds": ", ".join(extracted_params.compounds),
-                        "temperature_celsius": round(extracted_params.temperature_k - 273.15, 2),
+                        "temperature_celsius": round(
+                            extracted_params.temperature_k - 273.15, 2
+                        ),
                         "temperature_k": extracted_params.temperature_k,
                         "temperature_range_celsius": f"{round(extracted_params.temperature_range_k[0] - 273.15, 2)}-{round(extracted_params.temperature_range_k[1] - 273.15, 2)}",
                         "temperature_range_k": f"{extracted_params.temperature_range_k[0]}-{extracted_params.temperature_range_k[1]}",
                         "phases": ", ".join(extracted_params.phases),
                         "properties": ", ".join(extracted_params.properties),
-                        "has_sql_hint": bool(extracted_params.sql_query_hint)
+                        "has_sql_hint": bool(extracted_params.sql_query_hint),
                     }
-                    self.config.session_logger.log_search_metadata(extraction_metadata, "EXTRACTED PARAMETERS")
+                    self.config.session_logger.log_search_metadata(
+                        extraction_metadata, "EXTRACTED PARAMETERS"
+                    )
 
                     # Если это реакция, логируем детальную информацию о соединениях
-                    if extracted_params.intent == "reaction" and extracted_params.compounds:
+                    if (
+                        extracted_params.intent == "reaction"
+                        and extracted_params.compounds
+                    ):
                         # Создаем заготовку для будущих результатов поиска
                         compound_placeholders = []
                         for compound in extracted_params.compounds:
-                            compound_placeholders.append({
-                                "compound": compound,
-                                "selected_records": [],  # Будет заполнено позже
-                                "confidence": 0.0       # Будет рассчитано позже
-                            })
+                            compound_placeholders.append(
+                                {
+                                    "compound": compound,
+                                    "selected_records": [],  # Будет заполнено позже
+                                    "confidence": 0.0,  # Будет рассчитано позже
+                                }
+                            )
 
                         self.config.session_logger.log_compound_data_table(
                             compound_placeholders,
-                            "COMPOUNDS TO SEARCH (pre-search status)"
+                            "COMPOUNDS TO SEARCH (pre-search status)",
                         )
             except asyncio.TimeoutError:
-                self.logger.error(f"Network timeout after 30 seconds - cannot extract parameters")
-                raise ValueError(f"Не удалось извлечь параметры: превышено время ожидания ответа от модели. Попробуйте упростить запрос.")
+                self.logger.error(
+                    f"Network timeout after 30 seconds - cannot extract parameters"
+                )
+                raise ValueError(
+                    f"Не удалось извлечь параметры: превышено время ожидания ответа от модели. Попробуйте упростить запрос."
+                )
             except Exception as e:
                 # При любой ошибке LLM сообщаем о невозможности извлечения параметров
                 error_msg = str(e)
@@ -298,21 +338,34 @@ class ThermodynamicAgent:
 
                 # Дополнительное логирование для трассировки
                 if self.config.session_logger:
-                    self.config.session_logger.log_error(f"EXTRACTION FAILED: {error_msg[:200]}")
+                    self.config.session_logger.log_error(
+                        f"EXTRACTION FAILED: {error_msg[:200]}"
+                    )
 
                 # Определяем тип ошибки для более понятного сообщения пользователю
-                if "status_code: 401" in error_msg or "No auth credentials" in error_msg:
+                if (
+                    "status_code: 401" in error_msg
+                    or "No auth credentials" in error_msg
+                ):
                     user_msg = "Ошибка аутентификации: проверьте API ключ для доступа к модели."
-                    self.logger.error("Authentication error detected - missing or invalid API key")
-                elif "status_code: 429" in error_msg or "rate limit" in error_msg.lower():
+                    self.logger.error(
+                        "Authentication error detected - missing or invalid API key"
+                    )
+                elif (
+                    "status_code: 429" in error_msg or "rate limit" in error_msg.lower()
+                ):
                     user_msg = "Превышен лимит запросов к модели. Попробуйте повторить запрос позже."
                     self.logger.error("Rate limit error detected - too many requests")
-                elif "network" in error_msg.lower() or "connection" in error_msg.lower():
+                elif (
+                    "network" in error_msg.lower() or "connection" in error_msg.lower()
+                ):
                     user_msg = "Сетевая ошибка: проверьте подключение к интернету."
                     self.logger.error("Network connectivity error detected")
                 elif "timeout" in error_msg.lower():
                     user_msg = "Превышено время ожидания ответа от модели. Попробуйте упростить запрос."
-                    self.logger.error("Timeout error detected - possible network issues")
+                    self.logger.error(
+                        "Timeout error detected - possible network issues"
+                    )
                 else:
                     user_msg = f"Не удалось извлечь параметры: {error_msg[:100]}..."
                     self.logger.error(f"Unknown error type: {type(e).__name__}")
@@ -340,7 +393,9 @@ class ThermodynamicAgent:
             operation_result = {
                 "intent": extracted_params.intent,
                 "compounds_count": len(extracted_params.compounds),
-                "compounds": extracted_params.compounds[:5],  # Максимум 5 соединений в логе
+                "compounds": extracted_params.compounds[
+                    :5
+                ],  # Максимум 5 соединений в логе
                 "temperature_k": extracted_params.temperature_k,
                 "has_sql_hint": bool(extracted_params.sql_query_hint),
                 "result_key": result_key,
@@ -362,7 +417,9 @@ class ThermodynamicAgent:
 
             # Дополнительная информация в лог (теперь это часть операции)
             if self.config.session_logger:
-                self.config.session_logger.log_info(f"EXTRACTION COMPLETE: {extracted_params.intent}, {len(extracted_params.compounds)} compounds")
+                self.config.session_logger.log_info(
+                    f"EXTRACTION COMPLETE: {extracted_params.intent}, {len(extracted_params.compounds)} compounds"
+                )
 
             # Если найдены соединения и нужна индивидуальная обработка, отправляем запрос Individual Search Agent
             if extracted_params.compounds and extracted_params.intent == "reaction":
@@ -392,7 +449,9 @@ class ThermodynamicAgent:
                         "original_query": user_query,
                     },
                 )
-                self.logger.info(f"Forwarded to Individual Search Agent: {individual_search_message_id}")
+                self.logger.info(
+                    f"Forwarded to Individual Search Agent: {individual_search_message_id}"
+                )
 
             # Если нужна генерация SQL (для нерекакционных запросов), отправляем сообщение SQL агенту
             elif extracted_params.sql_query_hint:
@@ -433,10 +492,7 @@ class ThermodynamicAgent:
             if self.config.session_logger:
                 self.config.session_logger.log_info(f"EXTRACTION ERROR: {str(e)[:100]}")
 
-    async def extract_parameters(
-        self,
-        user_query: str
-    ) -> ExtractedReactionParameters:
+    async def extract_parameters(self, user_query: str) -> ExtractedReactionParameters:
         """
         Извлечение параметров из запроса пользователя.
 
@@ -454,16 +510,28 @@ class ThermodynamicAgent:
         for attempt in range(max_retries):
             try:
                 import asyncio
+                import time
+
                 timeout = 30.0 * (attempt + 1)
 
                 # Формируем промпт
                 prompt = THERMODYNAMIC_EXTRACTION_PROMPT.format(user_query=user_query)
 
+                extraction_start = time.time()
                 result = await asyncio.wait_for(
-                    self.agent.run(prompt, deps=self.config),
-                    timeout=timeout
+                    self.agent.run(prompt, deps=self.config), timeout=timeout
                 )
+                extraction_time_ms = (time.time() - extraction_start) * 1000
                 extracted_params = result.output
+
+                # НОВОЕ: Структурированное логирование LLM взаимодействия
+                if self.config.session_logger:
+                    self.config.session_logger.log_llm_interaction(
+                        user_query=user_query,
+                        llm_response=result,
+                        extracted_params=extracted_params,
+                        extraction_time_ms=extraction_time_ms,
+                    )
 
                 # Проверка полноты
                 if not extracted_params.is_complete():
@@ -475,29 +543,45 @@ class ThermodynamicAgent:
                         )
                     continue
 
-                self.logger.info(f"Successfully extracted parameters for {len(extracted_params.all_compounds)} compounds")
+                self.logger.info(
+                    f"Successfully extracted parameters for {len(extracted_params.all_compounds)} compounds"
+                )
                 return extracted_params
 
             except asyncio.TimeoutError:
-                self.logger.error(f"Timeout in extract_parameters (attempt {attempt + 1}/{max_retries})")
+                self.logger.error(
+                    f"Timeout in extract_parameters (attempt {attempt + 1}/{max_retries})"
+                )
                 if attempt == max_retries - 1:
-                    raise ValueError(f"Не удалось извлечь параметры: превышено время ожидания ответа от модели. Попробуйте упростить запрос.")
+                    raise ValueError(
+                        f"Не удалось извлечь параметры: превышено время ожидания ответа от модели. Попробуйте упростить запрос."
+                    )
                 await asyncio.sleep(1)
 
             except Exception as e:
-                self.logger.error(f"Error in extract_parameters (attempt {attempt + 1}/{max_retries}): {e}")
+                self.logger.error(
+                    f"Error in extract_parameters (attempt {attempt + 1}/{max_retries}): {e}"
+                )
                 if attempt == max_retries - 1:
                     if "status_code: 401" in str(e) or "No auth credentials" in str(e):
-                        raise ValueError("Ошибка аутентификации: проверьте API ключ для доступа к модели.")
+                        raise ValueError(
+                            "Ошибка аутентификации: проверьте API ключ для доступа к модели."
+                        )
                     elif "status_code: 429" in str(e) or "rate limit" in str(e).lower():
-                        raise ValueError("Превышен лимит запросов к модели. Попробуйте повторить запрос позже.")
+                        raise ValueError(
+                            "Превышен лимит запросов к модели. Попробуйте повторить запрос позже."
+                        )
                     else:
-                        raise ValueError(f"Не удалось извлечь параметры: {str(e)[:100]}...")
+                        raise ValueError(
+                            f"Не удалось извлечь параметры: {str(e)[:100]}..."
+                        )
                 await asyncio.sleep(1)
 
         raise ValueError(f"Не удалось извлечь параметры после {max_retries} попыток.")
 
-    async def process_single_query(self, user_query: str) -> ExtractedReactionParameters:
+    async def process_single_query(
+        self, user_query: str
+    ) -> ExtractedReactionParameters:
         """
         Обработать одиночный запрос (для совместимости и тестирования).
 
@@ -512,7 +596,6 @@ class ThermodynamicAgent:
         """
         return await self.extract_parameters(user_query)
 
-  
     def get_status(self) -> Dict:
         """Получить статус агента."""
         session = self.storage.get_session(self.agent_id)

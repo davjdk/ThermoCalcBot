@@ -8,6 +8,7 @@ from pathlib import Path
 # Устанавливаем кодировку для Windows
 if sys.platform == "win32":
     import codecs
+
     sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
     sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())
 
@@ -23,14 +24,10 @@ from thermo_agents.aggregation.reaction_aggregator import ReactionAggregator
 from thermo_agents.aggregation.statistics_formatter import StatisticsFormatter
 from thermo_agents.aggregation.table_formatter import TableFormatter
 from thermo_agents.filtering.complex_search_stage import ComplexFormulaSearchStage
-from thermo_agents.filtering.filter_pipeline import FilterPipeline
 from thermo_agents.filtering.filter_stages import (
-    PhaseSelectionStage,
     ReliabilityPriorityStage,
     TemperatureCoverageStage,
-    TemperatureFilterStage,
 )
-from thermo_agents.filtering.phase_resolver import PhaseResolver
 from thermo_agents.filtering.temperature_resolver import TemperatureResolver
 from thermo_agents.orchestrator import OrchestratorConfig, ThermoOrchestrator
 from thermo_agents.search.compound_searcher import CompoundSearcher
@@ -73,14 +70,39 @@ def create_orchestrator(db_path: str = "data/thermo_data.db") -> ThermoOrchestra
     # Поиск в БД
     sql_builder = SQLBuilder()
     db_connector = DatabaseConnector(db_path)
-    compound_searcher = CompoundSearcher(sql_builder, db_connector, session_logger=session_logger)  # НОВОЕ
+    compound_searcher = CompoundSearcher(
+        sql_builder, db_connector, session_logger=session_logger
+    )  # НОВОЕ
 
-    # Конвейер фильтрации с логированием
-    filter_pipeline = FilterPipeline(session_logger=session_logger)  # НОВОЕ
+    # Конвейер фильтрации с валидацией реакции (Stage 0)
+    from thermo_agents.filtering.filter_pipeline import FilterPipelineBuilder
+
+    filter_pipeline = (
+        FilterPipelineBuilder(session_logger=session_logger)
+        .with_reaction_validation(min_confidence_threshold=0.5)
+        .build()
+    )
+
+    # Добавляем остальные стадии напрямую
     filter_pipeline.add_stage(ComplexFormulaSearchStage())
-    filter_pipeline.add_stage(TemperatureFilterStage())
-    filter_pipeline.add_stage(PhaseSelectionStage(PhaseResolver()))
-    filter_pipeline.add_stage(ReliabilityPriorityStage(max_records=1))
+    # Заменяем TemperatureFilterStage на умную фазовую фильтрацию
+    from thermo_agents.filtering.phase_based_temperature_stage import (
+        PhaseBasedTemperatureStage,
+    )
+
+    filter_pipeline.add_stage(
+        PhaseBasedTemperatureStage(
+            exclude_ions=True,
+            max_records_per_phase=1,
+            reliability_weight=0.6,
+            coverage_weight=0.4,
+        )
+    )
+    # Старая фазовая селекция больше не нужна - логика встроена в PhaseBasedTemperatureStage
+    # filter_pipeline.add_stage(PhaseSelectionStage(PhaseResolver()))
+    filter_pipeline.add_stage(
+        ReliabilityPriorityStage(max_records=3)
+    )  # Увеличиваем до 3 для множественных фаз
     filter_pipeline.add_stage(TemperatureCoverageStage(TemperatureResolver()))
 
     # Агрегация и форматирование
@@ -133,7 +155,7 @@ async def main_interactive():
                     session_logger.log_info("=" * 60)
                     session_logger.log_info("РЕЗУЛЬТАТ:")
                     # Логируем response как есть, с эмодзи и таблицами
-                    for line in response.split('\n'):
+                    for line in response.split("\n"):
                         if line.strip():  # Пропускаем пустые строки
                             session_logger.log_info(line)
                     session_logger.log_info("=" * 60)
@@ -173,9 +195,7 @@ async def main_test():
     print("=" * 80)
 
     # Тестовый запрос
-    test_query = (
-        "Возможно ли взаимодействие фторида титана (TiF4) с магнием (Mg) при температуре 900-1500K?"
-    )
+    test_query = "Возможно ли взаимодействие оксида кальция и сульфида железа при 600 - 1200 цельсия?"
 
     # НОВОЕ: Логирование запроса пользователя
     if session_logger:
@@ -192,7 +212,7 @@ async def main_test():
             session_logger.log_info("СВОДНЫЕ РЕЗУЛЬТАТЫ СЕССИИ:")
             session_logger.log_info("=" * 80)
             # Логируем response как есть, с эмодзи и таблицами
-            for line in response.split('\n'):
+            for line in response.split("\n"):
                 if line.strip():  # Пропускаем пустые строки
                     session_logger.log_info(line)
             session_logger.log_info("=" * 80)
@@ -262,6 +282,10 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n\nЗавершение работы пользователем")
     except Exception as e:
+        print(f"\n[ОШИБКА] Критическая ошибка: {e}")
+        import traceback
+
+        traceback.print_exc()
         print(f"\n[ОШИБКА] Критическая ошибка: {e}")
         import traceback
 

@@ -6,15 +6,22 @@ temperature filtering, phase selection, and reliability prioritization.
 """
 
 import pytest
+import sys
+from pathlib import Path
 from typing import List
 
-from thermo_agents.models.search import DatabaseRecord
-from thermo_agents.filtering.filter_pipeline import FilterContext
-from thermo_agents.filtering.filter_stages import (
+# Добавляем src в путь для тестов
+src_path = Path(__file__).parent.parent.parent / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
+from src.thermo_agents.models.search import DatabaseRecord
+from src.thermo_agents.filtering.filter_pipeline import FilterContext
+from src.thermo_agents.filtering.filter_stages import (
     TemperatureFilterStage, PhaseSelectionStage, ReliabilityPriorityStage
 )
-from thermo_agents.filtering.temperature_resolver import TemperatureResolver
-from thermo_agents.filtering.phase_resolver import PhaseResolver
+from src.thermo_agents.filtering.temperature_resolver import TemperatureResolver
+from src.thermo_agents.filtering.phase_resolver import PhaseResolver
 
 
 class TestTemperatureFilterStage:

@@ -6,7 +6,7 @@
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 
 
 class ExtractedReactionParameters(BaseModel):
@@ -48,6 +48,11 @@ class ExtractedReactionParameters(BaseModel):
     missing_fields: List[str] = Field(
         default_factory=list,
         description="Список полей, которые не удалось извлечь"
+    )
+
+    compound_names: Dict[str, List[str]] = Field(
+        default_factory=dict,
+        description="Названия веществ: {формула: [IUPAC name, trivial names...]}"
     )
 
     @field_validator('all_compounds')
