@@ -1,14 +1,15 @@
 """
 Конвейерная система фильтрации термодинамических данных.
 
-Реализует модульную архитектуру с возможностью добавления новых стадий фильтрации.
-Каждая стадия собирает детальную статистику о своей работе.
+Оптимизированная версия для прямых вызовов без message passing.
+Реализует модульную архитектуру с высокой производительностью и предсказуемостью.
 """
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..filtering.constants import DEFAULT_QUERY_LIMIT
 from ..models.extraction import ExtractedReactionParameters
 from ..models.search import DatabaseRecord
 from ..utils.chem_utils import (
@@ -91,19 +92,28 @@ class FilterResult:
 
 
 class FilterPipeline:
-    """Конвейер фильтрации с возможностью добавления новых стадий."""
+    """
+    Оптимизированный конвейер фильтрации для прямых вызовов.
 
-    def __init__(self, session_logger: Optional[Any] = None):
+    Особенности оптимизации:
+    - Убрана зависимость от session_logger
+    - Прямые вызовы стадий без message passing
+    - Упрощенная архитектура для предсказуемости
+    - Сохранена статистика для отладки
+    """
+
+    def __init__(self):
         self.stages: List[FilterStage] = []
         self.statistics: List[Dict[str, Any]] = []
         self._last_execution_time_ms: Optional[float] = None
-        self.session_logger = session_logger
 
     def _prefilter_exclude_ions(
         self, records: List[DatabaseRecord], query: Optional[str] = None
     ) -> Tuple[List[DatabaseRecord], List[DatabaseRecord]]:
         """
         Prefilter: Исключить ионные формы, если пользователь не запрашивал их явно.
+
+        Оптимизированная версия без логирования для производительности.
 
         Args:
             records: Список записей для фильтрации
@@ -136,11 +146,6 @@ class FilterPipeline:
             else:
                 non_ionic_records.append(record)
 
-        if ionic_records and self.session_logger:
-            self.session_logger.log_info(
-                f"Prefilter: исключено {len(ionic_records)} ионных записей из {len(records)}"
-            )
-
         return non_ionic_records, ionic_records
 
     def _apply_fallback(
@@ -153,6 +158,8 @@ class FilterPipeline:
         """
         Применить fallback-стратегии для восстановления записей.
 
+        Оптимизированная версия без логирования для производительности.
+
         Args:
             initial_records: Исходные записи до фильтрации
             ionic_records: Исключённые ионные записи
@@ -163,55 +170,27 @@ class FilterPipeline:
             Список восстановленных записей или пустой список
         """
         query = context.user_query or context.compound_formula
-        fallback_applied = False
         result_records = []
 
         # Fallback 1: Восстановление ионных записей (если они были исключены)
         if prefilter_applied and ionic_records:
-            if self.session_logger:
-                self.session_logger.log_info(
-                    f"Fallback: пробуем восстановить {len(ionic_records)} исключённых ионных записей"
-                )
-
             # Ионные записи - это крайняя мера, но если ничего больше не работает
             result_records.extend(ionic_records)
-            fallback_applied = True
-            fallback_reason = "восстановлены ионные записи"
 
         # Fallback 2: Поиск составных формул (например, Li2O*TiO2 для Li2TiO3)
         if not result_records and initial_records:
-            if self.session_logger:
-                self.session_logger.log_info(
-                    f"Fallback: пробуем найти составные формулы для '{query}'"
-                )
-
             composite_candidates = expand_composite_candidates(query, initial_records)
             if composite_candidates:
                 result_records.extend(composite_candidates)
-                fallback_applied = True
-                fallback_reason = "найдены составные формулы"
 
         # Fallback 3: Вернуть top-N исходных записей с пометкой relaxed
         if not result_records and initial_records:
-            if self.session_logger:
-                self.session_logger.log_info(
-                    f"Fallback: возвращаем top-3 исходных записей для '{query}'"
-                )
-
             # Сортируем по надёжности и берём top-3
             sorted_records = sorted(
                 initial_records,
                 key=lambda r: getattr(r, 'ReliabilityClass', 'D'),
             )[:3]
-
             result_records.extend(sorted_records)
-            fallback_applied = True
-            fallback_reason = "relaxed top-N"
-
-        if fallback_applied and self.session_logger:
-            self.session_logger.log_info(
-                f"Fallback успешен: {fallback_reason}, найдено {len(result_records)} записей"
-            )
 
         return result_records
 
@@ -237,15 +216,8 @@ class FilterPipeline:
         """
         Выполнить конвейер фильтрации.
 
-        Проходит по всем стадиям последовательно:
-        0. Prefilter: исключение ионов (если необходимо)
-        1. FormulaMatchStage (уже выполнена в CompoundSearcher)
-        2. TemperatureFilterStage
-        3. PhaseSelectionStage
-        4. ReliabilityPriorityStage
-        Fallback: восстановление исключённых записей (если необходимо)
-
-        Собирает статистику на каждой стадии.
+        Оптимизированная версия для прямых вызовов без message passing.
+        Проходит по всем стадиям последовательно и собирает статистику.
 
         Args:
             records: Список записей для фильтрации
@@ -299,34 +271,10 @@ class FilterPipeline:
                     }
                 )
 
-                if self.session_logger:
-                    self.session_logger.log_info(
-                        f"Prefilter исключил {len(ionic_records)} ионных записей"
-                    )
-
         for i, stage in enumerate(self.stages, start=1):
             stage_start_time = time.time()
 
-            # НОВОЕ: логирование заголовка стадии
-            if self.session_logger:
-                self.session_logger.log_stage_header(
-                    stage_number=i,
-                    stage_name=stage.get_stage_name(),
-                    compound_formula=context.compound_formula,
-                )
-
-                # НОВОЕ: логирование таблицы ДО фильтрации (чтобы видеть все записи)
-                if len(current_records) > 0:
-                    self.session_logger.log_info(
-                        f"Записей до фильтрации: {len(current_records)}"
-                    )
-                    self.session_logger.log_filter_stage_table(
-                        records=current_records[:10],  # первые 10 ДО фильтрации
-                        compound_formula=context.compound_formula,
-                        stage_name=f"{stage.get_stage_name()} (ДО фильтрации)",
-                    )
-
-            # Применить фильтр
+            # Применить фильтр (прямой вызов)
             filtered = stage.filter(current_records, context)
             stage_execution_time = (time.time() - stage_start_time) * 1000
 
@@ -346,17 +294,6 @@ class FilterPipeline:
                 }
             )
             self.statistics.append(stats)
-
-            # НОВОЕ: логирование статистики и таблицы ПОСЛЕ фильтрации
-            if self.session_logger:
-                self.session_logger.log_stage_statistics(stats)
-
-                if len(filtered) > 0:
-                    self.session_logger.log_filter_stage_table(
-                        records=filtered[:10],  # первые 10 ПОСЛЕ фильтрации
-                        compound_formula=context.compound_formula,
-                        stage_name=f"{stage.get_stage_name()} (ПОСЛЕ фильтрации)",
-                    )
 
             # Проверка провала
             if len(filtered) == 0:
@@ -404,7 +341,7 @@ class FilterPipeline:
 
             current_records = filtered
 
-            # НОВОЕ: Оптимизация - если осталась 1 запись, дальнейшая фильтрация не нужна
+            # Оптимизация: если осталась 1 запись, дальнейшая фильтрация не нужна
             # НО: не применяем до PhaseBasedTemperatureStage, так как фазовая фильтрация критична
             stage_name = stage.get_stage_name()
             is_before_phase_filter = "фазам" not in stage_name.lower()
@@ -412,14 +349,6 @@ class FilterPipeline:
             if len(current_records) == 1 and not is_before_phase_filter:
                 total_time = (time.time() - start_time) * 1000
                 self._last_execution_time_ms = total_time
-
-                if self.session_logger:
-                    self.session_logger.log_info("")
-                    self.session_logger.log_info(
-                        f"✓ Осталась 1 запись после стадии {i} ({stage.get_stage_name()}). "
-                        f"Пропуск оставшихся {len(self.stages) - i - 1} стадий."
-                    )
-                    self.session_logger.log_info("")
 
                 # Добавляем статистику о пропущенных стадиях
                 for j in range(i + 1, len(self.stages) + 1):
@@ -496,10 +425,14 @@ class FilterPipeline:
 
 
 class FilterPipelineBuilder:
-    """Builder для создания и конфигурации конвейера фильтрации."""
+    """
+    Builder для создания и конфигурации конвейера фильтрации.
 
-    def __init__(self, session_logger: Optional[Any] = None):
-        self.pipeline = FilterPipeline(session_logger=session_logger)
+    Оптимизированная версия без dependencies от session_logger.
+    """
+
+    def __init__(self):
+        self.pipeline = FilterPipeline()
 
     def with_reaction_validation(self, **kwargs) -> "FilterPipelineBuilder":
         """Добавить стадию валидации реакции (Stage 0)."""

@@ -1,8 +1,8 @@
 """
-Оркестратор для координации работы термодинамической системы v2.0.
+Оптимизированный оркестратор для координации работы термодинамической системы v2.0.
 
 Рефакторингованная версия с использованием детерминированной логики
-вместо LLM-агентов для поиска, фильтрации и агрегации данных.
+и прямых вызовов без message passing для максимальной производительности.
 """
 
 from __future__ import annotations
@@ -14,8 +14,6 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
-
-from .agent_storage import AgentStorage, get_storage
 
 # Определение поддержки Unicode для консоли
 try:
@@ -63,9 +61,9 @@ class OrchestratorResponse(BaseModel):
 
 @dataclass
 class OrchestratorConfig:
-    """Конфигурация оркестратора."""
-
-    storage: AgentStorage = field(default_factory=get_storage)
+    """
+    Оптимизированная конфигурация оркестратора без dependencies от AgentStorage.
+    """
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger(__name__))
     max_retries: int = 2
     timeout_seconds: int = 90
@@ -73,12 +71,13 @@ class OrchestratorConfig:
 
 class ThermoOrchestrator:
     """
-    Упрощённый оркестратор термодинамической системы v2.0.
+    Оптимизированный оркестратор термодинамической системы v2.0.
 
     Основные обязанности:
     - Извлечение параметров через ThermodynamicAgent (LLM)
-    - Поиск и фильтрация через детерминированные модули
+    - Поиск и фильтрация через детерминированные модули с прямыми вызовами
     - Агрегация результатов и форматирование ответов
+    - Высокая производительность без message passing overhead
     """
 
     def __init__(
@@ -92,16 +91,16 @@ class ThermoOrchestrator:
         config: Optional[OrchestratorConfig] = None,
     ):
         """
-        Инициализация оркестратора с новыми компонентами.
+        Инициализация оптимизированного оркестратора.
 
         Args:
             thermodynamic_agent: Агент извлечения параметров
             compound_searcher: Модуль поиска соединений
-            filter_pipeline: Конвейер фильтрации
+            filter_pipeline: Оптимизированный конвейер фильтрации
             reaction_aggregator: Агрегатор данных реакции
             table_formatter: Форматирование таблиц
             statistics_formatter: Форматирование статистики
-            config: Конфигурация оркестратора
+            config: Оптимизированная конфигурация оркестратора
         """
         self.thermodynamic_agent = thermodynamic_agent
         self.compound_searcher = compound_searcher
@@ -111,23 +110,21 @@ class ThermoOrchestrator:
         self.statistics_formatter = statistics_formatter
 
         self.config = config or OrchestratorConfig()
-        self.storage = self.config.storage
         self.logger = self.config.logger
 
-        # Регистрация в хранилище
-        self.agent_id = "orchestrator_v2"
-        self.storage.start_session(self.agent_id, {"status": "ready"})
+        # Оптимизация: убрана зависимость от AgentStorage
+        self.agent_id = "orchestrator_v2_optimized"
 
     async def process_query(self, user_query: str) -> str:
         """
-        Обработка запроса пользователя.
+        Оптимизированная обработка запроса пользователя с прямыми вызовами.
 
-        Новый поток:
+        Поток выполнения:
         1. Извлечение параметров (LLM)
-        2. Поиск для каждого вещества (детерминированный)
-        3. Фильтрация для каждого вещества (детерминированный)
-        4. Агрегация результатов
-        5. Форматирование ответа
+        2. Поиск для каждого вещества (детерминированный, прямой вызов)
+        3. Фильтрация для каждого вещества (детерминированный, прямой вызов)
+        4. Агрегация результатов (прямой вызов)
+        5. Форматирование ответа (прямой вызов)
 
         Args:
             user_query: Запрос на естественном языке
@@ -178,7 +175,14 @@ class ThermoOrchestrator:
         temperature_range: Tuple[float, float],
         reaction_params: Optional[ExtractedReactionParameters] = None,
     ) -> CompoundSearchResult:
-        """Поиск и фильтрация для одного вещества."""
+        """
+        Оптимизированный поиск и фильтрация для одного вещества.
+
+        Особенности оптимизации:
+        - Прямые вызовы без message passing
+        - Убраны лишние зависимости от storage
+        - Быстрая обработка с детерминированной логикой
+        """
         # Извлекаем названия соединений из параметров реакции
         compound_names = None
         if reaction_params and reaction_params.compound_names:
@@ -339,14 +343,26 @@ class ThermoOrchestrator:
             )
 
     async def shutdown(self):
-        """Завершить работу оркестратора."""
-        self.logger.info("Shutting down orchestrator v2")
-        self.storage.end_session(self.agent_id)
+        """
+        Оптимизированное завершение работы оркестратора.
+
+        Убрана зависимость от AgentStorage для быстрого завершения.
+        """
+        self.logger.info("Shutting down optimized orchestrator v2")
 
     def get_status(self) -> Dict[str, Any]:
-        """Получить статус оркестратора и системы."""
+        """
+        Получить базовый статус оркестратора без dependencies от storage.
+        """
         return {
-            "orchestrator": self.storage.get_session(self.agent_id),
-            "storage_stats": self.storage.get_stats(),
-            "active_agents": list(self.storage._agent_sessions.keys()),
+            "orchestrator_id": self.agent_id,
+            "status": "optimized",
+            "components": {
+                "thermodynamic_agent": type(self.thermodynamic_agent).__name__,
+                "compound_searcher": type(self.compound_searcher).__name__,
+                "filter_pipeline": type(self.filter_pipeline).__name__,
+                "reaction_aggregator": type(self.reaction_aggregator).__name__,
+                "table_formatter": type(self.table_formatter).__name__,
+                "statistics_formatter": type(self.statistics_formatter).__name__,
+            }
         }

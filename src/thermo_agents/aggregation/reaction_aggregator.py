@@ -1,18 +1,18 @@
 """
-ReactionAggregator - агрегация результатов поиска по всем веществам реакции.
+Оптимизированный ReactionAggregator для агрегации результатов поиска.
 
 Класс отвечает за объединение результатов поиска по отдельным веществам
 в единую структуру данных по реакции с генерацией предупреждений
-и рекомендаций.
+и рекомендаций. Использует прямые вызовы без message passing.
 """
 
 from typing import Dict, List, Optional
 
-from src.thermo_agents.models.aggregation import (
+from ..models.aggregation import (
     AggregatedReactionData,
     FilterStatistics,
 )
-from src.thermo_agents.models.search import CompoundSearchResult, SearchStatistics
+from ..models.search import CompoundSearchResult, SearchStatistics
 
 
 class ReactionAggregator:
