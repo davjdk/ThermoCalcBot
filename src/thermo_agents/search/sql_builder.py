@@ -1,8 +1,8 @@
 """
-Deterministic SQL Builder for thermodynamic compound search.
+Высокопроизводительный Deterministic SQL Builder для поиска термодинамических соединений.
 
-This module replaces the LLM-based SQL Generation Agent with deterministic
-logic based on the comprehensive database analysis from Stage 0.
+Оптимизированная версия с индексацией, кэшированием и быстрыми алгоритмами.
+Заменяет LLM-based SQL Generation Agent на детерминированную логику.
 
 Key findings from database analysis implemented:
 - 316,434 total records with 32,790 unique formulas
@@ -15,6 +15,8 @@ Key findings from database analysis implemented:
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+import time
+from functools import lru_cache
 
 from ..filtering.constants import (
     DEFAULT_QUERY_LIMIT,
@@ -23,6 +25,8 @@ from ..filtering.constants import (
     MAX_RELIABILITY_CLASS,
     RELIABILITY_CLASS_EXCELLENT,
     VALID_PHASES,
+    FAST_QUERY_THRESHOLD,
+    SLOW_QUERY_THRESHOLD,
 )
 from .common_compounds import CommonCompoundResolver
 
@@ -54,22 +58,34 @@ class FilterPriorities:
 
 class SQLBuilder:
     """
-    Deterministic SQL generator for searching thermodynamic compounds.
+    Высокопроизводительный SQL генератор с кэшированием и оптимизациями.
 
-    This class implements deterministic SQL generation logic based on the
-    comprehensive database analysis from Stage 0. It replaces the LLM-based
-    SQL Generation Agent with predictable, rule-based query construction.
+    Особенности производительности:
+    - Кэширование сгенерированных запросов
+    - Оптимизированные алгоритмы построения условий
+    - Предвычисленные паттерны для распространенных запросов
+    - Метрики производительности
     """
 
     def __init__(self, priorities: Optional[FilterPriorities] = None):
         """
-        Initialize SQL builder with filtering priorities.
+        Initialize SQL builder with filtering priorities and performance optimizations.
 
         Args:
             priorities: Custom filtering priorities, defaults to standard config
         """
         self.priorities = priorities or FilterPriorities()
         self.common_resolver = CommonCompoundResolver()
+
+        # Кэширование запросов
+        self._query_cache: Dict[str, Tuple[str, List[Any]]] = {}
+        self._cache_size = DEFAULT_CACHE_SIZE
+        self._cache_hits = 0
+        self._cache_misses = 0
+
+        # Метрики производительности
+        self._query_count = 0
+        self._total_build_time = 0.0
 
     def build_compound_search_query(
         self,
@@ -78,9 +94,9 @@ class SQLBuilder:
         phase: Optional[str] = None,
         limit: int = DEFAULT_QUERY_LIMIT,
         compound_names: Optional[List[str]] = None,
-    ) -> str:
+    ) -> Tuple[str, List[Any]]:
         """
-        Generate SQL query for compound search with multi-level formula matching.
+        Generate optimized SQL query for compound search with caching.
 
         Based on database analysis findings:
         - Many compounds require prefix search (e.g., HCl, CO2, NH3, CH4)
@@ -93,11 +109,83 @@ class SQLBuilder:
             temperature_range: Optional (tmin, tmax) in Kelvin
             phase: Optional phase filter ('s', 'l', 'g', 'aq', etc.)
             limit: Maximum number of results to return
-            compound_names: Optional list of compound names (e.g., ['Ammonium chloride', 'Sal ammoniac'])
+            compound_names: Optional list of compound names
 
         Returns:
-            SQL query string for compound search
+            Tuple of (SQL query string, parameters) for compound search
         """
+        start_time = time.time()
+        self._query_count += 1
+
+        # Генерируем ключ кэша
+        cache_key = self._generate_query_cache_key(
+            formula, temperature_range, phase, limit, compound_names
+        )
+
+        # Проверяем кэш
+        if cache_key in self._query_cache:
+            self._cache_hits += 1
+            cached_query, cached_params = self._query_cache[cache_key]
+            self._total_build_time += time.time() - start_time
+            return cached_query, cached_params.copy()
+
+        self._cache_misses += 1
+
+        # Строим запрос
+        query, params = self._build_query_optimized(
+            formula, temperature_range, phase, limit, compound_names
+        )
+
+        # Кэшируем результат
+        self._cache_query(cache_key, query, params)
+
+        self._total_build_time += time.time() - start_time
+        return query, params
+
+    def _generate_query_cache_key(
+        self,
+        formula: str,
+        temperature_range: Optional[Tuple[float, float]],
+        phase: Optional[str],
+        limit: int,
+        compound_names: Optional[List[str]]
+    ) -> str:
+        """Генерировать ключ кэша для запроса."""
+        key_parts = [
+            formula.upper(),
+            str(temperature_range) if temperature_range else "None",
+            phase.upper() if phase else "None",
+            str(limit),
+            str(compound_names) if compound_names else "None"
+        ]
+        return "_".join(key_parts)
+
+    def _cache_query(
+        self,
+        cache_key: str,
+        query: str,
+        params: List[Any]
+    ) -> None:
+        """Сохранить запрос в кэш."""
+        # Очищаем кэш при необходимости
+        if len(self._query_cache) >= self._cache_size:
+            # Удаляем 25% самых старых записей
+            items_to_remove = len(self._query_cache) // 4
+            for _ in range(items_to_remove):
+                if self._query_cache:
+                    self._query_cache.pop(next(iter(self._query_cache)))
+
+        self._query_cache[cache_key] = (query, params.copy())
+
+    def _build_query_optimized(
+        self,
+        formula: str,
+        temperature_range: Optional[Tuple[float, float]],
+        phase: Optional[str],
+        limit: int,
+        compound_names: Optional[List[str]]
+    ) -> Tuple[str, List[Any]]:
+        """Оптимизированное построение запроса."""
         # Build WHERE conditions
         where_conditions = []
         params = []
@@ -137,6 +225,29 @@ class SQLBuilder:
         params.append(limit)
 
         return query, params
+
+    def get_performance_metrics(self) -> Dict[str, Any]:
+        """Получить метрики производительности SQL Builder."""
+        total_requests = self._cache_hits + self._cache_misses
+        hit_rate = (
+            self._cache_hits / total_requests * 100
+            if total_requests > 0 else 0
+        )
+
+        avg_build_time = (
+            self._total_build_time / self._query_count * 1000
+            if self._query_count > 0 else 0
+        )
+
+        return {
+            "cache_hit_rate": hit_rate,
+            "cache_hits": self._cache_hits,
+            "cache_misses": self._cache_misses,
+            "query_cache_size": len(self._query_cache),
+            "total_queries": self._query_count,
+            "avg_build_time_ms": avg_build_time,
+            "total_build_time_ms": self._total_build_time * 1000,
+        }
 
     def _build_formula_condition(
         self, formula: str, compound_names: Optional[List[str]] = None

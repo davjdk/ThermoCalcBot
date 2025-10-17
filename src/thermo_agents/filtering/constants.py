@@ -213,3 +213,47 @@ MAX_THREAD_POOL_SIZE: Final[int] = 50
 # Пороги для переключения на более эффективные алгоритмы
 LARGE_DATASET_THRESHOLD: Final[int] = 1000
 COMPLEX_OPERATION_THRESHOLD: Final[float] = 0.1  # 100ms
+
+# =============================================================================
+# ОПТИМИЗАЦИЯ ПРОИЗВОДИТЕЛЬНОСТИ ФИЛЬТРАЦИИ (ЭТАП 6)
+# =============================================================================
+
+# Оптимизированные параметры кэширования для фильтрации
+FILTER_PIPELINE_CACHE_SIZE: Final[int] = 1000  # Кэш для FilterPipeline
+TEMPERATURE_RESOLVER_CACHE_SIZE: Final[int] = 500  # Кэш для температурных расчетов
+PHASE_RESOLVER_CACHE_SIZE: Final[int] = 300  # Кэш для фазовых расчетов
+COMPOUND_SEARCH_CACHE_SIZE: Final[int] = 200  # Кэш для поиска соединений
+
+# TTL для кэша в секундах
+FILTER_CACHE_TTL: Final[int] = 300  # 5 минут для фильтрации
+TEMPERATURE_CACHE_TTL: Final[int] = 600  # 10 минут для температур
+PHASE_CACHE_TTL: Final[int] = 600  # 10 минут для фаз
+SEARCH_CACHE_TTL: Final[int] = 300  # 5 минут для поиска
+
+# Пороги для оптимизации кэширования
+MIN_RECORDS_FOR_CACHING: Final[int] = 10  # Минимальное количество записей для кэширования
+MAX_CACHE_ITEM_SIZE: Final[int] = 1000  # Максимальный размер элемента кэша
+
+# Оптимизация ленивой загрузки
+LAZY_LOAD_THRESHOLD: Final[int] = 50  # Порог для ленивой загрузки
+BATCH_PROCESSING_SIZE: Final[int] = 100  # Размер пакета для обработки
+
+# Индексация и быстрые поиски
+COMPOUND_INDEX_CACHE_SIZE: Final[int] = 500  # Кэш для индексов соединений
+FORMULA_PREFIX_CACHE_SIZE: Final[int] = 200  # Кэш для префиксов формул
+
+# Предвычисленные значения
+PRECOMPUTED_PHASE_TRANSITIONS: Final[dict[str, float]] = {
+    "H2O_melting": 273.15,
+    "H2O_boiling": 373.15,
+    "NH3_boiling": 239.82,
+    "CO2_sublimation": 194.65,
+}
+
+# Пороги для оптимизации запросов
+FAST_QUERY_THRESHOLD: Final[int] = 100  # Порог для быстрых запросов
+SLOW_QUERY_THRESHOLD: Final[int] = 1000  # Порог для медленных запросов
+
+# Оптимизация памяти
+MEMORY_OPTIMIZATION_THRESHOLD: Final[int] = 10000  # Порог для оптимизации памяти
+MAX_MEMORY_USAGE_MB: Final[int] = 512  # Максимальное использование памяти в МБ
