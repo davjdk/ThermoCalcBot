@@ -31,27 +31,90 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
 # Входные данные:
 Запрос пользователя: {user_query}
 
+# ПРАВИЛА КЛАССИФИКАЦИИ:
+
+## compound_data (данные по веществу):
+✓ Запрос содержит одно вещество
+✓ Нет символов реакции (→, =, ⇄, <=>)
+✓ Ключевые слова: "данные", "свойства", "таблица для", "информация о"
+✓ Примеры:
+  - "Дай таблицу для H2O при 300-600K"
+  - "Свойства WCl6 с шагом 50 градусов"
+  - "Термодинамические данные для воды"
+
+## reaction_calculation (расчёт реакции):
+✓ Присутствуют 2+ вещества
+✓ Есть символы реакции (→, =, ⇄, <=>)
+✓ Ключевые слова: "реакция", "рассчитай", "баланс", "термодинамика"
+✓ Примеры:
+  - "2 W + 4 Cl2 + O2 → 2 WOCl4 при 600-900K"
+  - "Рассчитай термодинамику хлорирования вольфрама"
+
 # Задача:
 Извлеки следующие параметры:
-1. **Уравненное уравнение реакции** — сбалансируй стехиометрические коэффициенты
-2. **Список всех веществ** (до 10 веществ, включая реагенты и продукты)
-3. **Реагенты** (левая часть уравнения)
-4. **Продукты** (правая часть уравнения)
-5. **Температурный диапазон** в Кельвинах (tmin, tmax)
-6. **Названия веществ** — IUPAC и тривиальные названия для каждого соединения
+1. **Тип запроса** (query_type) — "compound_data" или "reaction_calculation"
+2. **Шаг температуры** (temperature_step_k) — из фраз "с шагом X", "каждые X", "через X K" (25-250K, по умолчанию 100)
+3. **Уравненное уравнение реакции** — сбалансируй стехиометрические коэффициенты (для reaction_calculation)
+4. **Список всех веществ** (до 10 веществ, включая реагенты и продукты)
+5. **Реагенты** (левая часть уравнения) — для reaction_calculation
+6. **Продукты** (правая часть уравнения) — для reaction_calculation
+7. **Температурный диапазон** в Кельвинах (tmin, tmax)
+8. **Названия веществ** — IUPAC и тривиальные названия для каждого соединения
 
 # Важные правила:
 - Максимум 10 веществ в реакции
 - Температурный диапазон обязателен (если не указан, используй 298-1000K по умолчанию)
 - Формулы веществ — без фаз в скобках (например, "H2O", а не "H2O(g)")
 - Для каждого вещества укажи официальное IUPAC название и возможные тривиальные названия
+- Шаг температуры: 25-250K, по умолчанию 100K, кратный 25K рекомендуется
 
 # Примеры:
 
-## Пример 1:
+## Пример 1: compound_data
+Запрос: "Дай таблицу для H2O при 300-600K с шагом 50 градусов"
+Ответ:
+{{
+  "query_type": "compound_data",
+  "temperature_step_k": 50,
+  "balanced_equation": "",
+  "all_compounds": ["H2O"],
+  "reactants": [],
+  "products": [],
+  "temperature_range_k": [300, 600],
+  "extraction_confidence": 1.0,
+  "missing_fields": [],
+  "compound_names": {{
+    "H2O": ["Water", "вода"]
+  }}
+}}
+
+## Пример 2: reaction_calculation
+Запрос: "2 W + 4 Cl2 + O2 → 2 WOCl4 при 600-900K, считай каждые 25 кельвинов"
+Ответ:
+{{
+  "query_type": "reaction_calculation",
+  "temperature_step_k": 25,
+  "balanced_equation": "2 W + 4 Cl2 + O2 → 2 WOCl4",
+  "all_compounds": ["W", "Cl2", "O2", "WOCl4"],
+  "reactants": ["W", "Cl2", "O2"],
+  "products": ["WOCl4"],
+  "temperature_range_k": [600, 900],
+  "extraction_confidence": 1.0,
+  "missing_fields": [],
+  "compound_names": {{
+    "W": ["Tungsten", "Wolfram"],
+    "Cl2": ["Chlorine"],
+    "O2": ["Oxygen"],
+    "WOCl4": ["Tungsten oxychloride"]
+  }}
+}}
+
+## Пример 3: reaction_calculation
 Запрос: "Хлорирование оксида титана при 600-900K"
 Ответ:
 {{
+  "query_type": "reaction_calculation",
+  "temperature_step_k": 100,
   "balanced_equation": "TiO2 + 2Cl2 → TiCl4 + O2",
   "all_compounds": ["TiO2", "Cl2", "TiCl4", "O2"],
   "reactants": ["TiO2", "Cl2"],
@@ -67,40 +130,21 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
   }}
 }}
 
-## Пример 2:
-Запрос: "Восстановление оксида железа водородом"
+## Пример 4: compound_data
+Запрос: "Свойства WCl6 с шагом 50 градусов"
 Ответ:
 {{
-  "balanced_equation": "Fe2O3 + 3H2 → 2Fe + 3H2O",
-  "all_compounds": ["Fe2O3", "H2", "Fe", "H2O"],
-  "reactants": ["Fe2O3", "H2"],
-  "products": ["Fe", "H2O"],
+  "query_type": "compound_data",
+  "temperature_step_k": 50,
+  "balanced_equation": "",
+  "all_compounds": ["WCl6"],
+  "reactants": [],
+  "products": [],
   "temperature_range_k": [298, 1000],
-  "extraction_confidence": 0.85,
+  "extraction_confidence": 0.90,
   "missing_fields": [],
   "compound_names": {{
-    "Fe2O3": ["Iron(III) oxide", "Ferric oxide"],
-    "H2": ["Hydrogen"],
-    "Fe": ["Iron"],
-    "H2O": ["Water"]
-  }}
-}}
-
-## Пример 3 (сложная реакция):
-Запрос: "Синтез аммиака из азота и водорода при 400-500°C"
-Ответ:
-{{
-  "balanced_equation": "N2 + 3H2 → 2NH3",
-  "all_compounds": ["N2", "H2", "NH3"],
-  "reactants": ["N2", "H2"],
-  "products": ["NH3"],
-  "temperature_range_k": [673, 773],
-  "extraction_confidence": 1.0,
-  "missing_fields": [],
-  "compound_names": {{
-    "N2": ["Nitrogen"],
-    "H2": ["Hydrogen"],
-    "NH3": ["Ammonia"]
+    "WCl6": ["Tungsten hexachloride", "Вольфрам гексахлорид"]
   }}
 }}
 

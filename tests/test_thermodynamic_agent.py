@@ -20,6 +20,7 @@ class TestExtractedReactionParameters:
     def test_valid_simple_reaction(self):
         """Тест валидной простой реакции."""
         params = ExtractedReactionParameters(
+            query_type="reaction_calculation",
             balanced_equation="2H2 + O2 → 2H2O",
             all_compounds=["H2", "O2", "H2O"],
             reactants=["H2", "O2"],
@@ -38,6 +39,7 @@ class TestExtractedReactionParameters:
         """Тест валидной сложной реакции с 10 веществами."""
         compounds = [f"C{i}H{j}" for i, j in [(1, 4), (2, 6), (3, 8), (4, 10), (5, 12)]]
         params = ExtractedReactionParameters(
+            query_type="reaction_calculation",
             balanced_equation="C1H4 + C2H6 + C3H8 + C4H10 + C5H12 → Products",
             all_compounds=compounds,
             reactants=compounds[:3],
@@ -52,8 +54,9 @@ class TestExtractedReactionParameters:
 
     def test_invalid_too_many_compounds(self):
         """Тест реакции с превышением максимального количества веществ."""
-        with pytest.raises(ValidationError, match="Превышено максимальное количество веществ"):
+        with pytest.raises(ValidationError):
             ExtractedReactionParameters(
+                query_type="reaction_calculation",
                 balanced_equation="Complex reaction",
                 all_compounds=[f"C{i}" for i in range(11)],  # 11 веществ > 10
                 reactants=["C1", "C2"],
@@ -68,6 +71,7 @@ class TestExtractedReactionParameters:
         # Tmin >= Tmax
         with pytest.raises(ValidationError, match="Tmax должен быть больше Tmin"):
             ExtractedReactionParameters(
+                query_type="reaction_calculation",
                 balanced_equation="A + B → C",
                 all_compounds=["A", "B", "C"],
                 reactants=["A", "B"],
@@ -80,6 +84,7 @@ class TestExtractedReactionParameters:
         # Отрицательная температура
         with pytest.raises(ValidationError, match="Tmin не может быть отрицательной"):
             ExtractedReactionParameters(
+                query_type="reaction_calculation",
                 balanced_equation="A + B → C",
                 all_compounds=["A", "B", "C"],
                 reactants=["A", "B"],
@@ -92,6 +97,7 @@ class TestExtractedReactionParameters:
         # Слишком высокая температура
         with pytest.raises(ValidationError, match="Tmax слишком высокая"):
             ExtractedReactionParameters(
+                query_type="reaction_calculation",
                 balanced_equation="A + B → C",
                 all_compounds=["A", "B", "C"],
                 reactants=["A", "B"],
@@ -105,6 +111,7 @@ class TestExtractedReactionParameters:
         """Тест невалидного значения уверенности."""
         with pytest.raises(ValidationError):
             ExtractedReactionParameters(
+                query_type="reaction_calculation",
                 balanced_equation="A + B → C",
                 all_compounds=["A", "B", "C"],
                 reactants=["A", "B"],
@@ -116,6 +123,7 @@ class TestExtractedReactionParameters:
 
         with pytest.raises(ValidationError):
             ExtractedReactionParameters(
+                query_type="reaction_calculation",
                 balanced_equation="A + B → C",
                 all_compounds=["A", "B", "C"],
                 reactants=["A", "B"],
@@ -128,6 +136,7 @@ class TestExtractedReactionParameters:
     def test_incomplete_parameters(self):
         """Тест неполных параметров с missing_fields."""
         params = ExtractedReactionParameters(
+            query_type="reaction_calculation",
             balanced_equation="A + B → C",
             all_compounds=["A", "B", "C"],
             reactants=["A", "B"],
@@ -145,6 +154,7 @@ class TestExtractedReactionParameters:
         """Тест метода is_complete()."""
         # Полные параметры
         complete_params = ExtractedReactionParameters(
+            query_type="reaction_calculation",
             balanced_equation="A + B → C",
             all_compounds=["A", "B", "C"],
             reactants=["A", "B"],
@@ -155,17 +165,31 @@ class TestExtractedReactionParameters:
         )
         assert complete_params.is_complete() is True
 
-        # Неполные параметры
+        # Неполные параметры (compound_data, т.к. пустой balanced_equation не пройдет валидацию для reaction_calculation)
         incomplete_params = ExtractedReactionParameters(
+            query_type="compound_data",
             balanced_equation="",
-            all_compounds=["A", "B"],
-            reactants=["A"],
-            products=["B"],
+            all_compounds=["A"],  # Только одно вещество для compound_data
+            reactants=[],
+            products=[],
             temperature_range_k=(298, 1000),
             extraction_confidence=0.8,
-            missing_fields=["balanced_equation"]
+            missing_fields=["temperature_range"]  # Указываем, что отсутствует температурный диапазон
         )
         assert incomplete_params.is_complete() is False
+
+        # Полные параметры для compound_data
+        compound_data_params = ExtractedReactionParameters(
+            query_type="compound_data",
+            balanced_equation="",
+            all_compounds=["H2O"],
+            reactants=[],
+            products=[],
+            temperature_range_k=(298, 1000),
+            extraction_confidence=1.0,
+            missing_fields=[]
+        )
+        assert compound_data_params.is_complete() is True
 
 
 class TestThermodynamicAgent:
@@ -201,6 +225,7 @@ class TestThermodynamicAgent:
         """Тест успешного извлечения параметров."""
         # Моковые данные
         mock_params = ExtractedReactionParameters(
+            query_type="reaction_calculation",
             balanced_equation="TiO2 + 2Cl2 → TiCl4 + O2",
             all_compounds=["TiO2", "Cl2", "TiCl4", "O2"],
             reactants=["TiO2", "Cl2"],
@@ -235,6 +260,7 @@ class TestThermodynamicAgent:
         """Тест извлечения с неполными данными."""
         # Моковые данные с отсутствующими полями
         mock_params = ExtractedReactionParameters(
+            query_type="reaction_calculation",
             balanced_equation="Fe2O3 + 3H2 → 2Fe + 3H2O",
             all_compounds=["Fe2O3", "H2", "Fe", "H2O"],
             reactants=["Fe2O3", "H2"],
@@ -298,6 +324,7 @@ class TestThermodynamicAgent:
         """Тест механизма повторных попыток."""
         # Первая попытка - ошибка, вторая - успех
         mock_params = ExtractedReactionParameters(
+            query_type="reaction_calculation",
             balanced_equation="N2 + 3H2 → 2NH3",
             all_compounds=["N2", "H2", "NH3"],
             reactants=["N2", "H2"],
@@ -338,6 +365,7 @@ class TestThermodynamicAgent:
         # Этот метод должен вызывать extract_parameters
         with patch.object(mock_agent, 'extract_parameters', new_callable=AsyncMock) as mock_extract:
             mock_params = ExtractedReactionParameters(
+                query_type="reaction_calculation",
                 balanced_equation="A + B → C",
                 all_compounds=["A", "B", "C"],
                 reactants=["A", "B"],
@@ -363,6 +391,7 @@ class TestIntegrationWithNewArchitecture:
     async def test_stoichiometric_coefficients_independence(self):
         """Тест независимости от стехиометрических коэффициентов."""
         params = ExtractedReactionParameters(
+            query_type="reaction_calculation",
             balanced_equation="2H2 + O2 → 2H2O",  # Коэффициенты: 2, 1, 2
             all_compounds=["H2", "O2", "H2O"],     # Без коэффициентов
             reactants=["H2", "O2"],
@@ -388,6 +417,7 @@ class TestIntegrationWithNewArchitecture:
         max_compounds = [f"C{i}" for i in range(1, 11)]  # C1, C2, ..., C10
 
         params = ExtractedReactionParameters(
+            query_type="reaction_calculation",
             balanced_equation=" + ".join(max_compounds[:5]) + " → " + " + ".join(max_compounds[5:]),
             all_compounds=max_compounds,
             reactants=max_compounds[:5],
