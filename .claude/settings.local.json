@@ -33,7 +33,8 @@
       "Bash(PYTHONPATH=../src python:*)",
       "Bash(PYTHONPATH=src python:*)",
       "Bash(git branch:*)",
-      "Bash(PYTHONPATH=src uv run python:*)"
+      "Bash(PYTHONPATH=src uv run python:*)",
+      "Bash(git remote prune:*)"
     ],
     "deny": [],
     "ask": []
