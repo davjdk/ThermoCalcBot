@@ -108,6 +108,13 @@ COMMON_COMPOUNDS: Dict[str, CommonCompoundSpec] = {
         description="Угарный газ",
         exact_match_only=True,
     ),
+    # Сера (элементарная)
+    "S": CommonCompoundSpec(
+        formulas=["S"],
+        names=["Sulfur", "Sulphur"],
+        description="Сера (элементарная, адаптивный выбор фазы по температуре)",
+        exact_match_only=True,
+    ),
 }
 
 

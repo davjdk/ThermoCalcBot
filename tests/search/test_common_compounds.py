@@ -33,6 +33,17 @@ class TestCommonCompoundSpec:
         assert "CO2" in co2_spec.formulas
         assert "Carbon dioxide" in co2_spec.names
 
+    def test_sulfur_spec_exists(self):
+        """Проверка наличия спецификации для серы."""
+        assert "S" in COMMON_COMPOUNDS
+        sulfur_spec = COMMON_COMPOUNDS["S"]
+        assert isinstance(sulfur_spec, CommonCompoundSpec)
+        assert "S" in sulfur_spec.formulas
+        assert "Sulfur" in sulfur_spec.names
+        assert "Sulphur" in sulfur_spec.names
+        assert sulfur_spec.exact_match_only is True
+        assert "адаптивный выбор фазы" in sulfur_spec.description
+
     def test_all_common_compounds_have_descriptions(self):
         """Все распространенные вещества должны иметь описание."""
         for formula, spec in COMMON_COMPOUNDS.items():
@@ -57,6 +68,24 @@ class TestCommonCompoundResolver:
     def test_is_common_compound_co2(self):
         """Проверка определения CO2 как распространенного вещества."""
         assert self.resolver.is_common_compound("CO2") is True
+
+    def test_is_common_compound_sulfur(self):
+        """Проверка определения серы как распространенного вещества."""
+        assert self.resolver.is_common_compound("S") is True
+        assert self.resolver.is_common_compound("S ") is True  # с пробелом
+        assert self.resolver.is_common_compound(" S") is True  # с пробелом
+
+    def test_sulfur_no_false_positives(self):
+        """Сера не должна ловить SO2, H2S и другие соединения."""
+        # Негативные кейсы - серосодержащие соединения
+        assert not self.resolver.is_common_compound("SO2")
+        assert not self.resolver.is_common_compound("H2S")
+        assert not self.resolver.is_common_compound("H2SO4")
+
+        # Негативные кейсы - аллотропы (не должны распознаваться как S)
+        assert not self.resolver.is_common_compound("S8")
+        assert not self.resolver.is_common_compound("S2")
+        assert not self.resolver.is_common_compound("S6")
 
     def test_is_not_common_compound(self):
         """Проверка что редкие вещества не определяются как распространенные."""
@@ -124,6 +153,34 @@ class TestSQLConditionBuilding:
         assert "CO2" in condition
         assert "TRIM(Formula) = 'CO2'" in condition
 
+    def test_sulfur_sql_condition_basic(self):
+        """Проверка базового SQL-условия для серы."""
+        condition = self.resolver.build_sql_condition("S")
+
+        assert condition is not None
+        assert "TRIM(Formula) = 'S'" in condition
+        assert "Formula LIKE 'S(%'" in condition
+        assert "(" in condition and ")" in condition  # Группировка через OR
+
+    def test_sulfur_sql_condition_excludes_compounds(self):
+        """SQL-условие не должно ловить серосодержащие соединения."""
+        condition = self.resolver.build_sql_condition("S")
+
+        # Проверяем, что используется точное совпадение
+        assert "TRIM(Formula) = 'S'" in condition
+        # Не должно быть широких паттернов LIKE '%S%'
+        assert "LIKE '%S%'" not in condition
+
+    def test_sulfur_sql_condition_with_names(self):
+        """SQL-условие для серы с дополнительными названиями."""
+        condition = self.resolver.build_sql_condition(
+            "S", compound_names=["Sulfur", "Sulphur"]
+        )
+        assert condition is not None
+        assert "Sulfur" in condition
+        assert "Sulphur" in condition
+        assert "LOWER(TRIM(FirstName))" in condition
+
     def test_build_sql_condition_with_names(self):
         """Проверка построения SQL-условия с дополнительными названиями."""
         condition = self.resolver.build_sql_condition(
@@ -175,6 +232,37 @@ class TestIntegrationWithExistingCode:
         assert water_condition != peroxide_condition
         assert "TRIM(Formula) = 'H2O'" in water_condition
         assert "TRIM(Formula) = 'H2O2'" in peroxide_condition
+
+    def test_sulfur_vs_sulfur_compounds_distinction(self):
+        """
+        Критический тест: сера (S) не должна совпадать с серосодержащими соединениями.
+
+        Проверяет, что спецификация для серы работает корректно и не ловит
+        соединения SO2, H2S, H2SO4, а также аллотропы S8, S2, S6.
+        """
+        resolver = CommonCompoundResolver()
+
+        # Сера должна быть распространенным веществом
+        assert resolver.is_common_compound("S") is True
+
+        # Серосодержащие соединения НЕ должны распознаваться как сера
+        assert not resolver.is_common_compound("SO2")
+        assert not resolver.is_common_compound("H2S")
+        assert not resolver.is_common_compound("H2SO4")
+
+        # Аллотропы НЕ должны распознаваться как сера
+        assert not resolver.is_common_compound("S8")
+        assert not resolver.is_common_compound("S2")
+        assert not resolver.is_common_compound("S6")
+
+        # SQL-условие для серы должно быть точным
+        sulfur_condition = resolver.build_sql_condition("S")
+        assert sulfur_condition is not None
+        assert "TRIM(Formula) = 'S'" in sulfur_condition
+        assert "Formula LIKE 'S(%'" in sulfur_condition
+
+        # SQL-условие не должно включать широкие паттерны
+        assert "LIKE '%S%'" not in sulfur_condition
 
     def test_all_common_compounds_buildable(self):
         """Все распространенные вещества должны иметь buildable SQL-условия."""
