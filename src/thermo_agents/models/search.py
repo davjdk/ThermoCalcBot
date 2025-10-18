@@ -10,11 +10,11 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field, validator
-from ..filtering.constants import (
-    MIN_TEMPERATURE_K,
-    MAX_TEMPERATURE_K,
-    MAX_RELIABILITY_CLASS
-)
+
+# Define constants locally to avoid circular import
+MIN_TEMPERATURE_K = 0.0
+MAX_TEMPERATURE_K = 10000.0
+MAX_RELIABILITY_CLASS = 3
 
 
 class CoverageStatus(str, Enum):

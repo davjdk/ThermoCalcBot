@@ -3,29 +3,62 @@
 
 Создаёт отдельный лог-файл для каждой сессии общения.
 Все действия агентов записываются как операции в рамках сессии.
-
-РЕФАКТОРИНГ v2.0: Теперь использует UnifiedLogger как backend для
-объединения функциональности SessionLogger и OperationLogger.
 """
 
 import logging
+import time
+import uuid
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from contextlib import contextmanager
 
 from tabulate import tabulate
 
-from .logging.unified_logger import UnifiedLogger, LogLevel, OperationTimer
 from .operations import OperationType
+
+
+@dataclass
+class SimpleOperationTimer:
+    """Простой контекст менеджер для измерения времени операций."""
+    logger: 'SessionLogger'
+    operation_type: str
+    agent_name: str
+    correlation_id: Optional[str] = None
+    start_time: float = field(default_factory=time.time)
+    operation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+
+    def __enter__(self):
+        self.logger.log_info(
+            f"Started operation: {self.operation_type} "
+            f"[{self.agent_name}] "
+            f"(ID: {self.operation_id[:8]})"
+        )
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        duration_ms = (time.time() - self.start_time) * 1000
+        if exc_type:
+            self.logger.log_error(
+                f"Failed operation: {self.operation_type} "
+                f"[{self.agent_name}] "
+                f"(ID: {self.operation_id[:8]}) "
+                f"({duration_ms:.1f}ms) - {exc_val}"
+            )
+        else:
+            self.logger.log_info(
+                f"Completed operation: {self.operation_type} "
+                f"[{self.agent_name}] "
+                f"(ID: {self.operation_id[:8]}) "
+                f"({duration_ms:.1f}ms)"
+            )
+        return False  # Не подавлять исключения
 
 
 class SessionLogger:
     """
     Логгер для сессий общения с агентами.
-
-    Backward compatible wrapper для UnifiedLogger.
-    Обеспечивает тот же API, но использует унифицированный логгер.
     """
 
     def __init__(self, logs_dir: str = "logs/sessions", storage=None, session_id: Optional[str] = None):
@@ -34,7 +67,7 @@ class SessionLogger:
 
         Args:
             logs_dir: Директория для логов
-            storage: Хранилище (для backward compatibility)
+            storage: Хранилище
             session_id: ID сессии (генерируется если не указан)
         """
         self.logs_dir = Path(logs_dir)
@@ -48,19 +81,35 @@ class SessionLogger:
 
         self.log_file = self.logs_dir / f"session_{self.session_id}.log"
 
-        # Инициализация UnifiedLogger как backend
-        self._logger = UnifiedLogger(
-            session_id=self.session_id,
-            log_level=LogLevel.INFO,
-            enable_file_logging=True,
-            enable_console_logging=True,
-            logs_dir=str(self.logs_dir)
+        # Настраиваем стандартный логгер
+        self.logger = logging.getLogger(f"session_logger_{self.session_id}")
+        self.logger.setLevel(logging.INFO)
+
+        # Очищаем существующие handlers
+        self.logger.handlers.clear()
+
+        # Создаем formatter
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
         )
 
-        # Хранилище для создания снимков (backward compatibility)
+        # Console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(formatter)
+        self.logger.addHandler(console_handler)
+
+        # File handler
+        file_handler = logging.FileHandler(self.log_file, encoding='utf-8')
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(formatter)
+        self.logger.addHandler(file_handler)
+
+        # Хранилище для создания снимков
         self.storage = storage
 
-        # Для backward compatibility - эмуляция operation_logger
+        # Эмуляция operation_logger для совместимости
         self.operation_logger = self
 
     def _sanitize_message(self, message: str) -> str:
@@ -125,12 +174,12 @@ class SessionLogger:
     def log_info(self, message: str):
         """Логирование информационного сообщения (не операции)."""
         sanitized_message = self._sanitize_message(message)
-        self._logger.info(sanitized_message)
+        self.logger.info(sanitized_message)
 
     def log_error(self, message: str):
         """Логирование сообщения об ошибке (не операции)."""
         sanitized_message = self._sanitize_message(message)
-        self._logger.error(sanitized_message)
+        self.logger.error(sanitized_message)
 
     def create_operation_context(
         self,
@@ -153,18 +202,12 @@ class SessionLogger:
         Returns:
             Контекстный менеджер операции
         """
-        operation_id = self._logger.start_operation(
+        # Создаем простой контекст менеджер для операций
+        return SimpleOperationTimer(
+            logger=self,
             operation_type=operation_type.value,
-            correlation_id=correlation_id,
             agent_name=agent_name,
-            source_agent=source_agent,
-            target_agent=target_agent
-        )
-
-        # Создаем context manager для совместимости
-        return OperationTimer(
-            logger=self._logger,
-            operation_id=operation_id
+            correlation_id=correlation_id
         )
 
     def is_operations_enabled(self) -> bool:
@@ -235,10 +278,7 @@ class SessionLogger:
             compound_results: Список результатов по соединениям
             title: Заголовок таблицы
         """
-        # Делегируем в UnifiedLogger
-        self._logger.log_compound_data_table(compound_results, title)
-
-        # Дополнительное форматирование для совместимости
+        # Базовое логирование для совместимости
         if not compound_results:
             self.log_info(f"{title}: No compounds found")
             return
@@ -336,10 +376,7 @@ class SessionLogger:
             metadata: Словарь с метаданными
             title: Заголовок
         """
-        # Делегируем в UnifiedLogger
-        self._logger.log_search_metadata(metadata, title)
-
-        # Дополнительное форматирование для совместимости
+        # Базовое логирование
         self.log_info(f"{title}:")
         for key, value in metadata.items():
             self.log_info(f"  {key}: {value}")
@@ -581,15 +618,7 @@ class SessionLogger:
             extracted_params: Извлечённые параметры (ExtractedReactionParameters)
             extraction_time_ms: Время выполнения запроса в миллисекундах
         """
-        # Делегируем в UnifiedLogger
-        self._logger.log_llm_interaction(
-            user_query=user_query,
-            llm_response=llm_response,
-            extracted_params=extracted_params,
-            extraction_time_ms=extraction_time_ms
-        )
-
-        # Дополнительное детализированное логирование для совместимости
+        # Базовое детализированное логирование
         separator = "═" * 63
         self.log_info(separator)
         self.log_info("LLM INTERACTION - ИЗВЛЕЧЕНИЕ ПАРАМЕТРОВ")
@@ -684,8 +713,10 @@ class SessionLogger:
         """Закрытие сессии."""
         self.log_info("SESSION ENDED")
 
-        # Закрываем UnifiedLogger
-        self._logger.close()
+        # Закрываем handlers
+        for handler in self.logger.handlers:
+            handler.close()
+        self.logger.handlers.clear()
 
 
 def create_session_logger(

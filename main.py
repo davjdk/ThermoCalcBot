@@ -78,7 +78,7 @@ def create_orchestrator(db_path: str = "data/thermo_data.db") -> ThermoOrchestra
     from thermo_agents.filtering.filter_pipeline import FilterPipelineBuilder
 
     filter_pipeline = (
-        FilterPipelineBuilder(session_logger=session_logger)
+        FilterPipelineBuilder()
         .with_reaction_validation(min_confidence_threshold=0.5)
         .build()
     )
@@ -111,7 +111,7 @@ def create_orchestrator(db_path: str = "data/thermo_data.db") -> ThermoOrchestra
     statistics_formatter = StatisticsFormatter()
 
     # Оркестратор
-    orchestrator_config = OrchestratorConfig(storage=storage)
+    orchestrator_config = OrchestratorConfig()
     orchestrator = ThermoOrchestrator(
         thermodynamic_agent=thermodynamic_agent,
         compound_searcher=compound_searcher,
@@ -195,7 +195,7 @@ async def main_test():
     print("=" * 80)
 
     # Тестовый запрос
-    test_query = "Возможно ли взаимодействие оксида кальция и сульфида железа при 600 - 1200 цельсия?"
+    test_query = "Возможна ли реакция оксида цинка с серой при 800–1100 °C?"
 
     # НОВОЕ: Логирование запроса пользователя
     if session_logger:
