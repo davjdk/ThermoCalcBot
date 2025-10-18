@@ -108,6 +108,13 @@ COMMON_COMPOUNDS: Dict[str, CommonCompoundSpec] = {
         description="Угарный газ",
         exact_match_only=True,
     ),
+    # Железо (элементарное)
+    "Fe": CommonCompoundSpec(
+        formulas=["Fe"],
+        names=["Iron"],
+        description="Железо (элементарное, адаптивный выбор фазы по температуре)",
+        exact_match_only=True,
+    ),
     # Сера (элементарная)
     "S": CommonCompoundSpec(
         formulas=["S"],
@@ -163,6 +170,8 @@ class CommonCompoundResolver:
         """
         Построить SQL-условие для точного поиска распространенного вещества.
 
+        Жестко исключает ионы (формулы с + или - в конце).
+
         Args:
             formula: Химическая формула
             compound_names: Опциональные названия веществ
@@ -197,6 +206,7 @@ class CommonCompoundResolver:
                     )
 
         # Объединяем условия через OR
+        # Примечание: глобальное исключение ионов добавляется в SQLBuilder
         return "(" + " OR ".join(conditions) + ")"
 
     def _escape_sql(self, value: str) -> str:

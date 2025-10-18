@@ -13,20 +13,20 @@ Key findings from database analysis implemented:
 """
 
 import re
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
 import time
+from dataclasses import dataclass
 from functools import lru_cache
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..filtering.constants import (
-    DEFAULT_QUERY_LIMIT,
-    MAX_QUERY_LIMIT,
     DEFAULT_CACHE_SIZE,
+    DEFAULT_QUERY_LIMIT,
+    FAST_QUERY_THRESHOLD,
+    MAX_QUERY_LIMIT,
     MAX_RELIABILITY_CLASS,
     RELIABILITY_CLASS_EXCELLENT,
-    VALID_PHASES,
-    FAST_QUERY_THRESHOLD,
     SLOW_QUERY_THRESHOLD,
+    VALID_PHASES,
 )
 from .common_compounds import CommonCompoundResolver
 
@@ -148,7 +148,7 @@ class SQLBuilder:
         temperature_range: Optional[Tuple[float, float]],
         phase: Optional[str],
         limit: int,
-        compound_names: Optional[List[str]]
+        compound_names: Optional[List[str]],
     ) -> str:
         """Генерировать ключ кэша для запроса."""
         key_parts = [
@@ -156,16 +156,11 @@ class SQLBuilder:
             str(temperature_range) if temperature_range else "None",
             phase.upper() if phase else "None",
             str(limit),
-            str(compound_names) if compound_names else "None"
+            str(compound_names) if compound_names else "None",
         ]
         return "_".join(key_parts)
 
-    def _cache_query(
-        self,
-        cache_key: str,
-        query: str,
-        params: List[Any]
-    ) -> None:
+    def _cache_query(self, cache_key: str, query: str, params: List[Any]) -> None:
         """Сохранить запрос в кэш."""
         # Очищаем кэш при необходимости
         if len(self._query_cache) >= self._cache_size:
@@ -183,7 +178,7 @@ class SQLBuilder:
         temperature_range: Optional[Tuple[float, float]],
         phase: Optional[str],
         limit: int,
-        compound_names: Optional[List[str]]
+        compound_names: Optional[List[str]],
     ) -> Tuple[str, List[Any]]:
         """Оптимизированное построение запроса."""
         # Build WHERE conditions
@@ -193,6 +188,11 @@ class SQLBuilder:
         # Multi-level formula search based on database analysis
         formula_condition = self._build_formula_condition(formula, compound_names)
         where_conditions.append(formula_condition)
+
+        # ГЛОБАЛЬНОЕ ИСКЛЮЧЕНИЕ ИОНОВ: жестко исключаем все формулы с + или -
+        # Это предотвращает выбор ионов типа Fe+, Fe2+, CO2+, H3O+ и т.д.
+        ion_exclusion = "(Formula NOT LIKE '%+%' AND Formula NOT LIKE '%-%')"
+        where_conditions.append(ion_exclusion)
 
         # Temperature filtering (100% coverage in database)
         if temperature_range:
@@ -229,14 +229,12 @@ class SQLBuilder:
     def get_performance_metrics(self) -> Dict[str, Any]:
         """Получить метрики производительности SQL Builder."""
         total_requests = self._cache_hits + self._cache_misses
-        hit_rate = (
-            self._cache_hits / total_requests * 100
-            if total_requests > 0 else 0
-        )
+        hit_rate = self._cache_hits / total_requests * 100 if total_requests > 0 else 0
 
         avg_build_time = (
             self._total_build_time / self._query_count * 1000
-            if self._query_count > 0 else 0
+            if self._query_count > 0
+            else 0
         )
 
         return {
@@ -411,6 +409,10 @@ class SQLBuilder:
         formula_condition = self._build_formula_condition(formula, compound_names)
         where_conditions.append(formula_condition)
 
+        # ГЛОБАЛЬНОЕ ИСКЛЮЧЕНИЕ ИОНОВ
+        ion_exclusion = "(Formula NOT LIKE '%+%' AND Formula NOT LIKE '%-%')"
+        where_conditions.append(ion_exclusion)
+
         if temperature_range:
             temp_condition, temp_params = self._build_temperature_condition(
                 temperature_range[0], temperature_range[1]
@@ -449,6 +451,9 @@ class SQLBuilder:
         """
         formula_condition = self._build_formula_condition(formula)
 
+        # ГЛОБАЛЬНОЕ ИСКЛЮЧЕНИЕ ИОНОВ
+        ion_exclusion = "(Formula NOT LIKE '%+%' AND Formula NOT LIKE '%-%')"
+
         query = f"""
         SELECT
             COUNT(*) as total_records,
@@ -462,7 +467,7 @@ class SQLBuilder:
             MAX(BoilingPoint) as max_boiling_point,
             AVG(ReliabilityClass) as avg_reliability
         FROM compounds
-        WHERE {formula_condition}
+        WHERE {formula_condition} AND {ion_exclusion}
         """
 
         return query, []

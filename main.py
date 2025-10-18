@@ -29,7 +29,7 @@ from thermo_agents.filtering.filter_stages import (
     TemperatureCoverageStage,
 )
 from thermo_agents.filtering.temperature_resolver import TemperatureResolver
-from thermo_agents.orchestrator import OrchestratorConfig, ThermoOrchestrator
+from thermo_agents.orchestrator import OrchestratorConfig, Orchestrator
 from thermo_agents.search.compound_searcher import CompoundSearcher
 from thermo_agents.search.database_connector import DatabaseConnector
 from thermo_agents.search.sql_builder import SQLBuilder
@@ -40,7 +40,7 @@ from thermo_agents.thermodynamic_agent import ThermoAgentConfig, ThermodynamicAg
 load_dotenv()
 
 
-def create_orchestrator(db_path: str = "data/thermo_data.db") -> ThermoOrchestrator:
+def create_orchestrator(db_path: str = "data/thermo_data.db") -> Orchestrator:
     """
     Создание и настройка оркестратора термодинамической системы.
 
@@ -48,7 +48,7 @@ def create_orchestrator(db_path: str = "data/thermo_data.db") -> ThermoOrchestra
         db_path: Путь к файлу базы данных
 
     Returns:
-        Настроенный ThermoOrchestrator
+        Настроенный Orchestrator с поддержкой расчётов реакций
     """
     # Инициализация хранилища
     storage = AgentStorage()
@@ -105,20 +105,12 @@ def create_orchestrator(db_path: str = "data/thermo_data.db") -> ThermoOrchestra
     )  # Увеличиваем до 3 для множественных фаз
     filter_pipeline.add_stage(TemperatureCoverageStage(TemperatureResolver()))
 
-    # Агрегация и форматирование
-    reaction_aggregator = ReactionAggregator(max_compounds=10)
-    table_formatter = TableFormatter()
-    statistics_formatter = StatisticsFormatter()
-
-    # Оркестратор
+    # Оркестратор с поддержкой расчётов реакций
     orchestrator_config = OrchestratorConfig()
-    orchestrator = ThermoOrchestrator(
+    orchestrator = Orchestrator(
         thermodynamic_agent=thermodynamic_agent,
         compound_searcher=compound_searcher,
         filter_pipeline=filter_pipeline,
-        reaction_aggregator=reaction_aggregator,
-        table_formatter=table_formatter,
-        statistics_formatter=statistics_formatter,
         config=orchestrator_config,
     )
 
@@ -195,7 +187,7 @@ async def main_test():
     print("=" * 80)
 
     # Тестовый запрос
-    test_query = "Возможна ли реакция оксида цинка с серой при 800–1100 °C?"
+    test_query = "Fe2O3 + 3CO → 2Fe + 3CO2 при 900-1100°C"
 
     # НОВОЕ: Логирование запроса пользователя
     if session_logger:

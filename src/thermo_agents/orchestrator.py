@@ -553,6 +553,12 @@ class Orchestrator:
             step_k=params.temperature_step_k
         )
 
+    async def shutdown(self):
+        """
+        Завершение работы оркестратора.
+        """
+        self.logger.info("Shutting down orchestrator v2.1")
+
     def get_status(self) -> Dict[str, Any]:
         """Получить статус оркестратора."""
         return {
