@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from src.thermo_agents.models.search import CompoundSearchResult
+from ..models.search import CompoundSearchResult
 
 
 class FilterStatistics(BaseModel):

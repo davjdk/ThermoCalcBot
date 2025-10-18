@@ -34,7 +34,10 @@ SYMBOLS = {
 from .aggregation.reaction_aggregator import ReactionAggregator
 from .aggregation.statistics_formatter import StatisticsFormatter
 from .aggregation.table_formatter import TableFormatter
+from .calculations.thermodynamic_calculator import ThermodynamicCalculator
 from .filtering.filter_pipeline import FilterContext, FilterPipeline, FilterResult
+from .formatting.compound_data_formatter import CompoundDataFormatter
+from .formatting.reaction_calculation_formatter import ReactionCalculationFormatter
 from .models.aggregation import AggregatedReactionData, FilterStatistics
 from .models.extraction import ExtractedReactionParameters
 from .models.search import CompoundSearchResult
@@ -364,5 +367,203 @@ class ThermoOrchestrator:
                 "reaction_aggregator": type(self.reaction_aggregator).__name__,
                 "table_formatter": type(self.table_formatter).__name__,
                 "statistics_formatter": type(self.statistics_formatter).__name__,
+            }
+        }
+
+
+class Orchestrator:
+    """
+    Оркестратор с маршрутизацией запросов по типам для output formats v2.1.
+
+    Поддерживает два типа запросов:
+    - compound_data: запросы данных по отдельным веществам
+    - reaction_calculation: расчёты термодинамики реакций
+    """
+
+    def __init__(
+        self,
+        thermodynamic_agent: ThermodynamicAgent,
+        compound_searcher: CompoundSearcher,
+        filter_pipeline: FilterPipeline,
+        config: Optional[OrchestratorConfig] = None,
+    ):
+        """
+        Инициализация оркестратора с маршрутизацией.
+
+        Args:
+            thermodynamic_agent: Агент извлечения параметров
+            compound_searcher: Поисковик соединений
+            filter_pipeline: Конвейер фильтрации
+            config: Конфигурация оркестратора
+        """
+        self.thermodynamic_agent = thermodynamic_agent
+        self.compound_searcher = compound_searcher
+        self.filter_pipeline = filter_pipeline
+
+        # Новые компоненты для форматирования v2.1
+        self.calculator = ThermodynamicCalculator()
+        self.compound_formatter = CompoundDataFormatter(self.calculator)
+        self.reaction_formatter = ReactionCalculationFormatter(self.calculator)
+
+        self.config = config or OrchestratorConfig()
+        self.logger = self.config.logger
+
+    async def process_query(self, user_query: str) -> str:
+        """
+        Обработка запроса пользователя с маршрутизацией по типу.
+
+        Args:
+            user_query: Запрос на естественном языке
+
+        Returns:
+            Отформатированный ответ
+        """
+        try:
+            self.logger.info(f"Обработка запроса: {user_query}")
+
+            # Извлечение параметров
+            params = await self.thermodynamic_agent.extract_parameters(user_query)
+            self.logger.debug(f"Извлечённые параметры: query_type={params.query_type}")
+
+            # Маршрутизация по типу запроса
+            if params.query_type == "compound_data":
+                self.logger.info("Маршрутизация → compound_data")
+                return await self._process_compound_data(params)
+            else:  # reaction_calculation
+                self.logger.info("Маршрутизация → reaction_calculation")
+                return await self._process_reaction_calculation(params)
+
+        except Exception as e:
+            self.logger.error(f"Ошибка обработки запроса: {e}")
+            return f"❌ Ошибка обработки запроса: {str(e)}"
+
+    async def _process_compound_data(
+        self,
+        params: ExtractedReactionParameters
+    ) -> str:
+        """
+        Обработка запроса данных по веществу.
+
+        Шаги:
+        1. Поиск вещества в базе
+        2. Фильтрация записей (фаза, температура)
+        3. Форматирование результата
+        """
+        if not params.all_compounds:
+            return "❌ Не указано вещество для поиска"
+
+        formula = params.all_compounds[0]
+        T_min, T_max = params.temperature_range_k
+
+        # Поиск вещества
+        search_result = self.compound_searcher.search_compound(
+            formula=formula,
+            temperature_range=(T_min, T_max),
+            compound_names=params.compound_names.get(formula, []) if params.compound_names else None
+        )
+
+        if not search_result.records_found:
+            return f"❌ Вещество {formula} не найдено в базе данных"
+
+        # Фильтрация записей
+        filter_context = FilterContext(
+            temperature_range=(T_min, T_max),
+            compound_formula=formula,
+            reaction_params=params
+        )
+
+        filter_result = self.filter_pipeline.execute(
+            search_result.records_found, filter_context
+        )
+
+        if not filter_result.filtered_records:
+            return f"❌ Не найдено записей для {formula} в диапазоне {T_min}-{T_max}K"
+
+        # Обновление результата поиска
+        search_result.records_found = filter_result.filtered_records
+
+        # Форматирование
+        return self.compound_formatter.format_response(
+            result=search_result,
+            T_min=T_min,
+            T_max=T_max,
+            step_k=params.temperature_step_k
+        )
+
+    async def _process_reaction_calculation(
+        self,
+        params: ExtractedReactionParameters
+    ) -> str:
+        """
+        Обработка запроса расчёта реакции.
+
+        Шаги:
+        1. Поиск всех веществ реакции
+        2. Фильтрация по фазе и температуре
+        3. Расчёт термодинамики
+        4. Форматирование результата
+        """
+        T_min, T_max = params.temperature_range_k
+        T_mid = (T_min + T_max) / 2
+
+        # Поиск реагентов
+        reactant_results = []
+        for formula in params.reactants:
+            result = self.compound_searcher.search_compound(
+                formula=formula,
+                temperature_range=(T_min, T_max),
+                compound_names=params.compound_names.get(formula, []) if params.compound_names else None
+            )
+            reactant_results.append(result)
+
+        # Поиск продуктов
+        product_results = []
+        for formula in params.products:
+            result = self.compound_searcher.search_compound(
+                formula=formula,
+                temperature_range=(T_min, T_max),
+                compound_names=params.compound_names.get(formula, []) if params.compound_names else None
+            )
+            product_results.append(result)
+
+        # Проверка, что все вещества найдены
+        all_results = reactant_results + product_results
+        missing = [r.compound_formula for r in all_results if not r.records_found]
+        if missing:
+            return f"❌ Не найдены вещества: {', '.join(missing)}"
+
+        # Фильтрация записей по температурному диапазону
+        for result in all_results:
+            filter_context = FilterContext(
+                temperature_range=(T_min, T_max),
+                compound_formula=result.compound_formula,
+                reaction_params=params
+            )
+
+            filter_result = self.filter_pipeline.execute(
+                result.records_found, filter_context
+            )
+            result.records_found = filter_result.filtered_records
+
+        # Форматирование
+        return self.reaction_formatter.format_response(
+            params=params,
+            reactants=reactant_results,
+            products=product_results,
+            step_k=params.temperature_step_k
+        )
+
+    def get_status(self) -> Dict[str, Any]:
+        """Получить статус оркестратора."""
+        return {
+            "orchestrator_type": "output_formats_v2.1",
+            "status": "active",
+            "components": {
+                "thermodynamic_agent": type(self.thermodynamic_agent).__name__,
+                "compound_searcher": type(self.compound_searcher).__name__,
+                "filter_pipeline": type(self.filter_pipeline).__name__,
+                "calculator": type(self.calculator).__name__,
+                "compound_formatter": type(self.compound_formatter).__name__,
+                "reaction_formatter": type(self.reaction_formatter).__name__,
             }
         }

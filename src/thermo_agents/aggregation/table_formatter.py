@@ -9,7 +9,7 @@ from typing import List
 
 from tabulate import tabulate
 
-from src.thermo_agents.models.search import CompoundSearchResult, DatabaseRecord
+from ..models.search import CompoundSearchResult, DatabaseRecord
 
 
 class TableFormatter:

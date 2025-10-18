@@ -6,7 +6,7 @@ StatisticsFormatter - форматирование детальной стати
 """
 
 from typing import Dict
-from src.thermo_agents.models.aggregation import FilterStatistics
+from ..models.aggregation import FilterStatistics
 
 
 class StatisticsFormatter:
