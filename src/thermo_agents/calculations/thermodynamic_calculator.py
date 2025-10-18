@@ -95,9 +95,9 @@ class ThermodynamicCalculator:
         return (
             f1
             + f2 * T / 1000.0
-            + f3 * T**(-2) * 100_000.0
+            + f3 * 100_000.0 / (T ** 2)
             + f4 * T**2 / 1_000_000.0
-            + f5 * T**(-3) * 1_000.0
+            + f5 * 1_000.0 / (T ** 3)
             + f6 * T**3 * 1e-9
         )
 
@@ -119,9 +119,9 @@ class ThermodynamicCalculator:
         Cp = (
             f1
             + f2 * T / 1000.0
-            + f3 * T**(-2) * 100_000.0
+            + f3 * 100_000.0 / (T ** 2)
             + f4 * T**2 / 1_000_000.0
-            + f5 * T**(-3) * 1_000.0
+            + f5 * 1_000.0 / (T ** 3)
             + f6 * T**3 * 1e-9
         )
 
@@ -139,9 +139,9 @@ class ThermodynamicCalculator:
         Cp_grid = (
             f1
             + f2 * T_grid / 1000.0
-            + f3 * T_grid**(-2) * 100_000.0
+            + f3 * 100_000.0 / (T_grid ** 2)
             + f4 * T_grid**2 / 1_000_000.0
-            + f5 * T_grid**(-3) * 1_000.0
+            + f5 * 1_000.0 / (T_grid ** 3)
             + f6 * T_grid**3 * 1e-9
         )
 

@@ -9,12 +9,12 @@ import pytest
 import numpy as np
 from unittest.mock import Mock
 
-from src.thermo_agents.calculations.thermodynamic_calculator import (
+from thermo_agents.calculations.thermodynamic_calculator import (
     ThermodynamicCalculator,
     ThermodynamicProperties,
     ThermodynamicTable
 )
-from src.thermo_agents.models.search import DatabaseRecord
+from thermo_agents.models.search import DatabaseRecord
 
 
 class TestThermodynamicCalculator:

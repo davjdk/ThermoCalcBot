@@ -8,7 +8,7 @@
 
 import pytest
 import warnings
-from src.thermo_agents.models.extraction import ExtractedReactionParameters
+from thermo_agents.models.extraction import ExtractedReactionParameters
 
 
 class TestQueryClassification:
