@@ -542,6 +542,28 @@ class PhaseSegment(BaseModel):
                 raise ValueError(f"Temperature {v}K is outside record range [{record.tmin}, {record.tmax}]K")
         return v
 
+    @classmethod
+    def from_database_record(cls, record: 'DatabaseRecord') -> 'PhaseSegment':
+        """
+        Create PhaseSegment from DatabaseRecord for multi-phase calculations.
+
+        Args:
+            record: DatabaseRecord with thermodynamic data
+
+        Returns:
+            PhaseSegment initialized from record
+        """
+        return cls(
+            record=record,
+            T_start=record.tmin or 298.15,
+            T_end=record.tmax or 3000.0,
+            H_start=record.h298,
+            S_start=record.s298,
+            delta_H=0.0,  # Will be calculated by integration
+            delta_S=0.0,  # Will be calculated by integration
+            is_transition_boundary=False
+        )
+
     def to_dict(self) -> dict:
         """Serialize to dictionary."""
         return {
