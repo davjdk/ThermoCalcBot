@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Define constants locally to avoid circular import
 MIN_TEMPERATURE_K = 0.0
@@ -89,14 +89,16 @@ class DatabaseRecord(BaseModel):
     molecular_weight: Optional[float] = Field(None, description="Molecular weight")
     cas_number: Optional[str] = Field(None, description="CAS registry number")
 
-    @validator("reliability_class")
+    @field_validator("reliability_class")
+    @classmethod
     def validate_reliability_class(cls, v):
         """Validate reliability class is in valid range."""
         if v is not None and (v < 0 or v > MAX_RELIABILITY_CLASS):
             raise ValueError(f"Reliability class must be between 0 and {MAX_RELIABILITY_CLASS}")
         return v
 
-    @validator("tmin", "tmax")
+    @field_validator("tmin", "tmax")
+    @classmethod
     def validate_temperatures(cls, v):
         """Validate temperatures are within valid range."""
         if v is not None and (v < MIN_TEMPERATURE_K or v > MAX_TEMPERATURE_K):
@@ -188,10 +190,11 @@ class TemperatureRange(BaseModel):
     tmin: float = Field(..., description="Minimum temperature (K)")
     tmax: float = Field(..., description="Maximum temperature (K)")
 
-    @validator("tmax")
-    def validate_range(cls, v, values):
+    @field_validator("tmax")
+    @classmethod
+    def validate_range(cls, v, info):
         """Validate temperature range is valid."""
-        if "tmin" in values and v <= values["tmin"]:
+        if hasattr(info, 'data') and "tmin" in info.data and v <= info.data["tmin"]:
             raise ValueError("tmax must be greater than tmin")
         return v
 
@@ -271,7 +274,8 @@ class CompoundSearchResult(BaseModel):
         None, description="Search execution time in milliseconds"
     )
 
-    @validator("coverage_status")
+    @field_validator("coverage_status")
+    @classmethod
     def validate_coverage_status(cls, v):
         """Validate coverage status is a valid enum value."""
         if v not in CoverageStatus:
@@ -344,7 +348,8 @@ class SearchStrategy(BaseModel):
         default_factory=list, description="Additional recommendations"
     )
 
-    @validator("estimated_difficulty")
+    @field_validator("estimated_difficulty")
+    @classmethod
     def validate_difficulty(cls, v):
         """Validate difficulty level."""
         if v not in ["easy", "medium", "hard"]:
@@ -403,3 +408,203 @@ class SearchPipeline(BaseModel):
             if op.operation_type == operation_type:
                 return op
         return None
+
+
+class TransitionType(str, Enum):
+    """Types of phase transitions."""
+
+    MELTING = "melting"          # s → l
+    BOILING = "boiling"          # l → g
+    SUBLIMATION = "sublimation"  # s → g
+    UNKNOWN = "unknown"
+
+
+class PhaseSegment(BaseModel):
+    """Calculation segment within a single database record."""
+
+    record: DatabaseRecord = Field(..., description="Database record for this segment")
+    T_start: float = Field(..., description="Start temperature of segment, K")
+    T_end: float = Field(..., description="End temperature of segment, K")
+    H_start: float = Field(..., description="Enthalpy at segment start, J/mol")
+    S_start: float = Field(..., description="Entropy at segment start, J/(mol·K)")
+    delta_H: float = Field(..., description="Enthalpy change in segment, J/mol")
+    delta_S: float = Field(..., description="Entropy change in segment, J/(mol·K)")
+    is_transition_boundary: bool = Field(
+        False,
+        description="Whether segment ends with a phase transition"
+    )
+
+    class Config:
+        """Pydantic configuration."""
+        arbitrary_types_allowed = True
+
+    @field_validator("T_end")
+    @classmethod
+    def validate_temperature_range(cls, v, info):
+        """Validate that T_end is greater than T_start."""
+        if hasattr(info, 'data') and "T_start" in info.data and v <= info.data["T_start"]:
+            raise ValueError("T_end must be greater than T_start")
+        return v
+
+    @field_validator("T_start", "T_end")
+    @classmethod
+    def validate_temperatures_within_record(cls, v, info):
+        """Validate temperatures are within record range."""
+        if hasattr(info, 'data') and "record" in info.data and info.data["record"]:
+            record = info.data["record"]
+            if v < record.tmin or v > record.tmax:
+                raise ValueError(f"Temperature {v}K is outside record range [{record.tmin}, {record.tmax}]K")
+        return v
+
+    def to_dict(self) -> dict:
+        """Serialize to dictionary."""
+        return {
+            "formula": self.record.formula,
+            "phase": self.record.phase,
+            "T_range": [self.T_start, self.T_end],
+            "H_range": [self.H_start, self.H_start + self.delta_H],
+            "S_range": [self.S_start, self.S_start + self.delta_S],
+            "is_transition": self.is_transition_boundary,
+        }
+
+
+class PhaseTransition(BaseModel):
+    """Information about a phase transition."""
+
+    temperature: float = Field(..., description="Transition temperature, K")
+    from_phase: str = Field(..., description="Source phase (s/l/g)")
+    to_phase: str = Field(..., description="Target phase (s/l/g)")
+    transition_type: TransitionType = Field(
+        TransitionType.UNKNOWN,
+        description="Transition type"
+    )
+    delta_H_transition: float = Field(0.0, description="Enthalpy of transition, kJ/mol")
+    delta_S_transition: float = Field(0.0, description="Entropy of transition, J/(mol·K)")
+
+    @model_validator(mode='before')
+    @classmethod
+    def determine_transition_type(cls, data):
+        """Auto-determine transition type from phases."""
+        # Handle dict input
+        if isinstance(data, dict):
+            from_p = data.get("from_phase", "").lower()
+            to_p = data.get("to_phase", "").lower()
+            transition_type = data.get("transition_type", TransitionType.UNKNOWN)
+
+            # Auto-detect if not explicitly set or set to UNKNOWN
+            if not transition_type or transition_type == TransitionType.UNKNOWN:
+                if from_p == "s" and to_p == "l":
+                    data["transition_type"] = TransitionType.MELTING
+                elif from_p == "l" and to_p == "g":
+                    data["transition_type"] = TransitionType.BOILING
+                elif from_p == "s" and to_p == "g":
+                    data["transition_type"] = TransitionType.SUBLIMATION
+                else:
+                    data["transition_type"] = TransitionType.UNKNOWN
+
+        return data
+
+    def to_dict(self) -> dict:
+        """Serialize for logging."""
+        return {
+            "T": self.temperature,
+            "transition": f"{self.from_phase}→{self.to_phase}",
+            "type": self.transition_type.value,
+            "ΔH": self.delta_H_transition,
+            "ΔS": self.delta_S_transition,
+        }
+
+
+class MultiPhaseProperties(BaseModel):
+    """Result of multi-phase thermodynamic calculation."""
+
+    T_target: float = Field(..., description="Target calculation temperature, K")
+
+    # Final thermodynamic properties
+    H_final: float = Field(..., description="Enthalpy at T_target, J/mol")
+    S_final: float = Field(..., description="Entropy at T_target, J/(mol·K)")
+    G_final: float = Field(..., description="Gibbs energy at T_target, J/mol")
+    Cp_final: float = Field(..., description="Heat capacity at T_target, J/(mol·K)")
+
+    # Calculation metadata
+    segments: List[PhaseSegment] = Field(
+        default_factory=list,
+        description="All calculation segments"
+    )
+    phase_transitions: List[PhaseTransition] = Field(
+        default_factory=list,
+        description="All phase transitions"
+    )
+
+    # Calculation trajectory (for graphs)
+    temperature_path: List[float] = Field(
+        default_factory=list,
+        description="Temperature points of trajectory"
+    )
+    H_path: List[float] = Field(
+        default_factory=list,
+        description="Enthalpy along trajectory, J/mol"
+    )
+    S_path: List[float] = Field(
+        default_factory=list,
+        description="Entropy along trajectory, J/(mol·K)"
+    )
+
+    # Warnings
+    warnings: List[str] = Field(
+        default_factory=list,
+        description="Warnings about coverage gaps, overlaps, etc."
+    )
+
+    @field_validator("segments")
+    @classmethod
+    def validate_segments_sorted(cls, v):
+        """Validate segments are sorted by temperature."""
+        for i in range(len(v) - 1):
+            if v[i].T_end > v[i+1].T_start:
+                raise ValueError("Segments must be sorted by temperature")
+        return v
+
+    def to_dict(self) -> dict:
+        """Serialize result."""
+        return {
+            "T_target": self.T_target,
+            "thermodynamic_properties": {
+                "H": self.H_final / 1000,  # kJ/mol
+                "S": self.S_final,
+                "G": self.G_final / 1000,  # kJ/mol
+                "Cp": self.Cp_final,
+            },
+            "segments_count": len(self.segments),
+            "transitions_count": len(self.phase_transitions),
+            "warnings": self.warnings,
+        }
+
+    @property
+    def has_phase_transitions(self) -> bool:
+        """Check if phase transitions exist."""
+        return len(self.phase_transitions) > 0
+
+    @property
+    def segment_count(self) -> int:
+        """Get number of segments."""
+        return len(self.segments)
+
+    @property
+    def phase_sequence(self) -> str:
+        """Get phase sequence as string."""
+        if not self.segments:
+            return "unknown"
+
+        phases = []
+        for segment in self.segments:
+            if segment.record.phase:
+                phases.append(segment.record.phase)
+
+        # Remove consecutive duplicates
+        unique_phases = []
+        for phase in phases:
+            if not unique_phases or phase != unique_phases[-1]:
+                unique_phases.append(phase)
+
+        return " → ".join(unique_phases) if unique_phases else "unknown"
