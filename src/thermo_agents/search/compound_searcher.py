@@ -22,6 +22,7 @@ from ..models.search import (
     CoverageStatus,
     DatabaseRecord,
     FilterOperation,
+    MultiPhaseSearchResult,
     SearchPipeline,
     SearchStatistics,
     SearchStrategy,
@@ -45,6 +46,7 @@ class CompoundSearcher:
         sql_builder: SQLBuilder,
         db_connector: DatabaseConnector,
         session_logger: Optional[Any] = None,
+        static_data_manager: Optional[Any] = None,  # Будет в Stage 04
     ):
         """
         Initialize compound searcher.
@@ -53,10 +55,12 @@ class CompoundSearcher:
             sql_builder: SQL builder instance for query generation
             db_connector: Database connector for query execution
             session_logger: Optional session logger for detailed logging
+            static_data_manager: Optional static data manager for YAML cache
         """
         self.sql_builder = sql_builder
         self.db_connector = db_connector
         self.session_logger = session_logger  # НОВОЕ
+        self.static_data_manager = static_data_manager
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def search_compound(
@@ -642,3 +646,203 @@ class CompoundSearcher:
             return (reliability, -temp_width, formula_length, phase_priority, record_id)
 
         return sorted(records, key=sort_key)
+
+    def search_all_phases(
+        self,
+        formula: str,
+        max_temperature: float,
+        compound_names: Optional[List[str]] = None
+    ) -> MultiPhaseSearchResult:
+        """
+        Search all phases of a compound with coverage up to max_temperature.
+
+        Args:
+            formula: Chemical formula (e.g., "H2O", "FeO")
+            max_temperature: Maximum calculation temperature, K
+            compound_names: Additional names for search
+
+        Returns:
+            MultiPhaseSearchResult with found records and metadata
+        """
+        self.logger.info(f"Поиск всех фаз для {formula}, T_max={max_temperature}K")
+
+        # ШАГ 1: Проверка YAML кэша (приоритет)
+        if self.static_data_manager and hasattr(self.static_data_manager, 'is_available') and self.static_data_manager.is_available(formula):
+            self.logger.info(f"⚡ Найдено в статическом кэше: {formula}")
+            records = self.static_data_manager.get_compound_phases(formula)
+            return self._build_result(formula, records, max_temperature)
+
+        # ШАГ 2: Поиск в БД
+        self.logger.info(f"Поиск в БД для {formula}")
+
+        # Генерация SQL запроса для поиска всех записей вещества
+        sql_query = self.sql_builder.build_compound_search_query(
+            formula=formula,
+            temperature_range=None,  # Ищем все записи
+            phase=None,  # Все фазы
+            limit=100,  # Увеличиваем лимит
+            compound_names=compound_names
+        )
+
+        # Выполнение запроса
+        query, params = sql_query
+        all_records_raw = self.db_connector.execute_query(query, params)
+        all_records = [self._parse_record(row) for row in all_records_raw]
+
+        if not all_records:
+            self.logger.warning(f"Не найдено записей для {formula}")
+            return MultiPhaseSearchResult(
+                compound_formula=formula,
+                records=[],
+                coverage_start=0.0,
+                coverage_end=0.0,
+                covers_298K=False,
+                phase_count=0,
+                warnings=["Вещество не найдено в БД"]
+            )
+
+        return self._build_result(formula, all_records, max_temperature)
+
+    def _build_result(
+        self,
+        formula: str,
+        all_records: List[DatabaseRecord],
+        max_temperature: float
+    ) -> MultiPhaseSearchResult:
+        """
+        Build MultiPhaseSearchResult from found records.
+
+        Args:
+            formula: Compound formula
+            all_records: All found records
+            max_temperature: Maximum temperature
+
+        Returns:
+            MultiPhaseSearchResult
+        """
+        # ШАГ 1: Фильтрация по температуре
+        relevant_records = [
+            rec for rec in all_records
+            if rec.tmin <= max_temperature
+        ]
+
+        # Сортировка по Tmin
+        relevant_records.sort(key=lambda r: r.tmin)
+
+        if not relevant_records:
+            return MultiPhaseSearchResult(
+                compound_formula=formula,
+                records=[],
+                coverage_start=0.0,
+                coverage_end=0.0,
+                covers_298K=False,
+                phase_count=0,
+                warnings=["Нет записей, покрывающих требуемый температурный диапазон"]
+            )
+
+        # ШАГ 2: Определение покрытия
+        coverage_start = relevant_records[0].tmin
+        coverage_end = min(relevant_records[-1].tmax, max_temperature)
+        covers_298K = any(rec.covers_temperature(298.15) for rec in relevant_records)
+
+        # ШАГ 3: Определение фазовых переходов
+        tmelt, tboil = self._extract_phase_transitions(relevant_records)
+
+        # ШАГ 4: Подсчёт фаз
+        phases = set(rec.phase for rec in relevant_records if rec.phase)
+        phase_count = len(phases)
+        has_gas_phase = "g" in phases
+
+        # ШАГ 5: Генерация предупреждений
+        warnings = self._generate_warnings(relevant_records, covers_298K)
+
+        return MultiPhaseSearchResult(
+            compound_formula=formula,
+            records=relevant_records,
+            coverage_start=coverage_start,
+            coverage_end=coverage_end,
+            covers_298K=covers_298K,
+            tmelt=tmelt,
+            tboil=tboil,
+            phase_count=phase_count,
+            has_gas_phase=has_gas_phase,
+            warnings=warnings
+        )
+
+    def _extract_phase_transitions(
+        self,
+        records: List[DatabaseRecord]
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """
+        Extract phase transition temperatures from records.
+
+        Args:
+            records: List of records
+
+        Returns:
+            Tuple of (Tmelt, Tboil)
+        """
+        tmelt_candidates = [rec.tmelt for rec in records if rec.tmelt > 0]
+        tboil_candidates = [rec.tboil for rec in records if rec.tboil > 0]
+
+        # Берём наиболее частое значение (mode)
+        from collections import Counter
+
+        tmelt = None
+        if tmelt_candidates:
+            tmelt = Counter(tmelt_candidates).most_common(1)[0][0]
+
+        tboil = None
+        if tboil_candidates:
+            tboil = Counter(tboil_candidates).most_common(1)[0][0]
+
+        return tmelt, tboil
+
+    def _generate_warnings(
+        self,
+        records: List[DatabaseRecord],
+        covers_298K: bool
+    ) -> List[str]:
+        """
+        Generate warnings about coverage problems.
+
+        Args:
+            records: List of records
+            covers_298K: Whether range covers 298K
+
+        Returns:
+            List of warning strings
+        """
+        warnings = []
+
+        # Предупреждение 1: Нет покрытия 298K
+        if not covers_298K:
+            warnings.append(
+                "⚠️ Отсутствует покрытие 298K (стандартная температура)"
+            )
+
+        # Предупреждение 2: Пробелы между записями
+        for i in range(len(records) - 1):
+            gap = records[i + 1].tmin - records[i].tmax
+            if gap > 1.0:  # Пробел больше 1K
+                warnings.append(
+                    f"⚠️ Пробел в покрытии: {records[i].tmax}K - {records[i + 1].tmin}K"
+                )
+
+        # Предупреждение 3: Перекрытия
+        for i in range(len(records) - 1):
+            if records[i].overlaps_with(records[i + 1]):
+                overlap_start = max(records[i].tmin, records[i + 1].tmin)
+                overlap_end = min(records[i].tmax, records[i + 1].tmax)
+                if overlap_end - overlap_start > 1.0:
+                    warnings.append(
+                        f"⚠️ Перекрытие записей: {overlap_start}K - {overlap_end}K"
+                    )
+
+        # Предупреждение 4: Нет базовой записи
+        if records and not records[0].is_base_record():
+            warnings.append(
+                "⚠️ Первая запись не является базовой (H298=0, S298=0)"
+            )
+
+        return warnings

@@ -694,3 +694,58 @@ class MultiPhaseProperties(BaseModel):
                 unique_phases.append(phase)
 
         return " → ".join(unique_phases) if unique_phases else "unknown"
+
+
+class MultiPhaseSearchResult(BaseModel):
+    """Result of searching all phases of a compound with multi-phase coverage."""
+
+    compound_formula: str = Field(..., description="Chemical formula of the compound")
+    records: List[DatabaseRecord] = Field(
+        default_factory=list,
+        description="All found records, sorted by Tmin"
+    )
+
+    # Temperature boundaries
+    coverage_start: float = Field(..., description="Start of coverage, K")
+    coverage_end: float = Field(..., description="End of coverage, K")
+    covers_298K: bool = Field(..., description="Whether range covers 298K")
+
+    # Phase transitions
+    tmelt: Optional[float] = Field(None, description="Melting temperature, K")
+    tboil: Optional[float] = Field(None, description="Boiling temperature, K")
+
+    # Metadata
+    phase_count: int = Field(..., description="Number of different phases")
+    has_gas_phase: bool = Field(False, description="Whether gas phase exists")
+
+    # Warnings
+    warnings: List[str] = Field(
+        default_factory=list,
+        description="Warnings about gaps, overlaps, etc."
+    )
+
+    @property
+    def is_complete(self) -> bool:
+        """Check if data is complete (no gaps, covers 298K)."""
+        return self.covers_298K and len(self.warnings) == 0
+
+    @property
+    def phase_sequence(self) -> str:
+        """Get phase sequence string (s→l→g)."""
+        phases = [rec.phase for rec in self.records if rec.phase]
+        return " → ".join(phases)
+
+    def to_dict(self) -> dict:
+        """Serialize result."""
+        return {
+            "formula": self.compound_formula,
+            "coverage": [self.coverage_start, self.coverage_end],
+            "covers_298K": self.covers_298K,
+            "transitions": {
+                "melting": self.tmelt,
+                "boiling": self.tboil
+            },
+            "phases": self.phase_sequence,
+            "records_count": len(self.records),
+            "warnings": self.warnings
+        }
