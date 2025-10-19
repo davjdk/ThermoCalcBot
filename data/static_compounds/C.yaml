@@ -1,0 +1,149 @@
+# C - Carbon (графит)
+
+compound:
+  formula: "C"
+  common_names:
+    - "Carbon"
+    - "Углерод"
+    - "Graphite"
+    - "Графит"
+  description: "Carbon (graphite) - standard state of elemental carbon, used in electrodes and lubricants"
+
+  phases:
+    # Твердая фаза, сегмент 1 (низкие температуры)
+    # DB rowid: 2766
+    - phase: "s"
+      tmin: 20.0
+      tmax: 100.0
+      h298: 0.0         # Элемент в стандартном состоянии
+      s298: 5.740448    # J/(mol·K)
+      f1: -0.299407
+      f2: 11.490940
+      f3: 0.000502
+      f4: 0.0
+      f5: 0.0
+      f6: 0.0
+      tmelt: 3915.0     # Графит сублимирует
+      tboil: 3915.0
+      first_name: "Carbon"
+      reliability_class: 1
+      molecular_weight: 12.0107
+      db_rowid: 2766
+
+    # Твердая фаза, сегмент 2 (комнатные температуры, стандартная энтропия = 0)
+    # DB rowid: 2767
+    - phase: "s"
+      tmin: 100.0
+      tmax: 298.15
+      h298: 0.0         # Элемент в стандартном состоянии
+      s298: 0.0         # Нормальная энтропия для продолжения сегмента
+      f1: 8.517505
+      f2: 0.041070
+      f3: -0.548730
+      f4: 0.000000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 3915.0
+      tboil: 3915.0
+      first_name: "Carbon"
+      reliability_class: 1
+      molecular_weight: 12.0107
+      db_rowid: 2767
+
+    # Твердая фаза, сегмент 3 (средние температуры, с ненулевой энтропией)
+    # DB rowid: 284025
+    - phase: "s"
+      tmin: 298.15
+      tmax: 1100.0
+      h298: 0.0         # Элемент в стандартном состоянии
+      s298: 5.740442    # J/(mol·K)
+      f1: 8.517505
+      f2: 0.041070
+      f3: -0.548730
+      f4: 0.000000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 3915.0
+      tboil: 3915.0
+      first_name: "Carbon"
+      reliability_class: 1
+      molecular_weight: 12.0107
+      db_rowid: 284025
+
+    # Твердая фаза, сегмент 4 (высокие температуры)
+    # DB rowid: 2769
+    - phase: "s"
+      tmin: 600.0
+      tmax: 1300.0
+      h298: 0.0         # Продолжение сегмента
+      s298: 0.0         # Продолжение сегмента
+      f1: 24.997350
+      f2: 55.186000
+      f3: -33.691000
+      f4: 7.948000
+      f5: -0.136000
+      f6: -0.403000
+      tmelt: 3915.0
+      tboil: 3915.0
+      first_name: "Carbon"
+      reliability_class: 1
+      molecular_weight: 12.0107
+      db_rowid: 2769
+
+    # Твердая фаза, сегмент 5 (очень высокие температуры)
+    # DB rowid: 2770
+    - phase: "s"
+      tmin: 1300.0
+      tmax: 3900.0
+      h298: 0.0         # Продолжение сегмента
+      s298: 0.0         # Продолжение сегмента
+      f1: 26.744540
+      f2: 0.084615
+      f3: -31.361930
+      f4: 5.862860
+      f5: 0.000000
+      f6: 0.000000
+      tmelt: 3915.0
+      tboil: 3915.0
+      first_name: "Carbon"
+      reliability_class: 1
+      molecular_weight: 12.0107
+      db_rowid: 2770
+
+    # Твердая фаза, сегмент 6 (сублимация)
+    # DB rowid: 2771
+    - phase: "s"
+      tmin: 3900.0
+      tmax: 4400.0
+      h298: 0.0         # Продолжение сегмента
+      s298: 0.0         # Продолжение сегмента
+      f1: 25.570190
+      f2: -2.226870
+      f3: -18.241200
+      f4: 3.499210
+      f5: 0.000000
+      f6: 0.000000
+      tmelt: 3915.0
+      tboil: 3915.0
+      first_name: "Carbon"
+      reliability_class: 1
+      molecular_weight: 12.0107
+      db_rowid: 2771
+
+  phase_transitions:
+    sublimation:  # Графит сублимирует (переход s → g)
+      temperature: 3915.0
+      enthalpy: 715.0     # kJ/mol (приблизительно)
+      entropy: 182.7     # J/(mol·K)
+
+  metadata:
+    source_database: "thermo_data.db"
+    extracted_date: "2025-10-19"
+    version: "1.0"
+    notes: |
+      Данные для углерода в форме графита (стандартное состояние).
+      Элемент в стандартном состоянии, H298 = 0.
+      Графит является наиболее стабильной формой углерода при стандартных условиях.
+      Температурный диапазон: 20K - 4400K.
+      Multi-segment representation для разных температурных диапазонов.
+      Важен в металлургии, электродах и как стандарт для термодинамических расчетов.

@@ -1,0 +1,92 @@
+# Cl2 - Chlorine (диатомный газ)
+
+compound:
+  formula: "Cl2"
+  common_names:
+    - "Chlorine"
+    - "Хлор"
+    - "Dichlorine"
+    - "Диоксид хлора"
+  description: "Chlorine - yellow-green toxic gas, essential for water purification and chemical industry"
+
+  phases:
+    # Газообразная фаза, сегмент 1 (базовая запись с S298)
+    # DB rowid: 38805
+    - phase: "g"
+      tmin: 100.0
+      tmax: 298.15
+      h298: 0.0         # Элемент в стандартном состоянии
+      s298: 223.078988  # J/(mol·K)
+      f1: 23.273939
+      f2: 51.222310
+      f3: 0.143763
+      f4: -53.558652
+      f5: 0.0
+      f6: 0.0
+      tmelt: 171.7
+      tboil: 239.11
+      first_name: "Dichlorine"
+      reliability_class: 1
+      molecular_weight: 70.906
+      db_rowid: 38805
+
+    # Газообразная фаза, сегмент 2 (стандартные условия)
+    # DB rowid: 38806
+    - phase: "g"
+      tmin: 298.15
+      tmax: 1500.0
+      h298: 0.0         # Элемент в стандартном состоянии
+      s298: 0.0         # Продолжение сегмента
+      f1: 28.868012
+      f2: -2.847819
+      f3: 0.091818
+      f4: -7.040023
+      f5: 0.0
+      f6: 0.0
+      tmelt: 171.7
+      tboil: 239.11
+      first_name: "Dichlorine"
+      reliability_class: 1
+      molecular_weight: 70.906
+      db_rowid: 38806
+
+    # Газообразная фаза, сегмент 3 (высокие температуры)
+    # DB rowid: 38807
+    - phase: "g"
+      tmin: 1500.0
+      tmax: 3300.0
+      h298: 0.0         # Продолжение сегмента
+      s298: 0.0         # Продолжение сегмента
+      f1: 30.349718
+      f2: 0.080292
+      f3: -0.258036
+      f4: 0.000000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 171.7
+      tboil: 239.11
+      first_name: "Dichlorine"
+      reliability_class: 1
+      molecular_weight: 70.906
+      db_rowid: 38807
+
+  phase_transitions:
+    melting:
+      temperature: 171.7
+      enthalpy: 6.41      # kJ/mol
+      entropy: 37.3      # J/(mol·K)
+    vaporization:
+      temperature: 239.11
+      enthalpy: 20.41     # kJ/mol
+      entropy: 85.4      # J/(mol·K)
+
+  metadata:
+    source_database: "thermo_data.db"
+    extracted_date: "2025-10-19"
+    version: "1.0"
+    notes: |
+      Данные для газообразного хлора (Cl2).
+      Элемент в стандартном состоянии, H298 = 0.
+      Используется в процессах хлорирования и дезинфекции.
+      Температурный диапазон: 100K - 3300K.
+      Multi-segment representation for different temperature ranges.

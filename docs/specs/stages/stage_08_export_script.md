@@ -1,842 +1,1050 @@
-# Stage 08: Скрипт экспорта веществ в YAML
+# Stage 08: Техническое задание на ручное заполнение YAML-файлов распространенных веществ
 
 ## Цель
-Создать скрипт для экспорта избранных веществ из БД в YAML формат.
+Создать набор статических YAML-файлов для распространенных химических веществ путем **ручного** извлечения данных из термодинамической БД (`data/thermo_data.db`). 
+
+**Критическая проблема, решаемая этим этапом:**  
+Согласно `docs/specs/architecture_spec.md`, в БД обнаружены записи с **обнуленными H₂₉₈ и S₂₉₈** для веществ, где температурный диапазон не включает 298K (Tmin > 298K или Tmax < 298K). Это приводит к **некорректным расчетам ΔG°** для химических реакций.
+
+**Решение:**  
+Создать YAML-файлы для распространенных веществ с гарантией:
+1. **Обязательное покрытие 298.15K** хотя бы одной фазой
+2. **Корректные значения H₂₉₈ и S₂₉₈** (не нулевые!)
+3. **ReliabilityClass = 1** (высокая надежность данных)
+4. **Документирование rowid** из БД для трассируемости
+
+Файлы используются через `StaticDataManager` для приоритетного доступа к надежным данным вместо ошибочных записей из БД.
 
 ## Статус
-🔴 Не начато
+� В работе (ручное заполнение)
 
 ## Входные данные
-- Stage 04 завершён (StaticDataManager)
-- Доступ к термодинамической БД
+- **Термодинамическая БД**: `data/thermo_data.db` (таблица `compounds`)
+  - **ВАЖНО**: Использовать ТОЛЬКО эту БД, не другие источники
+  - Структура: `rowid`, `Formula`, `Phase`, `Tmin`, `Tmax`, `H298`, `S298`, `f1-f6`, `MeltingPoint`, `BoilingPoint`, `FirstName`, `ReliabilityClass`, `MolecularWeight`
+- **Эталонные примеры**: `CO2.yaml`, `H2O.yaml`, `FeO.yaml` (структура YAML)
+- **Исследовательский ноутбук**: `docs/db_work.ipynb` (SQL-стратегии поиска)
+- **Описание проблемы**: `docs/specs/architecture_spec.md` §1.1-1.3 (обнуленные H298/S298)
+- **Stage 04**: Схема валидации `YAMLCompoundData` (Pydantic)
 
 ## Выходные данные
-- Скрипт `scripts/export_to_static_data.py`
-- CLI для экспорта конкретных веществ
-- Валидация экспортированных YAML
+**YAML-файлы в директории** `data/static_compounds/`:
 
-## Изменяемые файлы
-- Создать: `scripts/export_to_static_data.py`
+### Требуется создать (6 файлов):
+1. `Cl2.yaml` — Хлор (газ)
+2. `O2.yaml` — Кислород (газ)
+3. `CO.yaml` — Угарный газ (газ)
+4. `C.yaml` — Углерод графит (твердый)
+5. `HCl.yaml` — Хлороводород (газ + водный раствор)
+6. `NaCl.yaml` — Хлорид натрия (твердый + расплав)
+
+### Уже созданы (для справки):
+- `H2O.yaml` — Вода (эталонный пример: s, l, g фазы)
+- `CO2.yaml` — Углекислый газ (эталонный пример: сублимация)
+- `FeO.yaml` — Оксид железа(II) (пример многосегментного твердого тела)
 
 ## Зависимости
-- Stage 04 (StaticDataManager и схема YAML)
-
-## Алгоритм действий
-
-### Шаг 1: Создание CLI интерфейса
-
-**Параметры командной строки:**
-```bash
-python scripts/export_to_static_data.py [OPTIONS]
-
-Опции:
-  --formula TEXT         Формула вещества для экспорта (например, H2O)
-  --all                  Экспортировать все распространённые вещества
-  --list                 Показать список распространённых веществ
-  --output-dir PATH      Директория для YAML файлов (по умолчанию: data/static_compounds/)
-  --validate             Только валидация существующих YAML файлов
-  --check-updates        Проверить обновления в БД для существующих YAML
-  --overwrite           Перезаписать существующие файлы
-  --help                Показать справку
-```
-
-### Шаг 2: Подключение к БД
-
-1. Загрузить конфигурацию подключения к БД
-2. Создать `DatabaseConnector` и `SQLBuilder`
-3. Создать `CompoundSearcher` для поиска записей
-4. Проверить доступность БД
-
-### Шаг 3: Поиск и извлечение записей
-
-Для каждого вещества:
-1. Вызвать `CompoundSearcher.search_all_phases(formula, max_temperature=5000)`
-2. Получить все записи для всех фаз
-3. Отфильтровать по `ReliabilityClass == 1` (высокая надёжность)
-4. Отфильтровать по `FirstName` (основное вещество, не варианты)
-5. Отсортировать по Tmin
-
-### Шаг 4: Формирование YAML структуры
-
-Для каждой записи:
-1. Преобразовать `DatabaseRecord` → `YAMLPhaseRecord`
-2. Извлечь Tmelt и Tboil для phase_transitions
-3. Добавить метаданные:
-   - source_database: название БД
-   - extracted_date: текущая дата
-   - version: версия данных
-4. Добавить описание и common_names из справочника
-
-### Шаг 5: Валидация YAML
-
-1. Проверить структуру через `YAMLCompoundData` (Pydantic)
-2. Проверить сортировку фаз по Tmin
-3. Проверить покрытие 298K
-4. Проверить отсутствие пробелов и перекрытий
-5. Генерировать предупреждения (warnings)
-
-### Шаг 6: Сохранение в файл
-
-1. Форматировать YAML с комментариями
-2. Добавить заголовок с описанием
-3. Сохранить в `{output_dir}/{formula}.yaml`
-4. Логировать успешное сохранение
-
-### Шаг 7: Проверка обновлений (--check-updates)
-
-Для каждого существующего YAML:
-1. Загрузить из файла
-2. Найти соответствующие записи в БД
-3. Сравнить значения (H298, S298, f1-f6, Tmelt, Tboil)
-4. Если изменения > порога (0.1%) → вывести уведомление
-5. Опционально: автоматическое обновление с --auto-update
-
-## Критерии завершения
-- [ ] CLI интерфейс реализован с argparse
-- [ ] Скрипт корректно экспортирует вещества из БД в YAML
-- [ ] Валидация YAML работает (проверка структуры и данных)
-- [ ] Опции --formula, --all, --list, --validate работают
-- [ ] Опция --check-updates сравнивает БД и YAML
-- [ ] Генерируются комментарии в YAML для читаемости
-- [ ] Метаданные (source, date, version) заполняются автоматически
-- [ ] Логирование операций (что экспортировано, ошибки)
-- [ ] Unit-тесты для функций экспорта
-- [ ] Документация по использованию скрипта
-
-## Тесты
-- `tests/scripts/test_export_script.py` — unit-тесты функций
-- `tests/scripts/test_yaml_export_h2o.py` — экспорт H2O и проверка
-- `tests/scripts/test_yaml_validation.py` — валидация YAML структуры
-- `tests/scripts/test_check_updates.py` — проверка обновлений
-
-## Риски
-
-### Средние риски
-- **Несколько записей для одного вещества**: В БД может быть несколько вариантов (разные FirstName)
-  - *Митигация*: Фильтровать по ReliabilityClass == 1 и основному FirstName
-  - *Митигация*: Добавить опцию --variant для выбора конкретного варианта
-
-- **Неполные данные**: Некоторые вещества могут не иметь всех фаз
-  - *Митигация*: Генерировать warnings в YAML
-  - *Митигация*: Валидация покажет пробелы
-
-### Низкие риски
-- **Изменения в структуре БД**: Поля могут измениться
-  - *Митигация*: Использовать `DatabaseRecord` как промежуточную модель
-  - *Митигация*: Тесты с mock данными
-
-- **Кодировка символов**: Химические формулы с индексами
-  - *Митигация*: UTF-8 кодировка для YAML файлов
-
-## Примечания
-
-### Список распространённых веществ для экспорта
-
-По умолчанию (из ТЗ §5.1):
-1. **H2O** — Вода (s, l, g)
-2. **CO2** — Углекислый газ (s, l, g)
-3. **O2** — Кислород (g)
-4. **N2** — Азот (g)
-5. **H2** — Водород (g)
-6. **NH3** — Аммиак (g, l)
-7. **HCl** — Хлороводород (g, aq)
-8. **CH4** — Метан (g)
-9. **H2O2** — Пероксид водорода (l, g)
-10. **CO** — Угарный газ (g)
-11. **Fe** — Железо (s, l)
-12. **S** — Сера (s, l, g)
-
-Дополнительно (из примеров):
-13. **FeO** — Оксид железа(II) (s, l)
-14. **SiO2** — Диоксид кремния (s)
-15. **CaO** — Оксид кальция (s)
-16. **Al** — Алюминий (s, l)
-17. **C** (графит) — Углерод (s)
-
-### Пример использования
-
-**Экспорт одного вещества:**
-```bash
-uv run python scripts/export_to_static_data.py --formula H2O
-```
-
-**Экспорт всех распространённых:**
-```bash
-uv run python scripts/export_to_static_data.py --all
-```
-
-**Проверка обновлений:**
-```bash
-uv run python scripts/export_to_static_data.py --check-updates
-```
-
-**Валидация существующих:**
-```bash
-uv run python scripts/export_to_static_data.py --validate
-```
-
-**Список веществ:**
-```bash
-uv run python scripts/export_to_static_data.py --list
-```
-
-### Формат вывода скрипта
-
-```
-🔍 Экспорт вещества: H2O
-📊 Найдено записей: 3 (s, l, g)
-✅ Валидация пройдена
-💾 Сохранено в: data/static_compounds/H2O.yaml
-✨ Экспорт завершён успешно
-
-Статистика:
-- Записей: 3
-- Фаз: 3 (solid, liquid, gas)
-- Покрытие: 200.0K - 1700.0K
-- Переходы: 2 (melting at 273.15K, boiling at 373.15K)
-```
-
-### Структура скрипта
-
-```
-scripts/export_to_static_data.py
-├── main() — точка входа CLI
-├── export_compound(formula, output_dir) — экспорт одного вещества
-├── export_all_common(output_dir) — экспорт всех распространённых
-├── validate_yaml(filepath) — валидация YAML файла
-├── check_updates(yaml_path, db_connector) — проверка обновлений
-├── format_yaml_with_comments(compound_data) — форматирование YAML
-├── get_common_compounds_list() — список распространённых веществ
-└── compare_records(yaml_record, db_record) — сравнение записей
-```
-
-### Связь с другими этапами
-- Использует `YAMLCompoundData` из Stage 04
-- Использует `CompoundSearcher.search_all_phases()` из Stage 03
-- Создаёт YAML файлы для `StaticDataManager` из Stage 04
-- Независим от Stage 05-07 (может быть реализован параллельно)
+- Stage 04 (StaticDataManager и схема валидации YAML)
 
 ---
 
-## Примеры кода
+## Структура YAML-файла (эталон)
 
-### Пример 1: Основной скрипт экспорта
+Каждый YAML-файл должен соответствовать следующей структуре (на основе `H2O.yaml`, `CO2.yaml`):
 
-```python
-# scripts/export_to_static_data.py
+```yaml
+# <Название вещества> - <Описание>
 
-import argparse
-import logging
-import sys
-from pathlib import Path
-from typing import List, Optional
-import yaml
-
-# Добавить путь к src
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.thermo_agents.search.compound_searcher import CompoundSearcher
-from src.thermo_agents.search.database_connector import DatabaseConnector
-from src.thermo_agents.search.sql_builder import SQLBuilder
-from src.thermo_agents.storage.static_data_manager import StaticDataManager
-from src.thermo_agents.models.static_data import YAMLCompoundData, YAMLPhaseRecord, YAMLMetadata
-from datetime import datetime
-
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-logger = logging.getLogger(__name__)
-
-# Список распространённых веществ
-COMMON_COMPOUNDS = [
-    "H2O", "CO2", "O2", "N2", "H2", "NH3", "HCl", "CH4",
-    "H2O2", "CO", "Fe", "S", "FeO", "SiO2", "CaO", "Al", "C"
-]
-
-def main():
-    """Точка входа CLI."""
-    parser = argparse.ArgumentParser(
-        description="Экспорт термодинамических данных из БД в YAML"
-    )
-    parser.add_argument(
-        "--formula",
-        type=str,
-        help="Формула вещества для экспорта (например, H2O)"
-    )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Экспортировать все распространённые вещества"
-    )
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        help="Показать список распространённых веществ"
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="data/static_compounds",
-        help="Директория для YAML файлов"
-    )
-    parser.add_argument(
-        "--validate",
-        action="store_true",
-        help="Только валидация существующих YAML файлов"
-    )
-    parser.add_argument(
-        "--check-updates",
-        action="store_true",
-        help="Проверить обновления в БД для существующих YAML"
-    )
-    parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Перезаписать существующие файлы"
-    )
-    parser.add_argument(
-        "--db-path",
-        type=str,
-        default="data/thermo_data.db",
-        help="Путь к БД"
-    )
-    
-    args = parser.parse_args()
-    
-    # Обработка команд
-    if args.list:
-        print("📋 Список распространённых веществ:")
-        for i, formula in enumerate(COMMON_COMPOUNDS, 1):
-            print(f"  {i:2d}. {formula}")
-        return 0
-    
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    if args.validate:
-        return validate_all_yaml(output_dir)
-    
-    if args.check_updates:
-        return check_all_updates(output_dir, args.db_path)
-    
-    # Подключение к БД
-    db_connector = DatabaseConnector(args.db_path)
-    sql_builder = SQLBuilder()
-    compound_searcher = CompoundSearcher(sql_builder, db_connector)
-    
-    # Экспорт
-    if args.all:
-        return export_all_common(compound_searcher, output_dir, args.overwrite)
-    elif args.formula:
-        return export_compound(
-            compound_searcher,
-            args.formula,
-            output_dir,
-            args.overwrite
-        )
-    else:
-        parser.print_help()
-        return 1
-
-def export_compound(
-    searcher: CompoundSearcher,
-    formula: str,
-    output_dir: Path,
-    overwrite: bool = False
-) -> int:
-    """
-    Экспорт одного вещества в YAML.
-    
-    Returns:
-        0 если успешно, 1 если ошибка
-    """
-    logger.info(f"🔍 Экспорт вещества: {formula}")
-    
-    # Проверка существования файла
-    yaml_path = output_dir / f"{formula}.yaml"
-    if yaml_path.exists() and not overwrite:
-        logger.warning(f"⚠️ Файл {yaml_path} уже существует. Используйте --overwrite")
-        return 1
-    
-    try:
-        # Поиск всех фаз
-        search_result = searcher.search_all_phases(
-            formula=formula,
-            max_temperature=5000.0
-        )
-        
-        if not search_result.records:
-            logger.error(f"❌ Вещество {formula} не найдено в БД")
-            return 1
-        
-        logger.info(f"📊 Найдено записей: {len(search_result.records)}")
-        
-        # Фильтрация по надёжности
-        reliable_records = [
-            rec for rec in search_result.records
-            if rec.reliability_class == 1
-        ]
-        
-        if not reliable_records:
-            logger.warning("⚠️ Нет записей с высокой надёжностью (class=1)")
-            reliable_records = search_result.records
-        
-        # Преобразование в YAML структуру
-        compound_data = convert_to_yaml_structure(
-            formula=formula,
-            records=reliable_records,
-            search_result=search_result
-        )
-        
-        # Валидация
-        yaml_data = YAMLCompoundData(**compound_data)
-        logger.info("✅ Валидация пройдена")
-        
-        # Сохранение
-        save_yaml_with_comments(yaml_data, yaml_path)
-        logger.info(f"💾 Сохранено в: {yaml_path}")
-        
-        # Статистика
-        print_export_statistics(yaml_data, search_result)
-        
-        return 0
-        
-    except Exception as e:
-        logger.error(f"❌ Ошибка экспорта: {e}")
-        import traceback
-        traceback.print_exc()
-        return 1
-
-def convert_to_yaml_structure(
-    formula: str,
-    records: List["DatabaseRecord"],
-    search_result: "MultiPhaseSearchResult"
-) -> dict:
-    """
-    Преобразование DatabaseRecord в YAML структуру.
-    
-    Returns:
-        Словарь для YAMLCompoundData
-    """
-    # Определить названия
-    common_names = []
-    description = formula
-    
-    if records and records[0].name:
-        description = records[0].name
-        common_names.append(records[0].name)
-    
-    if records and records[0].first_name:
-        if records[0].first_name not in common_names:
-            common_names.append(records[0].first_name)
-    
-    # Преобразовать фазы
-    phases = []
-    for record in records:
-        phase_data = {
-            "phase": record.phase or "unknown",
-            "tmin": record.tmin,
-            "tmax": record.tmax,
-            "h298": record.h298,
-            "s298": record.s298,
-            "f1": record.f1,
-            "f2": record.f2,
-            "f3": record.f3,
-            "f4": record.f4,
-            "f5": record.f5,
-            "f6": record.f6,
-            "tmelt": record.tmelt,
-            "tboil": record.tboil,
-            "first_name": record.first_name,
-            "reliability_class": record.reliability_class,
-            "molecular_weight": record.molecular_weight,
-        }
-        phases.append(phase_data)
-    
-    # Фазовые переходы (из search_result)
-    phase_transitions = {}
-    if search_result.tmelt and search_result.tmelt > 0:
-        phase_transitions["melting"] = {
-            "temperature": search_result.tmelt,
-            "enthalpy": 0.0,  # TODO: вычислить из данных
-            "entropy": 0.0,
-        }
-    
-    if search_result.tboil and search_result.tboil > 0:
-        phase_transitions["vaporization"] = {
-            "temperature": search_result.tboil,
-            "enthalpy": 0.0,
-            "entropy": 0.0,
-        }
-    
-    # Метаданные
-    metadata = {
-        "source_database": "thermo_data.db",
-        "extracted_date": datetime.now().strftime("%Y-%m-%d"),
-        "version": "1.0",
-        "notes": f"Экспортировано {len(records)} записей для {formula}"
-    }
-    
-    return {
-        "formula": formula,
-        "common_names": common_names,
-        "description": description,
-        "phases": phases,
-        "phase_transitions": phase_transitions if phase_transitions else None,
-        "metadata": metadata
-    }
-
-def save_yaml_with_comments(
-    compound_data: YAMLCompoundData,
-    output_path: Path
-):
-    """Сохранение YAML с комментариями для читаемости."""
-    data = {
-        "compound": compound_data.dict(exclude_none=True)
-    }
-    
-    # Сохранение
-    with open(output_path, "w", encoding="utf-8") as f:
-        # Заголовок
-        f.write(f"# Термодинамические данные для {compound_data.formula}\n")
-        f.write(f"# Экспортировано: {compound_data.metadata.extracted_date}\n")
-        f.write(f"# Источник: {compound_data.metadata.source_database}\n")
-        f.write("\n")
-        
-        # YAML
-        yaml.dump(data, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
-
-def print_export_statistics(
-    yaml_data: YAMLCompoundData,
-    search_result: "MultiPhaseSearchResult"
-):
-    """Вывод статистики экспорта."""
-    print("\n✨ Экспорт завершён успешно")
-    print("\nСтатистика:")
-    print(f"- Записей: {len(yaml_data.phases)}")
-    print(f"- Фаз: {search_result.phase_count} ({search_result.phase_sequence})")
-    print(f"- Покрытие: {search_result.coverage_start:.1f}K - {search_result.coverage_end:.1f}K")
-    
-    if yaml_data.phase_transitions:
-        transitions = []
-        if "melting" in yaml_data.phase_transitions:
-            transitions.append(f"melting at {yaml_data.phase_transitions['melting'].temperature}K")
-        if "vaporization" in yaml_data.phase_transitions:
-            transitions.append(f"boiling at {yaml_data.phase_transitions['vaporization'].temperature}K")
-        print(f"- Переходы: {len(transitions)} ({', '.join(transitions)})")
-
-def export_all_common(
-    searcher: CompoundSearcher,
-    output_dir: Path,
-    overwrite: bool
-) -> int:
-    """Экспорт всех распространённых веществ."""
-    logger.info(f"🚀 Экспорт всех распространённых веществ ({len(COMMON_COMPOUNDS)})")
-    
-    success_count = 0
-    fail_count = 0
-    
-    for formula in COMMON_COMPOUNDS:
-        result = export_compound(searcher, formula, output_dir, overwrite)
-        if result == 0:
-            success_count += 1
-        else:
-            fail_count += 1
-        print()  # Разделитель
-    
-    logger.info(f"\n✅ Успешно: {success_count}")
-    if fail_count > 0:
-        logger.warning(f"❌ Ошибок: {fail_count}")
-    
-    return 0 if fail_count == 0 else 1
-
-def validate_all_yaml(output_dir: Path) -> int:
-    """Валидация всех YAML файлов."""
-    logger.info(f"🔍 Валидация YAML файлов в {output_dir}")
-    
-    yaml_files = list(output_dir.glob("*.yaml"))
-    
-    if not yaml_files:
-        logger.warning("⚠️ YAML файлы не найдены")
-        return 1
-    
-    valid_count = 0
-    invalid_count = 0
-    
-    for yaml_path in yaml_files:
-        try:
-            with open(yaml_path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-            
-            # Валидация через Pydantic
-            YAMLCompoundData(**data["compound"])
-            
-            logger.info(f"✅ {yaml_path.name}: OK")
-            valid_count += 1
-            
-        except Exception as e:
-            logger.error(f"❌ {yaml_path.name}: {e}")
-            invalid_count += 1
-    
-    logger.info(f"\n✅ Валидных: {valid_count}")
-    if invalid_count > 0:
-        logger.error(f"❌ Невалидных: {invalid_count}")
-    
-    return 0 if invalid_count == 0 else 1
-
-def check_all_updates(output_dir: Path, db_path: str) -> int:
-    """Проверка обновлений в БД для существующих YAML."""
-    logger.info(f"🔄 Проверка обновлений")
-    
-    # Подключение к БД
-    db_connector = DatabaseConnector(db_path)
-    sql_builder = SQLBuilder()
-    searcher = CompoundSearcher(sql_builder, db_connector)
-    
-    yaml_files = list(output_dir.glob("*.yaml"))
-    
-    updates_found = 0
-    
-    for yaml_path in yaml_files:
-        formula = yaml_path.stem
-        
-        try:
-            # Загрузить YAML
-            with open(yaml_path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-            yaml_data = YAMLCompoundData(**data["compound"])
-            
-            # Поиск в БД
-            search_result = searcher.search_all_phases(formula, max_temperature=5000.0)
-            
-            if not search_result.records:
-                logger.warning(f"⚠️ {formula}: не найдено в БД")
-                continue
-            
-            # Сравнение
-            has_updates = compare_yaml_with_db(yaml_data, search_result.records)
-            
-            if has_updates:
-                logger.info(f"🆕 {formula}: обнаружены обновления")
-                updates_found += 1
-            else:
-                logger.info(f"✅ {formula}: актуально")
-                
-        except Exception as e:
-            logger.error(f"❌ {formula}: ошибка проверки: {e}")
-    
-    if updates_found > 0:
-        logger.info(f"\n🆕 Обновлений найдено: {updates_found}")
-        logger.info("Запустите с --overwrite для обновления")
-    else:
-        logger.info("\n✅ Все файлы актуальны")
-    
-    return 0
-
-def compare_yaml_with_db(
-    yaml_data: YAMLCompoundData,
-    db_records: List["DatabaseRecord"]
-) -> bool:
-    """
-    Сравнение YAML данных с записями БД.
-    
-    Returns:
-        True если есть различия
-    """
-    # Упрощённое сравнение по количеству записей
-    if len(yaml_data.phases) != len(db_records):
-        return True
-    
-    # Сравнение по H298 и S298 первой записи
-    if yaml_data.phases:
-        yaml_phase = yaml_data.phases[0]
-        db_record = db_records[0]
-        
-        h_diff = abs(yaml_phase.h298 - db_record.h298)
-        s_diff = abs(yaml_phase.s298 - db_record.s298)
-        
-        # Порог 0.1%
-        if h_diff > abs(db_record.h298) * 0.001:
-            return True
-        if s_diff > abs(db_record.s298) * 0.001:
-            return True
-    
-    return False
-
-if __name__ == "__main__":
-    sys.exit(main())
-```
-
-### Пример 2: Unit-тесты для скрипта
-
-```python
-# tests/scripts/test_export_script.py
-
-import pytest
-from pathlib import Path
-import yaml
-from scripts.export_to_static_data import (
-    export_compound,
-    convert_to_yaml_structure,
-    validate_all_yaml,
-    COMMON_COMPOUNDS
-)
-from src.thermo_agents.search.compound_searcher import CompoundSearcher
-from src.thermo_agents.models.static_data import YAMLCompoundData
-
-def test_export_h2o(compound_searcher, tmp_path):
-    """Тест экспорта H2O."""
-    result = export_compound(
-        searcher=compound_searcher,
-        formula="H2O",
-        output_dir=tmp_path,
-        overwrite=True
-    )
-    
-    assert result == 0, "Экспорт должен завершиться успешно"
-    
-    # Проверка файла
-    yaml_path = tmp_path / "H2O.yaml"
-    assert yaml_path.exists(), "YAML файл должен быть создан"
-    
-    # Проверка содержимого
-    with open(yaml_path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    
-    assert "compound" in data
-    assert data["compound"]["formula"] == "H2O"
-    assert len(data["compound"]["phases"]) >= 1
-
-def test_convert_to_yaml_structure(h2o_search_result, h2o_records):
-    """Тест преобразования в YAML структуру."""
-    yaml_dict = convert_to_yaml_structure(
-        formula="H2O",
-        records=h2o_records,
-        search_result=h2o_search_result
-    )
-    
-    assert yaml_dict["formula"] == "H2O"
-    assert "phases" in yaml_dict
-    assert len(yaml_dict["phases"]) == len(h2o_records)
-    assert "metadata" in yaml_dict
-    assert yaml_dict["metadata"]["source_database"] == "thermo_data.db"
-    
-    # Валидация через Pydantic
-    YAMLCompoundData(**yaml_dict)
-
-def test_validate_all_yaml(tmp_path):
-    """Тест валидации YAML файлов."""
-    # Создать валидный YAML
-    valid_yaml = """
 compound:
-  formula: "TEST"
-  common_names: ["Test"]
-  description: "Test compound"
+  formula: "H2O"
+  common_names:
+    - "Water"
+    - "Вода"
+    - "Dihydrogen monoxide"
+  description: "Water - most common chemical compound on Earth"
+
   phases:
-    - phase: "g"
-      tmin: 298.0
-      tmax: 1000.0
-      h298: -100.0
-      s298: 50.0
-      f1: 30.0
-      f2: 0.0
-      f3: 0.0
-      f4: 0.0
-      f5: 0.0
-      f6: 0.0
-      tmelt: 0.0
-      tboil: 0.0
+    # Фаза 1: твердая (если есть)
+    - phase: "s"
+      tmin: 200.0
+      tmax: 273.15
+      h298: -285830.0    # J/mol
+      s298: 69.95        # J/(mol·K)
+      f1: 30.092         # Коэффициенты теплоемкости
+      f2: 6.832
+      f3: 6.793
+      f4: -2.534
+      f5: 0.082
+      f6: -0.007
+      tmelt: 273.15
+      tboil: 373.15
+      first_name: "Ice"
       reliability_class: 1
+      molecular_weight: 18.01528
+
+    # Фаза 2: жидкая (если есть)
+    - phase: "l"
+      tmin: 273.15
+      tmax: 373.15
+      h298: -285830.0
+      s298: 69.95
+      # ... остальные коэффициенты
+      
+    # Фаза 3: газообразная (если есть)
+    - phase: "g"
+      tmin: 298.15
+      tmax: 1700.0
+      h298: -241826.0    # У пара другая энтальпия!
+      s298: 188.83
+      # ... остальные коэффициенты
+
+  phase_transitions:
+    melting:
+      temperature: 273.15
+      enthalpy: 6.008    # kJ/mol
+      entropy: 22.0      # J/(mol·K)
+    vaporization:
+      temperature: 373.15
+      enthalpy: 40.66
+      entropy: 108.95
+
   metadata:
-    source_database: "test.db"
+    source_database: "thermo_data.db"
     extracted_date: "2025-10-19"
     version: "1.0"
-"""
-    (tmp_path / "TEST.yaml").write_text(valid_yaml)
-    
-    result = validate_all_yaml(tmp_path)
-    assert result == 0, "Валидация должна пройти успешно"
-
-def test_validate_invalid_yaml(tmp_path):
-    """Тест валидации невалидного YAML."""
-    invalid_yaml = """
-compound:
-  formula: "INVALID"
-  # Отсутствуют обязательные поля
-"""
-    (tmp_path / "INVALID.yaml").write_text(invalid_yaml)
-    
-    result = validate_all_yaml(tmp_path)
-    assert result == 1, "Валидация должна провалиться"
-
-def test_common_compounds_list():
-    """Тест списка распространённых веществ."""
-    assert "H2O" in COMMON_COMPOUNDS
-    assert "CO2" in COMMON_COMPOUNDS
-    assert "O2" in COMMON_COMPOUNDS
-    assert len(COMMON_COMPOUNDS) >= 12
+    notes: |
+      Полный набор данных для всех агрегатных состояний воды.
+      Данные из NIST-JANAF Thermochemical Tables.
 ```
 
-### Пример 3: Интеграционный тест экспорта
+### Ключевые поля:
+
+- **formula**: Химическая формула (точное совпадение с БД)
+- **common_names**: Список распространенных названий (англ. + рус.)
+- **description**: Краткое описание вещества
+- **phases**: Список фазовых состояний (сортировка по `tmin`)
+  - **phase**: `"s"` (solid), `"l"` (liquid), `"g"` (gas), `"aq"` (aqueous)
+  - **tmin/tmax**: Температурный диапазон применимости (K)
+  - **h298/s298**: Стандартные энтальпия и энтропия образования
+    - **КРИТИЧНО**: H298 и S298 НЕ должны быть 0.0 (проверить!)
+    - Если запись не покрывает 298K — искать другую запись
+  - **f1-f6**: Коэффициенты Шомате для расчета Cp(T)
+  - **tmelt/tboil**: Температуры фазовых переходов (K)
+  - **first_name**: Название из БД (для трассируемости)
+  - **reliability_class**: Класс надежности (1 - высокая)
+  - **molecular_weight**: Молекулярная масса (г/моль)
+  - **db_rowid**: **[НОВОЕ]** rowid записи в БД (для отладки и трассируемости)
+- **phase_transitions**: Параметры фазовых переходов (опционально)
+- **metadata**: Метаданные источника
+
+---
+
+## Характеристика целевых веществ
+
+### 1. Cl2 (Хлор)
+- **Тип**: Двухатомный газ
+- **Основная фаза**: `g` (газ)
+- **Приоритет**: Газообразная фаза при стандартных условиях
+- **Особенности**: Может иметь жидкую и твердую фазы при низких температурах
+
+### 2. O2 (Кислород)
+- **Тип**: Двухатомный газ
+- **Основная фаза**: `g` (газ)
+- **Приоритет**: Газообразная фаза
+- **Особенности**: Важен для реакций окисления
+
+### 3. CO (Угарный газ)
+- **Тип**: Двухатомный газ
+- **Основная фаза**: `g` (газ)
+- **Приоритет**: Только газообразная фаза
+- **Особенности**: Токсичен, продукт неполного сгорания
+
+### 4. C (Углерод, графит)
+- **Тип**: Элементарное твердое вещество
+- **Основная фаза**: `s` (твердый)
+- **Приоритет**: Твердая фаза (графит как стандартное состояние)
+- **Особенности**: Может иметь несколько аллотропных модификаций (графит приоритетнее)
+
+### 5. HCl (Хлороводород)
+- **Тип**: Кислота
+- **Основные фазы**: `g` (газ), `aq` (водный раствор)
+- **Приоритет**: Обе фазы важны (газ + раствор)
+- **Особенности**: В БД могут быть ионные формы (H+, Cl-) — их тоже включить
+
+### 6. NaCl (Хлорид натрия)
+- **Тип**: Ионная соль
+- **Основные фазы**: `s` (твердый), `l` (расплав)
+- **Приоритет**: Твердая фаза → расплав при высоких T
+- **Особенности**: Может иметь водный раствор `aq`, ионные формы (Na+, Cl-)
+
+---
+
+## Критерии отбора записей из БД
+
+### Приоритет надежности (ReliabilityClass)
+
+По результатам исследования `db_work.ipynb`, записи в БД имеют классы надежности:
+
+| ReliabilityClass | Значение                         | Приоритет для YAML            |
+| ---------------- | -------------------------------- | ----------------------------- |
+| **1**            | Высокая надежность (NIST, JANAF) | ✅ **ТОЛЬКО эти использовать** |
+| **2**            | Средняя надежность               | ❌ НЕ использовать             |
+| **0**            | Неизвестная надежность           | ❌ НЕ использовать             |
+| **3-5**          | Низкая надежность                | ❌ НЕ использовать             |
+
+**Стратегия отбора (с учетом многосегментности фаз):**
+
+**КРИТИЧНО понимать структуру БД** (см. `docs/db_example.md` для FeO):
+- В БД одна фаза может иметь **несколько сегментов** с разными Tmin/Tmax и коэффициентами
+- **Только первый сегмент** (покрывающий 298K) имеет H₂₉₈ и S₂₉₈
+- **Продолжающие сегменты** имеют H₂₉₈=0 и S₂₉₈=0 (это нормально!)
+- **Фазовые переходы** имеют свои H₂₉₈ и S₂₉₈ (относительно предыдущей фазы)
+
+**Правила отбора:**
+1. **ОБЯЗАТЕЛЬНО**: `ReliabilityClass = 1` (без исключений!)
+2. **Для ПЕРВОЙ записи фазы**: `H298 != 0.0` AND `S298 != 0.0` AND `Tmin <= 298.15 <= Tmax`
+3. **Для продолжающих сегментов**: H298=0 и S298=0 — это **НОРМА**, включать!
+4. **Желательно**: `FirstName` содержит стандартное название
+
+**Алгоритм отбора для каждого вещества:**
+```
+1. Найти БАЗОВУЮ запись: H298!=0, S298!=0, покрывает 298K, ReliabilityClass=1
+2. Если базовая запись найдена:
+   - Включить её в YAML (это anchor для всех расчётов)
+   - Найти ВСЕ продолжающие сегменты той же фазы (даже с H298=0)
+   - Найти записи других фаз (s→l→g)
+3. Если базовая запись НЕ найдена:
+   - ❌ НЕ создавать YAML для этого вещества
+   - Документировать проблему
+```
+
+### Стратегия выбора фаз
+
+**Порядок фаз в YAML** (по возрастанию температуры):
+```
+s (solid) → l (liquid) → g (gas)
+```
+
+**Исключения для ионов:**
+- Для кислот: `aq` (водный раствор) часто важнее газовой фазы
+- Для солей: `aq` может присутствовать параллельно с `s`
+
+**Правила:**
+1. Включать все фазы с `ReliabilityClass = 1`
+2. Фазы должны покрывать непрерывный температурный диапазон
+3. Если есть разрыв в температурах — проверить наличие пропущенной фазы
+4. Для элементов (C, O2, Cl2): приоритет стандартному состоянию (298K)
+
+### Исключение ионных форм
+
+**Проблема**: В БД могут быть ионные формы (Fe+, Fe++, Cl-, NO3-), которые нужно различать.
+
+**Правило исключения:**
+```sql
+-- Исключить ионы с зарядом в формуле
+Formula NOT LIKE '%+%' AND Formula NOT LIKE '%-'
+```
+
+**Исключения из правила:**
+- Для HCl: включить `Cl-` (анион в водном растворе)
+- Для кислот: включить соответствующие ионы (H+, анионы)
+
+### Температурные диапазоны
+
+**Общая стратегия:**
+- Минимальный охват: **200K - 3000K** (большинство практических применений)
+- Обязательно: **298.15K** (стандартные условия)
+- Желательно: до **5000K** (высокотемпературные процессы)
+
+**Проверка температурных диапазонов:**
+```sql
+-- Проверить что 298K попадает в диапазон хотя бы одной фазы
+SELECT * FROM compounds 
+WHERE (TRIM(Formula) = 'H2O' OR Formula LIKE 'H2O(%')
+  AND (298.15 >= Tmin AND 298.15 <= Tmax)
+  AND ReliabilityClass = 1
+```
+
+---
+
+## SQL-стратегии поиска (из db_work.ipynb)
+
+Ниже приведены SQL-запросы для каждого типа вещества, основанные на экспериментах из `db_work.ipynb`.
+
+### 1. Общая стратегия поиска
+
+**Базовый SQL-шаблон (многоэтапный поиск):**
+
+**ШАГ 1: Найти БАЗОВУЮ запись (с H298/S298, покрывает 298K):**
+```sql
+SELECT 
+    rowid,
+    Formula, Phase, Tmin, Tmax, 
+    H298, S298, 
+    f1, f2, f3, f4, f5, f6,
+    MeltingPoint as tmelt, 
+    BoilingPoint as tboil,
+    FirstName, 
+    ReliabilityClass,
+    MolecularWeight as molecular_weight
+FROM compounds 
+WHERE (TRIM(Formula) = '<FORMULA>' OR Formula LIKE '<FORMULA>(%')
+  AND ReliabilityClass = 1
+  AND H298 != 0.0                     -- Базовая запись ОБЯЗАТЕЛЬНО имеет H298
+  AND S298 != 0.0                     -- Базовая запись ОБЯЗАТЕЛЬНО имеет S298
+  AND Tmin <= 298.15                  -- Покрывает 298K
+  AND Tmax >= 298.15                  -- Покрывает 298K
+ORDER BY 
+    Phase ASC,  -- s, затем l, затем g
+    Tmin ASC
+LIMIT 10
+```
+
+**ШАГ 2: Найти ВСЕ остальные записи (включая с H298=0, S298=0):**
+```sql
+SELECT 
+    rowid,
+    Formula, Phase, Tmin, Tmax, 
+    H298, S298, 
+    f1, f2, f3, f4, f5, f6,
+    MeltingPoint as tmelt, 
+    BoilingPoint as tboil,
+    FirstName, 
+    ReliabilityClass
+FROM compounds 
+WHERE (TRIM(Formula) = '<FORMULA>' OR Formula LIKE '<FORMULA>(%')
+  AND ReliabilityClass = 1
+  -- НЕ фильтруем по H298/S298 — нужны ВСЕ сегменты!
+ORDER BY 
+    Phase ASC,
+    Tmin ASC
+LIMIT 100
+```
+
+**Объяснение стратегии:**
+- **ШАГ 1** — найти "якорную" запись с H298≠0, S298≠0 при 298K (обязательна!)
+- **ШАГ 2** — найти все сегменты (в т.ч. продолжения с H298=0, S298=0)
+- Продолжающие сегменты (H298=0) — **это нормально** для многосегментных фаз!
+- См. пример FeO в `docs/db_example.md`: 5 записей, из них 4 с H298=0
+
+### 2. Стратегия для газов (O2, Cl2, CO)
+
+**SQL-запрос для O2 (с критическими проверками):**
+```sql
+SELECT rowid, * FROM compounds WHERE
+  (TRIM(Formula) = 'O2' OR Formula LIKE 'O2(%')
+  AND ReliabilityClass = 1
+  AND H298 != 0.0              -- Исключить обнуленные
+  AND S298 != 0.0              -- Исключить обнуленные
+  AND Tmin <= 298.15           -- Покрытие 298K
+  AND Tmax >= 298.15           -- Покрытие 298K
+ORDER BY
+  CASE WHEN Phase = 'g' THEN 1    -- Газ в приоритете
+       WHEN Phase = 'l' THEN 2    -- Жидкость
+       WHEN Phase = 's' THEN 3    -- Твердое
+       ELSE 4 END,
+  Tmin ASC
+LIMIT 100
+```
+
+**Особенности:**
+- Приоритет газовой фазе (`Phase = 'g'`)
+- Жидкие и твердые фазы могут быть при низких T
+
+**Применимо к**: O2, Cl2, CO
+
+### 3. Стратегия для твердых веществ (C, графит)
+
+**SQL-запрос для C (графит):**
+```sql
+SELECT rowid, * FROM compounds WHERE
+  (TRIM(Formula) = 'C' OR Formula LIKE 'C(%')
+  AND ReliabilityClass = 1
+  AND H298 != 0.0
+  AND S298 != 0.0
+  AND Tmin <= 298.15
+  AND Tmax >= 298.15
+  AND FirstName LIKE '%graphite%'  -- Фильтр по названию (графит, не алмаз!)
+ORDER BY
+  CASE WHEN Phase = 's' THEN 1    -- Твердое в приоритете
+       WHEN Phase = 'l' THEN 2    -- Расплав
+       WHEN Phase = 'g' THEN 3    -- Газ (пар)
+       ELSE 4 END,
+  Tmin ASC
+LIMIT 100
+```
+
+**Особенности:**
+- Приоритет твердой фазе
+- Фильтрация по `FirstName` для выбора графита (а не алмаза)
+- Возможна жидкая фаза при очень высоких T
+
+### 4. Стратегия для кислот и ионных соединений (HCl)
+
+**SQL-запрос для HCl:**
+```sql
+SELECT * FROM compounds WHERE
+  (TRIM(Formula) = 'HCl' OR Formula LIKE 'HCl(%' OR
+   TRIM(Formula) = 'Cl-' OR Formula LIKE 'Cl-(%' OR
+   TRIM(Formula) = 'H+' OR Formula LIKE 'H+(%')
+  AND ReliabilityClass = 1
+ORDER BY
+  CASE WHEN Phase = 'aq' AND Formula LIKE '%-%' THEN 1  -- Анионы в растворе
+       WHEN Phase = 'g' AND TRIM(Formula) = 'HCl' THEN 2  -- Газообразный HCl
+       WHEN Phase = 'aq' AND TRIM(Formula) = 'HCl' THEN 3  -- Раствор HCl
+       ELSE 4 END,
+  Tmin ASC
+LIMIT 100
+```
+
+**Особенности:**
+- Ищем несколько формул: основное вещество + ионы
+- Приоритет анионам в водном растворе (`aq`)
+- Газовая фаза также важна
+
+**Применимо к**: HCl, кислоты
+
+### 5. Стратегия для солей (NaCl)
+
+**SQL-запрос для NaCl:**
+```sql
+SELECT * FROM compounds WHERE
+  (TRIM(Formula) = 'NaCl' OR Formula LIKE 'NaCl(%')
+  AND ReliabilityClass = 1
+  AND Formula NOT LIKE '%+%'  -- Исключить ионы
+  AND Formula NOT LIKE '%-'
+ORDER BY
+  CASE WHEN Phase = 's' THEN 1    -- Твердое
+       WHEN Phase = 'l' THEN 2    -- Расплав
+       WHEN Phase = 'aq' THEN 3   -- Раствор
+       ELSE 4 END,
+  Tmin ASC
+LIMIT 100
+```
+
+**Особенности:**
+- Исключаем ионные формы (Na+, Cl-) — только молекулярная форма
+- Приоритет: твердое → расплав → раствор
+- Возможна фаза `aq` для растворов
+
+---
+
+## Пошаговая инструкция ручного заполнения YAML
+
+### Предварительные требования
+
+**Инструменты:**
+- Python 3.10+ с установленными пакетами: `sqlite3`, `pandas`
+- Текстовый редактор с поддержкой YAML (VS Code, PyCharm)
+- Доступ к `data/thermo_data.db`
+
+**Файлы для справки:**
+- `data/static_compounds/H2O.yaml` (эталон: 3 фазы)
+- `data/static_compounds/CO2.yaml` (эталон: сублимация)
+- `data/static_compounds/FeO.yaml` (эталон: многосегментное твердое)
+
+---
+
+### Шаг 1: Подключение к БД и разведка
+
+**1.1. Открыть Jupyter Notebook или Python REPL:**
 
 ```python
-# tests/scripts/test_yaml_export_integration.py
+import sqlite3
+import pandas as pd
 
-import pytest
-import subprocess
+# Подключение к БД
+db_path = "data/thermo_data.db"
+conn = sqlite3.connect(db_path)
+
+# Проверка структуры таблицы
+cursor = conn.cursor()
+cursor.execute("PRAGMA table_info(compounds)")
+columns = cursor.fetchall()
+print("Колонки таблицы compounds:")
+for col in columns:
+    print(f"  {col[1]} ({col[2]})")
+```
+
+**1.2. Узнать общее количество записей:**
+
+```python
+total_records = pd.read_sql_query("SELECT COUNT(*) as count FROM compounds", conn)
+print(f"Всего записей в БД: {total_records['count'].iloc[0]}")
+```
+
+---
+
+### Шаг 2: Поиск данных для конкретного вещества
+
+**Пример для O2 (кислород):**
+
+**2.1. Исследовательский запрос (проверка наличия):**
+
+```python
+formula = "O2"
+
+# Проверка всех записей
+query_all = f"""
+SELECT Formula, Phase, Tmin, Tmax, ReliabilityClass, FirstName, COUNT(*) as count
+FROM compounds 
+WHERE TRIM(Formula) = '{formula}' OR Formula LIKE '{formula}(%'
+GROUP BY Formula, Phase, ReliabilityClass
+ORDER BY Phase ASC, ReliabilityClass ASC
+"""
+
+df_overview = pd.read_sql_query(query_all, conn)
+print(f"\n📊 Обзор для {formula}:")
+print(df_overview)
+```
+
+**2.2. Извлечение надежных данных (ReliabilityClass = 1):**
+
+```python
+query_reliable = f"""
+SELECT 
+    Formula, Phase, Tmin, Tmax, 
+    H298, S298, 
+    f1, f2, f3, f4, f5, f6,
+    MeltingPoint as tmelt, 
+    BoilingPoint as tboil,
+    FirstName, 
+    ReliabilityClass,
+    MolecularWeight as molecular_weight
+FROM compounds 
+WHERE (TRIM(Formula) = '{formula}' OR Formula LIKE '{formula}(%')
+  AND ReliabilityClass = 1
+ORDER BY 
+    CASE Phase 
+        WHEN 's' THEN 1
+        WHEN 'l' THEN 2
+        WHEN 'g' THEN 3
+        ELSE 4
+    END,
+    Tmin ASC
+LIMIT 100
+"""
+
+df_data = pd.read_sql_query(query_reliable, conn)
+print(f"\n✅ Найдено записей с RC=1: {len(df_data)}")
+print(df_data[['Formula', 'Phase', 'Tmin', 'Tmax', 'tmelt', 'tboil', 'FirstName']])
+```
+
+**2.3. Проверка температурного покрытия 298K:**
+
+```python
+df_298 = df_data[(df_data['Tmin'] <= 298.15) & (df_data['Tmax'] >= 298.15)]
+print(f"\n🌡️ Записей, покрывающих 298K: {len(df_298)}")
+if len(df_298) == 0:
+    print("⚠️ ВНИМАНИЕ: 298K не покрыт! Проверьте температурные диапазоны.")
+```
+
+**2.4. Экспорт данных в CSV (для удобства):**
+
+```python
+df_data.to_csv(f"temp_{formula}_data.csv", index=False)
+print(f"\n💾 Данные сохранены в temp_{formula}_data.csv")
+```
+
+---
+
+### Шаг 3: Создание YAML-файла
+
+**3.1. Создать файл `data/static_compounds/O2.yaml`**
+
+**3.2. Заполнить заголовок и метаданные:**
+
+```yaml
+# O2 - Oxygen (двухатомный газ)
+
+compound:
+  formula: "O2"
+  common_names:
+    - "Oxygen"
+    - "Кислород"
+    - "Dioxygen"
+  description: "Oxygen - essential for combustion and respiration"
+```
+
+**3.3. Добавить фазы (из результатов SQL):**
+
+**КРИТИЧНО**: Включать ВСЕ сегменты фазы (даже с H298=0, S298=0)!
+
+Пример для многосегментной твердой фазы (как FeO):
+
+```yaml
+  phases:
+    # Фаза: Твердая, сегмент 1 (базовая запись с H298/S298)
+    # DB rowid: 12345
+    - phase: "s"
+      tmin: 298.15
+      tmax: 600.0
+      h298: -265.053    # ✅ Базовое значение (не ноль!)
+      s298: 59.807      # ✅ Базовое значение (не ноль!)
+      f1: 50.278
+      f2: 3.651
+      # ... остальные коэффициенты
+      first_name: "Iron(II) oxide"
+      reliability_class: 1
+      molecular_weight: 71.844
+      db_rowid: 12345
+      
+    # Фаза: Твердая, сегмент 2 (продолжение, H298=0 — это НОРМА!)
+    # DB rowid: 12346
+    - phase: "s"
+      tmin: 600.0
+      tmax: 900.0
+      h298: 0.0         # ⚠️ НОЛЬ — это продолжение сегмента, ВКЛЮЧАТЬ!
+      s298: 0.0         # ⚠️ НОЛЬ — это продолжение сегмента, ВКЛЮЧАТЬ!
+      f1: 30.849
+      f2: 46.228
+      # ... другие коэффициенты
+      first_name: "Iron(II) oxide"
+      reliability_class: 1
+      molecular_weight: 71.844
+      db_rowid: 12346
+      
+    # Фаза: Жидкая (фазовый переход, свои H298/S298)
+    # DB rowid: 12350
+    - phase: "l"
+      tmin: 1650.0
+      tmax: 5000.0
+      h298: 24.058      # ✅ Энтальпия фазового перехода
+      s298: 14.581      # ✅ Энтропия фазового перехода
+      f1: 68.199
+      # ... остальные
+      first_name: "Iron(II) oxide"
+      reliability_class: 1
+      db_rowid: 12350
+```
+
+**ПРАВИЛА заполнения:**
+1. ✅ **Включать записи с H298=0, S298=0** если это продолжение фазы (Tmin > 298K)
+2. ✅ **Первая запись фазы ДОЛЖНА** иметь H298≠0, S298≠0, покрывать 298K
+3. ✅ Сохранять порядок: сначала все сегменты одной фазы, потом следующей фазы
+4. ✅ `db_rowid` добавлять в комментарий И как поле
+
+**3.4. Добавить фазовые переходы (если есть tmelt/tboil):**
+
+```yaml
+  phase_transitions:
+    melting:
+      temperature: <tmelt из первой фазы>
+      enthalpy: 0.444    # kJ/mol (уточнить из справочников)
+      entropy: 8.0       # J/(mol·K)
+    vaporization:
+      temperature: <tboil>
+      enthalpy: 6.82
+      entropy: 75.0
+```
+
+**3.5. Добавить метаданные:**
+
+```yaml
+  metadata:
+    source_database: "thermo_data.db"
+    extracted_date: "2025-10-19"
+    version: "1.0"
+    notes: |
+      Данные извлечены вручную для стандартного кислорода O2.
+      Используется в реакциях окисления и горения.
+```
+
+---
+
+### Шаг 4: Валидация YAML
+
+**4.1. Проверка синтаксиса YAML:**
+
+```python
+import yaml
+
+yaml_path = "data/static_compounds/O2.yaml"
+
+try:
+    with open(yaml_path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    print("✅ YAML синтаксис корректен")
+except yaml.YAMLError as e:
+    print(f"❌ Ошибка синтаксиса YAML: {e}")
+```
+
+**4.2. Валидация через Pydantic (Stage 04):**
+
+```python
+import sys
+sys.path.insert(0, "src")
+
+from src.thermo_agents.models.static_data import YAMLCompoundData
+
+try:
+    compound_data = YAMLCompoundData(**data["compound"])
+    print("✅ Валидация Pydantic пройдена")
+    print(f"   Формула: {compound_data.formula}")
+    print(f"   Фаз: {len(compound_data.phases)}")
+except Exception as e:
+    print(f"❌ Ошибка валидации: {e}")
+```
+
+**4.3. Проверка температурного покрытия:**
+
+```python
+phases = compound_data.phases
+print("\n🌡️ Температурные диапазоны фаз:")
+for phase in phases:
+    print(f"  {phase.phase}: {phase.tmin}K - {phase.tmax}K")
+    
+# Проверка 298K
+covers_298 = any(p.tmin <= 298.15 <= p.tmax for p in phases)
+if covers_298:
+    print("✅ 298K покрыт")
+else:
+    print("⚠️ 298K НЕ покрыт!")
+```
+
+---
+
+### Шаг 5: Специфичные инструкции для каждого вещества
+
+#### 5.1. Cl2 (Хлор)
+
+**SQL-запрос:**
+```python
+formula = "Cl2"
+query = f"""
+SELECT * FROM compounds WHERE
+  (TRIM(Formula) = '{formula}' OR Formula LIKE '{formula}(%')
+  AND ReliabilityClass = 1
+ORDER BY
+  CASE WHEN Phase = 'g' THEN 1 WHEN Phase = 'l' THEN 2 WHEN Phase = 's' THEN 3 ELSE 4 END,
+  Tmin ASC
+"""
+```
+
+**Особенности:**
+- Основная фаза: `g` (газ)
+- Может быть жидкая и твердая при низких T
+- Токсичен, использовать описание "Chlorine gas - toxic"
+
+#### 5.2. CO (Угарный газ)
+
+**SQL-запрос:**
+```python
+formula = "CO"
+query = f"""
+SELECT * FROM compounds WHERE
+  (TRIM(Formula) = '{formula}' OR Formula LIKE '{formula}(%')
+  AND ReliabilityClass = 1
+  AND Formula NOT LIKE '%+%'  -- Исключить ионы CO+
+ORDER BY Phase ASC, Tmin ASC
+```
+
+**Особенности:**
+- Только газовая фаза
+- Исключить ионы `CO+`
+- Описание: "Carbon monoxide - toxic gas, product of incomplete combustion"
+
+#### 5.3. C (Углерод, графит)
+
+**SQL-запрос:**
+```python
+formula = "C"
+query = f"""
+SELECT * FROM compounds WHERE
+  (TRIM(Formula) = '{formula}' OR Formula LIKE '{formula}(%')
+  AND ReliabilityClass = 1
+  AND FirstName LIKE '%graphite%'  -- Только графит!
+ORDER BY
+  CASE WHEN Phase = 's' THEN 1 WHEN Phase = 'l' THEN 2 ELSE 3 END,
+  Tmin ASC
+```
+
+**Особенности:**
+- **ВАЖНО**: Фильтровать по `FirstName LIKE '%graphite%'` — исключить алмаз!
+- Основная фаза: `s` (твердый)
+- Описание: "Carbon (graphite) - standard state of elemental carbon"
+
+#### 5.4. HCl (Хлороводород)
+
+**SQL-запрос:**
+```python
+formula = "HCl"
+query = f"""
+SELECT rowid, * FROM compounds WHERE
+  (TRIM(Formula) = '{formula}' OR Formula LIKE '{formula}(%' OR
+   TRIM(Formula) = 'Cl-' OR Formula LIKE 'Cl-(%' OR
+   TRIM(Formula) = 'H+' OR Formula LIKE 'H+(%')
+  AND ReliabilityClass = 1
+  AND H298 != 0.0
+  AND S298 != 0.0
+  AND Tmin <= 298.15
+  AND Tmax >= 298.15
+ORDER BY
+  CASE WHEN Phase = 'aq' AND Formula LIKE '%-%' THEN 1
+       WHEN Phase = 'g' AND TRIM(Formula) = '{formula}' THEN 2
+       WHEN Phase = 'aq' AND TRIM(Formula) = '{formula}' THEN 3
+       ELSE 4 END
+```
+
+**Особенности:**
+- Включить **несколько формул**: `HCl`, `Cl-`, `H+` (ионы в растворе)
+- Основные фазы: `g` (газ) и `aq` (раствор)
+- Для ионов создать отдельные блоки `phases` с пометкой в `first_name`
+
+#### 5.5. NaCl (Хлорид натрия)
+
+**SQL-запрос:**
+```python
+formula = "NaCl"
+query = f"""
+SELECT rowid, * FROM compounds WHERE
+  (TRIM(Formula) = '{formula}' OR Formula LIKE '{formula}(%')
+  AND ReliabilityClass = 1
+  AND H298 != 0.0
+  AND S298 != 0.0
+  AND Tmin <= 298.15
+  AND Tmax >= 298.15
+  AND Formula NOT LIKE '%+%' AND Formula NOT LIKE '%-'  -- Исключить Na+, Cl-
+ORDER BY
+  CASE WHEN Phase = 's' THEN 1 WHEN Phase = 'l' THEN 2 WHEN Phase = 'aq' THEN 3 ELSE 4 END,
+  Tmin ASC
+```
+
+**Особенности:**
+- Исключить ионные формы `Na+`, `Cl-`
+- Основные фазы: `s` (твердый), `l` (расплав)
+- Возможна фаза `aq` (водный раствор)
+
+---
+
+### Шаг 6: Финальная проверка и коммит
+
+**6.1. Проверить все созданные файлы:**
+
+```bash
+ls data/static_compounds/*.yaml
+```
+
+**Ожидаемый результат:**
+```
+C.yaml
+Cl2.yaml
+CO.yaml
+CO2.yaml (уже есть)
+FeO.yaml (уже есть)
+H2O.yaml (уже есть)
+HCl.yaml
+NaCl.yaml
+O2.yaml
+```
+
+**6.2. Запустить валидацию всех файлов:**
+
+```python
+import os
 from pathlib import Path
 
-def test_export_script_cli(tmp_path):
-    """Интеграционный тест CLI скрипта."""
-    # Запуск скрипта
-    result = subprocess.run(
-        [
-            "uv", "run", "python", "scripts/export_to_static_data.py",
-            "--formula", "H2O",
-            "--output-dir", str(tmp_path),
-            "--db-path", "tests/fixtures/test_thermo.db"
-        ],
-        capture_output=True,
-        text=True
-    )
-    
-    assert result.returncode == 0, f"Скрипт завершился с ошибкой: {result.stderr}"
-    
-    # Проверка вывода
-    assert "Экспорт вещества: H2O" in result.stdout
-    assert "Сохранено в:" in result.stdout
-    
-    # Проверка файла
-    yaml_file = tmp_path / "H2O.yaml"
-    assert yaml_file.exists()
+yaml_dir = Path("data/static_compounds")
+yaml_files = list(yaml_dir.glob("*.yaml"))
 
-def test_export_all_cli(tmp_path):
-    """Тест экспорта всех веществ через CLI."""
-    result = subprocess.run(
-        [
-            "uv", "run", "python", "scripts/export_to_static_data.py",
-            "--all",
-            "--output-dir", str(tmp_path),
-            "--db-path", "tests/fixtures/test_thermo.db"
-        ],
-        capture_output=True,
-        text=True,
-        timeout=60  # 60 секунд на экспорт всех
-    )
-    
-    assert result.returncode == 0
-    
-    # Проверка, что созданы файлы
-    yaml_files = list(tmp_path.glob("*.yaml"))
-    assert len(yaml_files) > 0
-
-def test_list_compounds_cli():
-    """Тест команды --list."""
-    result = subprocess.run(
-        ["uv", "run", "python", "scripts/export_to_static_data.py", "--list"],
-        capture_output=True,
-        text=True
-    )
-    
-    assert result.returncode == 0
-    assert "H2O" in result.stdout
-    assert "CO2" in result.stdout
+print(f"🔍 Проверка {len(yaml_files)} YAML файлов:")
+for yaml_path in yaml_files:
+    try:
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        compound_data = YAMLCompoundData(**data["compound"])
+        print(f"  ✅ {yaml_path.name}: OK")
+    except Exception as e:
+        print(f"  ❌ {yaml_path.name}: {e}")
 ```
+
+**6.3. Закоммитить изменения:**
+
+```bash
+git add data/static_compounds/*.yaml
+git commit -m "feat: Добавить YAML файлы для распространенных веществ (Cl2, O2, CO, C, HCl, NaCl)"
+```
+
+---
+
+## Критерии завершения
+
+### Обязательные
+- [ ] **Cl2.yaml** создан и валидируется через `YAMLCompoundData`
+- [ ] **O2.yaml** создан и валидируется
+- [ ] **CO.yaml** создан и валидируется
+- [ ] **C.yaml** создан (графит!) и валидируется
+- [ ] **HCl.yaml** создан (газ + ионы) и валидируется
+- [ ] **NaCl.yaml** создан (твердый + расплав) и валидируется
+
+### Качество данных (решение проблемы из architecture_spec.md)
+- [ ] Все файлы имеют `ReliabilityClass = 1` записи (БЕЗ ИСКЛЮЧЕНИЙ)
+- [ ] **КРИТИЧНО**: ПЕРВАЯ запись каждой фазы имеет `H298 != 0.0` AND `S298 != 0.0`
+- [ ] **КРИТИЧНО**: Первая запись покрывает 298.15K (`Tmin <= 298.15 <= Tmax`)
+- [ ] **ДОПУСТИМО**: Продолжающие сегменты фазы могут иметь H298=0, S298=0 (это норма!)
+- [ ] Все сегменты одной фазы включены (даже с H298=0 при Tmin > 298K)
+- [ ] Сегменты отсортированы по `phase` затем по `tmin`
+- [ ] Нет пропусков в температурных диапазонах между сегментами
+- [ ] Каждый сегмент имеет `db_rowid` из БД (в комментарии и как поле)
+- [ ] Метаданные заполнены (source="data/thermo_data.db", date, version, notes)
+
+### Документация
+- [ ] Для каждого вещества задокументирован SQL-запрос
+- [ ] Указаны источники данных (БД, справочники)
+- [ ] Описаны особенности выбора фаз
+
+### Валидация
+- [ ] Все YAML файлы проходят синтаксическую проверку (`yaml.safe_load`)
+- [ ] Все YAML файлы проходят Pydantic валидацию (`YAMLCompoundData`)
+- [ ] Запущен скрипт массовой валидации (Шаг 6.2)
+
+---
+
+## Чеклист для каждого вещества
+
+Использовать при заполнении каждого YAML:
+
+```
+□ Вещество: _______
+  □ ШАГ 1: Найдена БАЗОВАЯ запись (H298!=0, S298!=0, покрывает 298K, RC=1)
+  □ ШАГ 2: Найдены ВСЕ сегменты фазы (в т.ч. с H298=0, S298=0)
+  □ ✅ КРИТИЧНО: Первая запись каждой фазы имеет H298 != 0.0, S298 != 0.0
+  □ ✅ КРИТИЧНО: Первая запись покрывает 298.15K (Tmin <= 298.15 <= Tmax)
+  □ ✅ НОРМА: Продолжающие сегменты могут иметь H298=0, S298=0 — ВКЛЮЧЕНЫ
+  □ Все сегменты упорядочены: сначала по phase (s→l→g), затем по tmin
+  □ rowid записан для КАЖДОГО сегмента (в комментарии и поле db_rowid)
+  □ YAML файл создан в data/static_compounds/
+  □ Заполнены все обязательные поля:
+    □ formula
+    □ common_names (англ. + рус.)
+    □ description (с указанием стандартного состояния при 298K)
+    □ phases (ВСЕ сегменты всех фаз с db_rowid)
+    □ metadata (source="data/thermo_data.db", date, version, notes)
+  □ YAML синтаксис валиден (yaml.safe_load проходит)
+  □ Pydantic валидация пройдена (YAMLCompoundData)
+  □ Файл закоммичен с указанием rowid базовой и всех сегментов
+```
+
+## Риски и их митигация
+
+### Риск 1: Несколько записей с одинаковой формулой
+**Проблема**: В БД может быть несколько вариантов одного вещества (разные `FirstName`, источники данных).
+
+**Митигация:**
+- Фильтровать по `ReliabilityClass = 1` в первую очередь
+- Проверять `FirstName` — выбирать стандартные названия
+- Для C: явно фильтровать `FirstName LIKE '%graphite%'`
+
+### Риск 2: Отсутствие данных для 298K
+**Проблема**: Некоторые фазы могут не покрывать стандартную температуру 298.15K.
+
+**Митигация:**
+- Проверять покрытие 298K в Шаге 2.3
+- Если 298K не покрыт — искать ближайшие диапазоны
+- Документировать пробелы в `metadata.notes`
+
+### Риск 3: Ионные формы вместо молекулярных
+**Проблема**: Для Fe, NaCl могут попадаться ионы (Fe+, Na+, Cl-).
+
+**Митигация:**
+- Использовать фильтры `Formula NOT LIKE '%+%' AND Formula NOT LIKE '%-'`
+- Для кислот (HCl): намеренно включать ионы в отдельные записи
+
+### Риск 4: Некорректные температурные диапазоны
+**Проблема**: Перекрытия или пробелы между фазами.
+
+**Митигация:**
+- Визуально проверять `Tmin/Tmax` соседних фаз
+- `Tmax` одной фазы должен примерно равняться `Tmin` следующей
+- Использовать `tmelt` и `tboil` как ориентиры
+
+---
+
+## Примечания
+
+### Источники данных
+
+**ЕДИНСТВЕННЫЙ источник термодинамических данных:**
+- **`data/thermo_data.db`** — таблица `compounds`
+- ⚠️ **НЕ использовать** внешние справочники для H298, S298, f1-f6, Tmin, Tmax
+- ⚠️ **НЕ вручную корректировать** значения из БД
+- ✅ Все значения должны точно соответствовать записям в БД с указанным `rowid`
+
+**ВАЖНО про многосегментные фазы:**
+- Одна фаза может состоять из нескольких записей с разными Tmin/Tmax
+- Пример: FeO имеет 4 сегмента твердой фазы + 1 жидкая (см. `docs/db_example.md`)
+- **Только первый сегмент** (покрывающий 298K) имеет H298≠0, S298≠0
+- **Продолжающие сегменты** имеют H298=0, S298=0 — **это НОРМА, включать все!**
+- При расчётах система будет использовать базовое H298/S298 и интегрировать через все сегменты
+
+**Для заполнения метаданных (`common_names`, `description`):**
+- [NIST Chemistry WebBook](https://webbook.nist.gov/chemistry/) — названия веществ
+- [PubChem](https://pubchem.ncbi.nlm.nih.gov/) — альтернативные названия
+- Википедия (англ. + рус.) — описания и применение
+
+**Для справки о `phase_transitions` (опционально):**
+- CRC Handbook of Chemistry and Physics
+- NIST-JANAF Thermochemical Tables
+- ⚠️ Энтальпии и энтропии переходов можно оставить 0.0 если нет в БД
+
+### Полезные ресурсы
+
+**Документация проекта:**
+- `docs/ARCHITECTURE_V2.md` — общая архитектура
+- `docs/multi_phase_integration_guide.md` — работа с многофазными данными
+- `src/thermo_agents/models/static_data.py` — схема валидации YAML
+
+**Примеры использования:**
+- `examples/compound_data_example.py` — как загружать YAML через `StaticDataManager`
+
+### Связь с другими этапами
+- **Stage 03**: SQL-стратегии поиска базируются на `CompoundSearcher`
+- **Stage 04**: YAML-структура валидируется через `YAMLCompoundData`
+- **Stage 05-07**: Созданные YAML используются оркестраторами для быстрого доступа к данным
+
+---
+
+## Частые вопросы (FAQ)
+
+**Q: Что делать если ReliabilityClass=1 не найден?**  
+A: Попробовать ReliabilityClass=2. Если и его нет — документировать проблему в `metadata.notes` и использовать лучшее из доступного.
+
+**Q: Как выбрать между графитом и алмазом для C?**  
+A: Графит — стандартное состояние углерода при 298K, используем его. Фильтровать по `FirstName LIKE '%graphite%'`.
+
+**Q: Нужно ли включать все фазы или только основные?**  
+A: Включать все фазы с `ReliabilityClass=1`, которые покрывают значимые температурные диапазоны (200K-5000K).
+
+**Q: Что если фаза покрывает очень узкий диапазон (например, 10K)?**  
+A: Если это переходная фаза между основными состояниями — включить. Если артефакт данных — можно пропустить и задокументировать.
+
+**Q: Как заполнять `phase_transitions.enthalpy` и `entropy`?**  
+A: Эти значения опциональны. Если есть в справочниках — добавить. Если нет — оставить 0.0 или не указывать блок `phase_transitions`.
+
+---
+
+## Заключение
+
+Данное техническое задание описывает **ручной процесс** создания YAML-файлов для 6 распространенных химических веществ (Cl2, O2, CO, C, HCl, NaCl). 
+
+**Преимущества ручного подхода:**
+- Полный контроль над качеством данных
+- Возможность проверки и верификации каждой записи
+- Гибкость в выборе фаз и приоритизации источников
+- Документирование особенностей каждого вещества
+
+**Результат:**
+По завершении работы в `data/static_compounds/` будет **9 YAML-файлов**:
+- 3 существующих (H2O, CO2, **FeO** — эталон многосегментной фазы)
+- 6 новых (Cl2, O2, CO, C, HCl, NaCl)
+
+Все файлы будут валидированы через `YAMLCompoundData` и готовы к использованию системой через `StaticDataManager`.
+
+**Эталонный пример — FeO:**
+- См. `docs/db_example.md` — структура из БД
+- 5 записей: 4 сегмента твердой фазы (s) + 1 жидкая (l)
+- Только 1-й сегмент (298-600K) имеет H298=-265.053, S298=59.807
+- Сегменты 2-4 (600-900K, 900-1300K, 1300-1650K) имеют H298=0, S298=0 — **это норма!**
+- Жидкая фаза (1650-5000K) имеет H298=24.058, S298=14.581 (фазовый переход)
+- Все 5 записей ДОЛЖНЫ быть включены в `FeO.yaml`
+

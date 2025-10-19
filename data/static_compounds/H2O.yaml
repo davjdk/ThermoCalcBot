@@ -1,4 +1,4 @@
-# H2O - Water (three phases: solid, liquid, gas)
+# H2O - Water (вода)
 
 compound:
   formula: "H2O"
@@ -6,15 +6,17 @@ compound:
     - "Water"
     - "Вода"
     - "Dihydrogen monoxide"
-  description: "Water - most common chemical compound on Earth"
+    - "Оксид водорода"
+  description: "Water - most common chemical compound on Earth, essential for life"
 
   phases:
-    # Solid phase (ice)
+    # Твердая фаза (лед)
+    # DB rowid: 99603
     - phase: "s"
-      tmin: 200.0
-      tmax: 273.15
-      h298: -285830.0  # J/mol
-      s298: 69.95      # J/(mol·K)
+      tmin: 3.0
+      tmax: 273.151
+      h298: -285.830002  # J/mol (стандартная энтальпия образования)
+      s298: 69.949995    # J/(mol·K)
       f1: 30.092
       f2: 6.832
       f3: 6.793
@@ -23,16 +25,18 @@ compound:
       f6: -0.007
       tmelt: 273.15
       tboil: 373.15
-      first_name: "Ice"
+      first_name: "Hydrogen oxide"
       reliability_class: 1
       molecular_weight: 18.01528
+      db_rowid: 99603
 
-    # Liquid phase
+    # Жидкая фаза, сегмент 1 (низкие температуры)
+    # DB rowid: 42969
     - phase: "l"
-      tmin: 273.15
-      tmax: 373.15
-      h298: -285830.0
-      s298: 69.95
+      tmin: 273.151
+      tmax: 495.0
+      h298: -285.830002  # J/mol
+      s298: 69.949995    # J/(mol·K)
       f1: 75.327
       f2: 0.0
       f3: 0.0
@@ -41,27 +45,190 @@ compound:
       f6: 0.0
       tmelt: 273.15
       tboil: 373.15
-      first_name: "Water"
+      first_name: "Hydrogen oxide"
       reliability_class: 1
       molecular_weight: 18.01528
+      db_rowid: 42969
 
-    # Gas phase (steam)
-    - phase: "g"
+    # Жидкая фаза, сегмент 2 (продолжение)
+    # DB rowid: 295112
+    - phase: "l"
       tmin: 298.15
-      tmax: 1700.0
-      h298: -241826.0  # Steam has different formation enthalpy
-      s298: 188.83
-      f1: 33.066
-      f2: 2.563
-      f3: 0.0
-      f4: 0.0
+      tmax: 372.78
+      h298: -285.829651  # J/mol
+      s298: 69.948040    # J/(mol·K)
+      f1: 30.000
+      f2: 10.000
+      f3: 0.000
+      f4: 0.000
       f5: 0.0
       f6: 0.0
       tmelt: 273.15
       tboil: 373.15
-      first_name: "Water vapor"
+      first_name: "Hydrogen oxide"
       reliability_class: 1
       molecular_weight: 18.01528
+      db_rowid: 295112
+
+    # Газообразная фаза, сегмент 1 (низкие температуры)
+    # DB rowid: 42974
+    - phase: "g"
+      tmin: 298.15
+      tmax: 600.0
+      h298: -241.826004  # J/mol (пар имеет другую энтальпию!)
+      s298: 188.831995   # J/(mol·K)
+      f1: 30.000
+      f2: 10.000
+      f3: 1.000
+      f4: 0.000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 273.15
+      tboil: 373.15
+      first_name: "Hydrogen oxide"
+      reliability_class: 1
+      molecular_weight: 18.01528
+      db_rowid: 42974
+
+    # Жидкая фаза, сегмент 3 (высокие температуры)
+    # DB rowid: 295113
+    - phase: "l"
+      tmin: 372.78
+      tmax: 500.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 33.000
+      f2: 5.000
+      f3: -1.000
+      f4: 0.000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 273.15
+      tboil: 373.15
+      first_name: "Hydrogen oxide"
+      reliability_class: 1
+      molecular_weight: 18.01528
+      db_rowid: 295113
+
+    # Газообразная фаза, сегмент 2 (средние температуры)
+    # DB rowid: 295115
+    - phase: "g"
+      tmin: 600.0
+      tmax: 1600.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 33.000
+      f2: 12.000
+      f3: -3.000
+      f4: 0.000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 273.15
+      tboil: 373.15
+      first_name: "Hydrogen oxide"
+      reliability_class: 1
+      molecular_weight: 18.01528
+      db_rowid: 295115
+
+    # Газообразная фаза, сегмент 3 (высокие температуры)
+    # DB rowid: 42975
+    - phase: "g"
+      tmin: 1100.0
+      tmax: 2800.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 30.500
+      f2: 8.000
+      f3: -2.000
+      f4: 0.000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 273.15
+      tboil: 373.15
+      first_name: "Hydrogen oxide"
+      reliability_class: 1
+      molecular_weight: 18.01528
+      db_rowid: 42975
+
+    # Газообразная фаза, сегмент 4 (очень высокие температуры)
+    # DB rowid: 295116
+    - phase: "g"
+      tmin: 1600.0
+      tmax: 6000.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 28.000
+      f2: 0.000
+      f3: 0.000
+      f4: 0.000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 273.15
+      tboil: 373.15
+      first_name: "Hydrogen oxide"
+      reliability_class: 1
+      molecular_weight: 18.01528
+      db_rowid: 295116
+
+    # Газообразная фаза, сегмент 5 (ультравысокие температуры)
+    # DB rowid: 42976
+    - phase: "g"
+      tmin: 2800.0
+      tmax: 8400.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 26.000
+      f2: -5.000
+      f3: 1.000
+      f4: 0.000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 273.15
+      tboil: 373.15
+      first_name: "Hydrogen oxide"
+      reliability_class: 1
+      molecular_weight: 18.01528
+      db_rowid: 42976
+
+    # Газообразная фаза, сегмент 6 (ультравысокие температуры)
+    # DB rowid: 42977
+    - phase: "g"
+      tmin: 8400.0
+      tmax: 18000.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 25.000
+      f2: 0.000
+      f3: 0.000
+      f4: 0.000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 273.15
+      tboil: 373.15
+      first_name: "Hydrogen oxide"
+      reliability_class: 1
+      molecular_weight: 18.01528
+      db_rowid: 42977
+
+    # Газообразная фаза, сегмент 7 (максимальные температуры)
+    # DB rowid: 42978
+    - phase: "g"
+      tmin: 18000.0
+      tmax: 20000.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 24.000
+      f2: 0.000
+      f3: 0.000
+      f4: 0.000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 273.15
+      tboil: 373.15
+      first_name: "Hydrogen oxide"
+      reliability_class: 1
+      molecular_weight: 18.01528
+      db_rowid: 42978
 
   phase_transitions:
     melting:
@@ -79,6 +246,9 @@ compound:
     extracted_date: "2025-10-19"
     version: "1.0"
     notes: |
-      Complete dataset for all aggregate states of water.
-      Data taken from NIST-JANAF Thermochemical Tables.
-      Standard reference for thermodynamic calculations.
+      Данные для воды (H2O) во всех трех агрегатных состояниях.
+      Уникальное вещество с аномалиями (плотность льда выше плотности воды).
+      Большая отрицательная энтальпия образования указывает на высокую стабильность.
+      Температурный диапазон: 3K - 20000K.
+      Multi-segment representation для точного описания всех фаз.
+      Критически важна для всех биохимических и промышленных процессов.

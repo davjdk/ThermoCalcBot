@@ -1,4 +1,4 @@
-# CO2 - Carbon dioxide (sublimation at atmospheric pressure)
+# CO2 - Carbon dioxide (углекислый газ)
 
 compound:
   formula: "CO2"
@@ -6,48 +6,92 @@ compound:
     - "Carbon dioxide"
     - "Углекислый газ"
     - "Диоксид углерода"
-    - "Dry ice" (solid)
-  description: "Carbon dioxide - colorless, odorless gas"
+    - "Dry ice"
+  description: "Carbon dioxide - colorless, odorless gas, greenhouse gas"
 
   phases:
-    # Solid phase (dry ice) - exists only at low T
-    - phase: "s"
-      tmin: 150.0
-      tmax: 194.68  # Sublimation temperature
-      h298: -393510.0  # J/mol
-      s298: 213.79     # J/(mol·K)
+    # Газообразная фаза, сегмент 1 (низкие температуры)
+    # DB rowid: 37259
+    - phase: "g"
+      tmin: 50.0
+      tmax: 298.15
+      h298: -393.505181  # J/mol (стандартная энтальпия образования)
+      s298: 213.768908   # J/(mol·K)
       f1: 24.997
       f2: 55.186
       f3: -33.691
       f4: 7.948
       f5: -0.136
       f6: -0.403
-      tmelt: 0.0    # CO2 doesn't melt at atmospheric pressure
-      tboil: 194.68  # Sublimation
-      first_name: "Dry ice"
+      tmelt: 0.0       # CO2 не плавится при атмосферном давлении
+      tboil: 194.68    # Сублимация
+      first_name: "Carbon dioxide"
       reliability_class: 1
       molecular_weight: 44.0095
+      db_rowid: 37259
 
-    # Gas phase (normal state at room temperature)
+    # Газообразная фаза, сегмент 3 (высокие температуры)
+    # DB rowid: 37261
     - phase: "g"
-      tmin: 194.68
-      tmax: 3000.0
-      h298: -393510.0
-      s298: 213.79
-      f1: 24.997
-      f2: 55.186
-      f3: -33.691
-      f4: 7.948
-      f5: -0.136
-      f6: -0.403
+      tmin: 298.15
+      tmax: 900.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 58.166
+      f2: 2.720
+      f3: -6.381
+      f4: 0.000
+      f5: 0.0
+      f6: 0.0
       tmelt: 0.0
       tboil: 194.68
       first_name: "Carbon dioxide"
       reliability_class: 1
       molecular_weight: 44.0095
+      db_rowid: 37261
+
+    # Газообразная фаза, сегмент 4 (очень высокие температуры)
+    # DB rowid: 37262
+    - phase: "g"
+      tmin: 900.0
+      tmax: 2700.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 44.228
+      f2: -8.514
+      f3: -3.082
+      f4: 0.000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 0.0
+      tboil: 194.68
+      first_name: "Carbon dioxide"
+      reliability_class: 1
+      molecular_weight: 44.0095
+      db_rowid: 37262
+
+    # Газообразная фаза, сегмент 5 (ультравысокие температуры)
+    # DB rowid: 37263
+    - phase: "g"
+      tmin: 2700.0
+      tmax: 7600.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 30.351
+      f2: 7.013
+      f3: -0.371
+      f4: 0.000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 0.0
+      tboil: 194.68
+      first_name: "Carbon dioxide"
+      reliability_class: 1
+      molecular_weight: 44.0095
+      db_rowid: 37263
 
   phase_transitions:
-    sublimation:  # Direct transition s → g
+    sublimation:  # Прямой переход s → g
       temperature: 194.68
       enthalpy: 25.23    # kJ/mol
       entropy: 129.7     # J/(mol·K)
@@ -57,6 +101,10 @@ compound:
     extracted_date: "2025-10-19"
     version: "1.0"
     notes: |
-      CO2 sublimates at atmospheric pressure.
-      Liquid phase exists only at pressure >5.1 atm.
-      Important greenhouse gas and industrial chemical.
+      Данные для углекислого газа (CO2).
+      При атмосферном давлении CO2 сублимирует при 194.68K.
+      Жидкая фаза существует только при давлении >5.1 атм.
+      Большая отрицательная энтальпия образования indicates стабильное соединение.
+      Температурный диапазон: 50K - 7600K.
+      Multi-segment representation для разных температурных диапазонов.
+      Важен как парниковый газ и в промышленных процессах.

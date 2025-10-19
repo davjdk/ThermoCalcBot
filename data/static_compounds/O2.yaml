@@ -1,0 +1,112 @@
+# O2 - Oxygen (кислород)
+
+compound:
+  formula: "O2"
+  common_names:
+    - "Oxygen"
+    - "Кислород"
+    - "Dioxygen"
+    - "Диоксид кислорода"
+  description: "Oxygen - colorless, odorless gas essential for respiration and combustion"
+
+  phases:
+    # Газообразная фаза, сегмент 1 (низкие температуры)
+    # DB rowid: 298584
+    - phase: "g"
+      tmin: 50.0
+      tmax: 298.15
+      h298: 0.0         # Элемент в стандартном состоянии
+      s298: 205.145477  # J/(mol·K)
+      f1: 29.430962
+      f2: -4.015250
+      f3: -0.004076
+      f4: 12.820244
+      f5: 0.0
+      f6: 0.0
+      tmelt: 54.36
+      tboil: 90.2
+      first_name: "Oxygen"
+      reliability_class: 1
+      molecular_weight: 31.998
+      db_rowid: 298584
+
+    # Газообразная фаза, сегмент 2 (комнатные температуры)
+    # DB rowid: 49767
+    - phase: "g"
+      tmin: 298.15
+      tmax: 700.0
+      h298: 0.0         # Элемент в стандартном состоянии
+      s298: 0.0         # Продолжение сегмента
+      f1: 30.504081
+      f2: 8.278872
+      f3: -0.355823
+      f4: -6.743896
+      f5: 0.0
+      f6: 0.0
+      tmelt: 54.36
+      tboil: 90.2
+      first_name: "Oxygen"
+      reliability_class: 1
+      molecular_weight: 31.998
+      db_rowid: 49767
+
+    # Газообразная фаза, сегмент 3 (средние температуры)
+    # DB rowid: 49768
+    - phase: "g"
+      tmin: 700.0
+      tmax: 1200.0
+      h298: 0.0         # Продолжение сегмента
+      s298: 0.0         # Продолжение сегмента
+      f1: 36.771426
+      f2: -61.850688
+      f3: -0.736896
+      f4: 29.765018
+      f5: 0.0
+      f6: 0.0
+      tmelt: 54.36
+      tboil: 90.2
+      first_name: "Oxygen"
+      reliability_class: 1
+      molecular_weight: 31.998
+      db_rowid: 49768
+
+    # Газообразная фаза, сегмент 4 (высокие температуры)
+    # DB rowid: 49769
+    - phase: "g"
+      tmin: 1200.0
+      tmax: 2500.0
+      h298: 0.0         # Продолжение сегмента
+      s298: 0.0         # Продолжение сегмента
+      f1: 31.922289
+      f2: -12.378921
+      f3: -8.432196
+      f4: 10.273726
+      f5: 0.0
+      f6: 0.0
+      tmelt: 54.36
+      tboil: 90.2
+      first_name: "Oxygen"
+      reliability_class: 1
+      molecular_weight: 31.998
+      db_rowid: 49769
+
+  phase_transitions:
+    melting:
+      temperature: 54.36
+      enthalpy: 0.444     # kJ/mol
+      entropy: 8.17      # J/(mol·K)
+    vaporization:
+      temperature: 90.2
+      enthalpy: 6.82      # kJ/mol
+      entropy: 75.6      # J/(mol·K)
+
+  metadata:
+    source_database: "thermo_data.db"
+    extracted_date: "2025-10-19"
+    version: "1.0"
+    notes: |
+      Данные для газообразного кислорода (O2).
+      Элемент в стандартном состоянии, H298 = 0.
+      Критически важен для процессов горения и дыхания.
+      Температурный диапазон: 50K - 2500K.
+      Multi-segment representation for different temperature ranges.

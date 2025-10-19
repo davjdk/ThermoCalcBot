@@ -1,0 +1,113 @@
+# CO - Carbon monoxide (угарный газ)
+
+compound:
+  formula: "CO"
+  common_names:
+    - "Carbon monoxide"
+    - "Угарный газ"
+    - "Carbon oxide"
+    - "Оксид углерода(II)"
+  description: "Carbon monoxide - colorless, odorless, toxic gas from incomplete combustion"
+
+  phases:
+    # Газообразная фаза, сегмент 1 (низкие температуры)
+    # DB rowid: 292152
+    - phase: "g"
+      tmin: 0.00015
+      tmax: 700.0
+      h298: -110.541161  # J/mol (стандартная энтальпия образования)
+      s298: 197.660309   # J/(mol·K)
+      f1: 29.304180
+      f2: -2.905080
+      f3: 0.0
+      f4: 7.924785
+      f5: 0.0
+      f6: 0.0
+      tmelt: 68.0
+      tboil: 81.7
+      first_name: "Carbon monoxide"
+      reliability_class: 1
+      molecular_weight: 28.0101
+      db_rowid: 292152
+
+    # Газообразная фаза, сегмент 2 (комнатные температуры)
+    # DB rowid: 202544
+    - phase: "g"
+      tmin: 298.15
+      tmax: 3600.0
+      h298: -110.541161  # J/mol
+      s298: 197.660309   # J/(mol·K)
+      f1: 25.567593
+      f2: 6.096429
+      f3: 4.054656
+      f4: -2.671301
+      f5: 0.0
+      f6: 0.0
+      tmelt: 68.0
+      tboil: 81.7
+      first_name: "Carbon monoxide"
+      reliability_class: 1
+      molecular_weight: 28.0101
+      db_rowid: 202544
+
+    # Газообразная фаза, сегмент 3 (высокие температуры)
+    # DB rowid: 202545
+    - phase: "g"
+      tmin: 3600.0
+      tmax: 11000.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 35.150707
+      f2: -4.465947
+      f3: -16.908921
+      f4: 4.699936
+      f5: 0.0
+      f6: 0.0
+      tmelt: 68.0
+      tboil: 81.7
+      first_name: "Carbon monoxide"
+      reliability_class: 1
+      molecular_weight: 28.0101
+      db_rowid: 202545
+
+    # Газообразная фаза, сегмент 4 (очень высокие температуры)
+    # DB rowid: 37254
+    - phase: "g"
+      tmin: 11000.0
+      tmax: 16000.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 30.351860
+      f2: 7.013071
+      f3: -0.371741
+      f4: 0.000000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 68.0
+      tboil: 81.7
+      first_name: "Carbon monoxide"
+      reliability_class: 1
+      molecular_weight: 28.0101
+      db_rowid: 37254
+
+  phase_transitions:
+    melting:
+      temperature: 68.0
+      enthalpy: 0.837     # kJ/mol
+      entropy: 12.3      # J/(mol·K)
+    vaporization:
+      temperature: 81.7
+      enthalpy: 6.04      # kJ/mol
+      entropy: 73.9      # J/(mol·K)
+
+  metadata:
+    source_database: "thermo_data.db"
+    extracted_date: "2025-10-19"
+    version: "1.0"
+    notes: |
+      Данные для угарного газа (CO).
+      Токсичное вещество, продукт неполного сгорания.
+      Отрицательная энтальпия образования indicates экзотермический процесс образования.
+      Температурный диапазон: 0.00015K - 16000K.
+      Multi-segment representation for different temperature ranges.
+      Важен в промышленных процессах и как промежуточный продукт горения.

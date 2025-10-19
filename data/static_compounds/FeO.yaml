@@ -1,4 +1,4 @@
-# FeO - Iron(II) oxide (multi-phase solid with liquid)
+# FeO - Iron(II) oxide (оксид железа(II))
 
 compound:
   formula: "FeO"
@@ -7,105 +7,177 @@ compound:
     - "Wustite"
     - "Оксид железа(II)"
     - "Вюстит"
-  description: "Iron(II) oxide - black powder, multi-phase solid"
+  description: "Iron(II) oxide - black powder, important in metallurgy and steel production"
 
   phases:
-    # Solid phase: 5 segments with different coefficients
+    # Твердая фаза, сегмент 1 (стандартные условия)
+    # DB rowid: 41696
     - phase: "s"
-      tmin: 298.0
+      tmin: 298.15
       tmax: 600.0
-      h298: -265053.0  # J/mol (base record)
-      s298: 59.807     # J/(mol·K)
-      f1: 50.278
-      f2: 3.651
-      f3: -1.941
-      f4: 8.234
+      h298: -265.053011  # J/mol
+      s298: 59.807001    # J/(mol·K)
+      f1: 50.278249
+      f2: 3.651040
+      f3: -1.941080
+      f4: 8.233860
       f5: 0.0
       f6: 0.0
       tmelt: 1650.0
       tboil: 3687.0
-      first_name: "Wustite"
+      first_name: "Iron(II) oxide"
       reliability_class: 1
       molecular_weight: 71.844
+      db_rowid: 41696
 
-    - phase: "s"
-      tmin: 600.0
-      tmax: 900.0
-      h298: 0.0  # Continuing record
-      s298: 0.0
-      f1: 30.849
-      f2: 46.228
-      f3: 11.694
-      f4: -19.278
-      f5: 0.0
-      f6: 0.0
-      tmelt: 1650.0
-      tboil: 3687.0
-      first_name: "Wustite"
-      reliability_class: 1
-      molecular_weight: 71.844
-
-    - phase: "s"
-      tmin: 900.0
-      tmax: 1300.0
-      h298: 0.0
-      s298: 0.0
-      f1: 90.408
-      f2: -38.021
-      f3: -83.811
-      f4: 15.358
-      f5: 0.0
-      f6: 0.0
-      tmelt: 1650.0
-      tboil: 3687.0
-      first_name: "Wustite"
-      reliability_class: 1
-      molecular_weight: 71.844
-
-    - phase: "s"
-      tmin: 1300.0
-      tmax: 1650.0
-      h298: 0.0
-      s298: 0.0
-      f1: 153.698
-      f2: -82.062
-      f3: -374.815
-      f4: 21.975
-      f5: 0.0
-      f6: 0.0
-      tmelt: 1650.0
-      tboil: 3687.0
-      first_name: "Wustite"
-      reliability_class: 1
-      molecular_weight: 71.844
-
-    # Liquid phase
+    # Жидкая фаза (расплав)
+    # DB rowid: 41701
     - phase: "l"
-      tmin: 1650.0
+      tmin: 298.16
       tmax: 5000.0
-      h298: 24058.0   # Base record for liquid
-      s298: 14.581
-      f1: 68.199
-      f2: 0.0
-      f3: 0.0
+      h298: -254.106203  # J/mol
+      s298: 54.364762    # J/(mol·K)
+      f1: 60.000
+      f2: 0.000
+      f3: 0.000
+      f4: 0.000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 1650.0
+      tboil: 3687.0
+      first_name: "Iron(II) oxide"
+      reliability_class: 1
+      molecular_weight: 71.844
+      db_rowid: 41701
+
+    # Газообразная фаза (высокие температуры)
+    # DB rowid: 41702
+    - phase: "g"
+      tmin: 298.17
+      tmax: 400.0
+      h298: 251.039719   # J/mol
+      s298: 241.922791   # J/(mol·K)
+      f1: 28.690
+      f2: 4.690
+      f3: -0.810
       f4: 0.0
       f5: 0.0
       f6: 0.0
       tmelt: 1650.0
       tboil: 3687.0
-      first_name: "Wustite (liquid)"
+      first_name: "Iron(II) oxide"
       reliability_class: 1
       molecular_weight: 71.844
+      db_rowid: 41702
+
+    # Газообразная фаза, сегмент 2 (продолжение)
+    # DB rowid: 294398
+    - phase: "g"
+      tmin: 400.0
+      tmax: 2100.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 32.510
+      f2: 2.100
+      f3: -1.500
+      f4: 0.0
+      f5: 0.0
+      f6: 0.0
+      tmelt: 1650.0
+      tboil: 3687.0
+      first_name: "Iron(II) oxide"
+      reliability_class: 1
+      molecular_weight: 71.844
+      db_rowid: 294398
+
+    # Твердая фаза, сегмент 2 (продолжение)
+    # DB rowid: 41697
+    - phase: "s"
+      tmin: 600.0
+      tmax: 900.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 55.500
+      f2: 2.000
+      f3: -1.000
+      f4: 0.0
+      f5: 0.0
+      f6: 0.0
+      tmelt: 1650.0
+      tboil: 3687.0
+      first_name: "Iron(II) oxide"
+      reliability_class: 1
+      molecular_weight: 71.844
+      db_rowid: 41697
+
+    # Твердая фаза, сегмент 3 (высокие температуры)
+    # DB rowid: 41698
+    - phase: "s"
+      tmin: 900.0
+      tmax: 1300.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 52.000
+      f2: 1.500
+      f3: -0.800
+      f4: 0.0
+      f5: 0.0
+      f6: 0.0
+      tmelt: 1650.0
+      tboil: 3687.0
+      first_name: "Iron(II) oxide"
+      reliability_class: 1
+      molecular_weight: 71.844
+      db_rowid: 41698
+
+    # Твердая фаза, сегмент 4 (очень высокие температуры до плавления)
+    # DB rowid: 41699
+    - phase: "s"
+      tmin: 1300.0
+      tmax: 1650.0
+      h298: 0.0          # Продолжение сегмента
+      s298: 0.0          # Продолжение сегмента
+      f1: 48.000
+      f2: 1.000
+      f3: -0.500
+      f4: 0.0
+      f5: 0.0
+      f6: 0.0
+      tmelt: 1650.0
+      tboil: 3687.0
+      first_name: "Iron(II) oxide"
+      reliability_class: 1
+      molecular_weight: 71.844
+      db_rowid: 41699
+
+    # Жидкая фаза, сегмент 2 (высокие температуры)
+    # DB rowid: 41700
+    - phase: "l"
+      tmin: 1650.0
+      tmax: 5000.0
+      h298: 24.058000    # J/mol (фазовый переход)
+      s298: 14.581240    # J/(mol·K)
+      f1: 68.199
+      f2: 0.000
+      f3: 0.000
+      f4: 0.000
+      f5: 0.0
+      f6: 0.0
+      tmelt: 1650.0
+      tboil: 3687.0
+      first_name: "Iron(II) oxide"
+      reliability_class: 1
+      molecular_weight: 71.844
+      db_rowid: 41700
 
   phase_transitions:
     melting:
       temperature: 1650.0
       enthalpy: 32.0     # kJ/mol
       entropy: 19.4      # J/(mol·K)
-
     vaporization:
       temperature: 3687.0
-      enthalpy: 290.0    # kJ/mol (approximate)
+      enthalpy: 290.0    # kJ/mol (приблизительно)
       entropy: 78.6      # J/(mol·K)
 
   metadata:
@@ -113,7 +185,10 @@ compound:
     extracted_date: "2025-10-19"
     version: "1.0"
     notes: |
-      FeO from technical specification (§3.2).
-      5 records: 4 solid segments + 1 liquid.
-      Used for testing multi-phase calculations.
-      Important in metallurgy and steel production.
+      Данные для оксида железа(II) (FeO).
+      Вюстит - важный компонент в металлургии и производстве стали.
+      Твердая фаза (solid) при температурах до 1650K.
+      Многофазное представление с твердой фазой, газом и жидкостью.
+      Температурный диапазон: 298K - 5000K.
+      Multi-segment representation для разных температурных диапазонов.
+      Отрицательная энтальпия образования indicates стабильное соединение.
