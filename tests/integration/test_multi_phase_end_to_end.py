@@ -8,7 +8,7 @@ import pytest
 import tempfile
 from pathlib import Path
 
-from src.thermo_agents.orchestrator_multi_phase import MultiPhaseOrchestrator, MultiPhaseOrchestratorConfig
+from thermo_agents.orchestrator_multi_phase import MultiPhaseOrchestrator, MultiPhaseOrchestratorConfig
 
 
 @pytest.fixture
@@ -157,7 +157,7 @@ class TestMultiPhaseEndToEnd:
 
     def test_multi_phase_config_validation(self):
         """Тест валидации конфигурации."""
-        from src.thermo_agents.config.multi_phase_config import validate_config, MULTI_PHASE_CONFIG
+        from thermo_agents.config.multi_phase_config import validate_config, MULTI_PHASE_CONFIG
 
         # Проверяем валидацию
         assert validate_config() is True
@@ -239,7 +239,7 @@ class TestMultiPhaseEndToEnd:
 
     def test_static_data_manager_integration(self, temp_cache_dir):
         """Тест интеграции StaticDataManager."""
-        from src.thermo_agents.storage.static_data_manager import StaticDataManager
+        from thermo_agents.storage.static_data_manager import StaticDataManager
 
         # Создаем тестовый YAML
         cache_dir = temp_cache_dir / "static_compounds"

@@ -8,7 +8,7 @@ import pytest
 import tempfile
 from pathlib import Path
 
-from src.thermo_agents.orchestrator_multi_phase import MultiPhaseOrchestrator, MultiPhaseOrchestratorConfig
+from thermo_agents.orchestrator_multi_phase import MultiPhaseOrchestrator, MultiPhaseOrchestratorConfig
 
 
 @pytest.fixture
@@ -98,7 +98,7 @@ class TestMultiPhaseRegression:
 
     def test_config_backward_compatibility(self):
         """Тест обратной совместимости конфигурации."""
-        from src.thermo_agents.config.multi_phase_config import MULTI_PHASE_CONFIG
+        from thermo_agents.config.multi_phase_config import MULTI_PHASE_CONFIG
 
         # Проверяем, что все ожидаемые ключи существуют
         expected_keys = [
@@ -179,7 +179,7 @@ class TestMultiPhaseRegression:
 
     def test_static_data_manager_compatibility(self, temp_cache_dir):
         """Тест совместимости StaticDataManager."""
-        from src.thermo_agents.storage.static_data_manager import StaticDataManager
+        from thermo_agents.storage.static_data_manager import StaticDataManager
 
         manager = StaticDataManager(temp_cache_dir)
 

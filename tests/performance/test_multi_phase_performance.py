@@ -9,7 +9,7 @@ import time
 import tempfile
 from pathlib import Path
 
-from src.thermo_agents.orchestrator_multi_phase import MultiPhaseOrchestrator, MultiPhaseOrchestratorConfig
+from thermo_agents.orchestrator_multi_phase import MultiPhaseOrchestrator, MultiPhaseOrchestratorConfig
 
 
 @pytest.fixture
@@ -80,7 +80,7 @@ class TestMultiPhasePerformance:
 
     def test_yaml_cache_performance(self, temp_cache_dir):
         """Тест производительности YAML кэша."""
-        from src.thermo_agents.storage.static_data_manager import StaticDataManager
+        from thermo_agents.storage.static_data_manager import StaticDataManager
 
         # Создаем тестовые YAML данные
         cache_dir = temp_cache_dir / "static_compounds"
@@ -267,7 +267,7 @@ compound:
 
         for points in integration_points_list:
             # Создаем калькулятор с разным количеством точек
-            from src.thermo_agents.calculations.thermodynamic_calculator import ThermodynamicCalculator
+            from thermo_agents.calculations.thermodynamic_calculator import ThermodynamicCalculator
             calculator = ThermodynamicCalculator(num_integration_points=points)
 
             # Выполняем расчёт
@@ -298,7 +298,7 @@ compound:
 
     def test_cache_efficiency(self, performance_orchestrator):
         """Тест эффективности кэширования."""
-        from src.thermo_agents.calculations.thermodynamic_calculator import ThermodynamicCalculator
+        from thermo_agents.calculations.thermodynamic_calculator import ThermodynamicCalculator
 
         calculator = ThermodynamicCalculator(num_integration_points=100)
 

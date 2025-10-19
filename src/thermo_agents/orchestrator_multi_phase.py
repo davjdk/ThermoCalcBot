@@ -231,7 +231,7 @@ class MultiPhaseOrchestrator:
         # Шаг 2: Многофазный расчёт
         mp_result = self.calculator.calculate_multi_phase_properties(
             records=search_result.records,
-            T_target=T_max
+            trajectory=[T_max]  # Используем правильный параметр
         )
 
         # Шаг 3: Форматирование результата
@@ -263,7 +263,7 @@ class MultiPhaseOrchestrator:
         for T in temperatures:
             mp_T = self.calculator.calculate_multi_phase_properties(
                 records=search_result.records,
-                T_target=T
+                trajectory=[T]  # Используем правильный параметр
             )
             table_data.append({
                 "T": T,
