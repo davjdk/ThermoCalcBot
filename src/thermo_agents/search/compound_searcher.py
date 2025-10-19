@@ -667,8 +667,11 @@ class CompoundSearcher:
         self.logger.info(f"Поиск всех фаз для {formula}, T_max={max_temperature}K")
 
         # ШАГ 1: Проверка YAML кэша (приоритет)
-        if self.static_data_manager and hasattr(self.static_data_manager, 'is_available') and self.static_data_manager.is_available(formula):
+        if self.static_data_manager and self.static_data_manager.is_available(formula):
             self.logger.info(f"⚡ Найдено в статическом кэше: {formula}")
+            if self.session_logger:
+                self.session_logger.log_info(f"⚡ Использован YAML кэш для {formula}")
+
             records = self.static_data_manager.get_compound_phases(formula)
             return self._build_result(formula, records, max_temperature)
 

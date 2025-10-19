@@ -1,0 +1,119 @@
+# FeO - Iron(II) oxide (multi-phase solid with liquid)
+
+compound:
+  formula: "FeO"
+  common_names:
+    - "Iron(II) oxide"
+    - "Wustite"
+    - "Оксид железа(II)"
+    - "Вюстит"
+  description: "Iron(II) oxide - black powder, multi-phase solid"
+
+  phases:
+    # Solid phase: 5 segments with different coefficients
+    - phase: "s"
+      tmin: 298.0
+      tmax: 600.0
+      h298: -265053.0  # J/mol (base record)
+      s298: 59.807     # J/(mol·K)
+      f1: 50.278
+      f2: 3.651
+      f3: -1.941
+      f4: 8.234
+      f5: 0.0
+      f6: 0.0
+      tmelt: 1650.0
+      tboil: 3687.0
+      first_name: "Wustite"
+      reliability_class: 1
+      molecular_weight: 71.844
+
+    - phase: "s"
+      tmin: 600.0
+      tmax: 900.0
+      h298: 0.0  # Continuing record
+      s298: 0.0
+      f1: 30.849
+      f2: 46.228
+      f3: 11.694
+      f4: -19.278
+      f5: 0.0
+      f6: 0.0
+      tmelt: 1650.0
+      tboil: 3687.0
+      first_name: "Wustite"
+      reliability_class: 1
+      molecular_weight: 71.844
+
+    - phase: "s"
+      tmin: 900.0
+      tmax: 1300.0
+      h298: 0.0
+      s298: 0.0
+      f1: 90.408
+      f2: -38.021
+      f3: -83.811
+      f4: 15.358
+      f5: 0.0
+      f6: 0.0
+      tmelt: 1650.0
+      tboil: 3687.0
+      first_name: "Wustite"
+      reliability_class: 1
+      molecular_weight: 71.844
+
+    - phase: "s"
+      tmin: 1300.0
+      tmax: 1650.0
+      h298: 0.0
+      s298: 0.0
+      f1: 153.698
+      f2: -82.062
+      f3: -374.815
+      f4: 21.975
+      f5: 0.0
+      f6: 0.0
+      tmelt: 1650.0
+      tboil: 3687.0
+      first_name: "Wustite"
+      reliability_class: 1
+      molecular_weight: 71.844
+
+    # Liquid phase
+    - phase: "l"
+      tmin: 1650.0
+      tmax: 5000.0
+      h298: 24058.0   # Base record for liquid
+      s298: 14.581
+      f1: 68.199
+      f2: 0.0
+      f3: 0.0
+      f4: 0.0
+      f5: 0.0
+      f6: 0.0
+      tmelt: 1650.0
+      tboil: 3687.0
+      first_name: "Wustite (liquid)"
+      reliability_class: 1
+      molecular_weight: 71.844
+
+  phase_transitions:
+    melting:
+      temperature: 1650.0
+      enthalpy: 32.0     # kJ/mol
+      entropy: 19.4      # J/(mol·K)
+
+    vaporization:
+      temperature: 3687.0
+      enthalpy: 290.0    # kJ/mol (approximate)
+      entropy: 78.6      # J/(mol·K)
+
+  metadata:
+    source_database: "thermo_data.db"
+    extracted_date: "2025-10-19"
+    version: "1.0"
+    notes: |
+      FeO from technical specification (§3.2).
+      5 records: 4 solid segments + 1 liquid.
+      Used for testing multi-phase calculations.
+      Important in metallurgy and steel production.

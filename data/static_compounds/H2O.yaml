@@ -1,0 +1,84 @@
+# H2O - Water (three phases: solid, liquid, gas)
+
+compound:
+  formula: "H2O"
+  common_names:
+    - "Water"
+    - "Вода"
+    - "Dihydrogen monoxide"
+  description: "Water - most common chemical compound on Earth"
+
+  phases:
+    # Solid phase (ice)
+    - phase: "s"
+      tmin: 200.0
+      tmax: 273.15
+      h298: -285830.0  # J/mol
+      s298: 69.95      # J/(mol·K)
+      f1: 30.092
+      f2: 6.832
+      f3: 6.793
+      f4: -2.534
+      f5: 0.082
+      f6: -0.007
+      tmelt: 273.15
+      tboil: 373.15
+      first_name: "Ice"
+      reliability_class: 1
+      molecular_weight: 18.01528
+
+    # Liquid phase
+    - phase: "l"
+      tmin: 273.15
+      tmax: 373.15
+      h298: -285830.0
+      s298: 69.95
+      f1: 75.327
+      f2: 0.0
+      f3: 0.0
+      f4: 0.0
+      f5: 0.0
+      f6: 0.0
+      tmelt: 273.15
+      tboil: 373.15
+      first_name: "Water"
+      reliability_class: 1
+      molecular_weight: 18.01528
+
+    # Gas phase (steam)
+    - phase: "g"
+      tmin: 298.15
+      tmax: 1700.0
+      h298: -241826.0  # Steam has different formation enthalpy
+      s298: 188.83
+      f1: 33.066
+      f2: 2.563
+      f3: 0.0
+      f4: 0.0
+      f5: 0.0
+      f6: 0.0
+      tmelt: 273.15
+      tboil: 373.15
+      first_name: "Water vapor"
+      reliability_class: 1
+      molecular_weight: 18.01528
+
+  phase_transitions:
+    melting:
+      temperature: 273.15
+      enthalpy: 6.008    # kJ/mol
+      entropy: 22.0      # J/(mol·K)
+
+    vaporization:
+      temperature: 373.15
+      enthalpy: 40.66    # kJ/mol
+      entropy: 108.95    # J/(mol·K)
+
+  metadata:
+    source_database: "thermo_data.db"
+    extracted_date: "2025-10-19"
+    version: "1.0"
+    notes: |
+      Complete dataset for all aggregate states of water.
+      Data taken from NIST-JANAF Thermochemical Tables.
+      Standard reference for thermodynamic calculations.
