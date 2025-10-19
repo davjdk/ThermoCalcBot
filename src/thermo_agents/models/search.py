@@ -183,6 +183,92 @@ class DatabaseRecord(BaseModel):
         """Legacy setter for backward compatibility."""
         self.reliability_class = value
 
+    # Multi-phase calculation support methods (Stage 02)
+
+    def is_base_record(self) -> bool:
+        """
+        Check if this record is a base record (contains H298≠0 or S298≠0).
+
+        Base records have their own thermodynamic values at 298K.
+        Records with H298=0 and S298=0 require accumulation from previous segments.
+
+        Returns:
+            True if H298≠0 or S298≠0
+        """
+        return abs(self.h298) > 1e-6 or abs(self.s298) > 1e-6
+
+    def covers_temperature(self, T: float) -> bool:
+        """
+        Check if this record covers the specified temperature.
+
+        Args:
+            T: Temperature in Kelvin
+
+        Returns:
+            True if Tmin ≤ T ≤ Tmax
+        """
+        return self.tmin <= T <= self.tmax
+
+    def has_phase_transition_at(self, T: float, tolerance: float = 1e-3) -> Optional[str]:
+        """
+        Check if there is a phase transition at the specified temperature.
+
+        Args:
+            T: Temperature in Kelvin
+            tolerance: Tolerance for temperature comparison
+
+        Returns:
+            Transition type ("melting", "boiling") or None
+        """
+        if abs(T - self.tmelt) < tolerance and self.tmelt > 0:
+            return "melting"
+        if abs(T - self.tboil) < tolerance and self.tboil > 0:
+            return "boiling"
+        return None
+
+    def get_transition_type(self, next_record: "DatabaseRecord") -> Optional[str]:
+        """
+        Determine the phase transition type between this record and the next one.
+
+        Args:
+            next_record: Next record by temperature
+
+        Returns:
+            Transition type ("s→l", "l→g", "s→g") or None
+        """
+        if self.phase == next_record.phase:
+            return None  # No phase change
+
+        # Check that records touch by temperature
+        if abs(self.tmax - next_record.tmin) > 1e-3:
+            return None  # No contact
+
+        from_phase = (self.phase or "").lower()
+        to_phase = (next_record.phase or "").lower()
+
+        return f"{from_phase}→{to_phase}"
+
+    def get_temperature_range(self) -> Tuple[float, float]:
+        """
+        Get the temperature range of this record.
+
+        Returns:
+            Tuple of (Tmin, Tmax)
+        """
+        return (self.tmin, self.tmax)
+
+    def overlaps_with(self, other: "DatabaseRecord") -> bool:
+        """
+        Check if this record's temperature range overlaps with another record.
+
+        Args:
+            other: Another record to compare with
+
+        Returns:
+            True if temperature ranges overlap
+        """
+        return not (self.tmax < other.tmin or self.tmin > other.tmax)
+
 
 class TemperatureRange(BaseModel):
     """Temperature range specification."""
