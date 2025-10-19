@@ -10,7 +10,7 @@ import numpy as np
 
 from ..calculations.thermodynamic_calculator import ThermodynamicCalculator
 from ..models.extraction import ExtractedReactionParameters
-from ..models.search import CompoundSearchResult, DatabaseRecord, MultiPhaseProperties
+from ..models.search import CompoundSearchResult, DatabaseRecord, MultiPhaseProperties, MultiPhaseSearchResult
 
 
 class ReactionCalculationFormatter:
@@ -164,12 +164,14 @@ class ReactionCalculationFormatter:
         all_substances = list(reactants) + list(products)
 
         for i, result in enumerate(all_substances):
-            if not result.records_found:
+            # Поддержка как старых, так и новых результатов поиска
+            records = result.records_found if hasattr(result, 'records_found') else result.records
+            if not records:
                 lines.append(f"{result.compound_formula} — ❌ НЕ НАЙДЕНО В БАЗЕ ДАННЫХ")
                 lines.append("")
                 continue
 
-            record = result.records_found[0]
+            record = records[0]
             name = record.first_name or "Неизвестное вещество"
 
             lines.append(f"{record.formula} — {name}")
@@ -217,15 +219,17 @@ class ReactionCalculationFormatter:
         product_data = []
 
         for result in reactants:
-            if result.records_found:
-                record = result.records_found[0]
+            records = result.records_found if hasattr(result, 'records_found') else result.records
+            if records:
+                record = records[0]
                 # Получаем коэффициент из распарсенного уравнения
                 stoich = stoichiometry.get(result.compound_formula, 1)
                 reactant_data.append((record, stoich))
 
         for result in products:
-            if result.records_found:
-                record = result.records_found[0]
+            records = result.records_found if hasattr(result, 'records_found') else result.records
+            if records:
+                record = records[0]
                 stoich = stoichiometry.get(result.compound_formula, 1)
                 product_data.append((record, stoich))
 

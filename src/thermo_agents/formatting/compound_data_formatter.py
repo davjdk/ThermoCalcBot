@@ -12,7 +12,7 @@ from ..calculations.thermodynamic_calculator import (
     ThermodynamicCalculator,
     ThermodynamicTable
 )
-from ..models.search import DatabaseRecord, CompoundSearchResult, MultiPhaseProperties
+from ..models.search import DatabaseRecord, CompoundSearchResult, MultiPhaseProperties, MultiPhaseSearchResult
 
 
 class CompoundDataFormatter:
@@ -46,10 +46,12 @@ class CompoundDataFormatter:
         Returns:
             Отформатированный текстовый ответ
         """
-        if not result.records_found:
-            return self._format_not_found_response(result.formula)
+        # Поддержка как старых, так и новых результатов поиска
+        records = result.records_found if hasattr(result, 'records_found') else result.records
+        if not records:
+            return self._format_not_found_response(result.compound_formula if hasattr(result, 'compound_formula') else result.formula)
 
-        record = result.records_found[0]
+        record = records[0]
 
         lines = []
         lines.append(f"📊 Термодинамические данные: {record.formula}")

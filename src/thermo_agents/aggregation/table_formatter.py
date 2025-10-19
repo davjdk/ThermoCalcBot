@@ -9,7 +9,7 @@ from typing import List
 
 from tabulate import tabulate
 
-from ..models.search import CompoundSearchResult, DatabaseRecord
+from ..models.search import CompoundSearchResult, DatabaseRecord, MultiPhaseSearchResult
 
 
 class TableFormatter:
@@ -54,11 +54,13 @@ class TableFormatter:
         table_data = []
 
         for result in compounds_results:
-            if not result.records_found:
+            # Поддержка как старых, так и новых результатов поиска
+            records = result.records_found if hasattr(result, 'records_found') else result.records
+            if not records:
                 continue
 
             # Взять ВСЕ записи для вещества (могут быть разные фазы)
-            for record in result.records_found:
+            for record in records:
                 row = [
                     self._format_formula(record),
                     self._format_name(record),
@@ -97,7 +99,9 @@ class TableFormatter:
         table_data = []
 
         for result in compounds_results:
-            if not result.records_found:
+            # Поддержка как старых, так и новых результатов поиска
+            records = result.records_found if hasattr(result, 'records_found') else result.records
+            if not records:
                 continue
 
             # Добавить заголовок вещества
@@ -106,7 +110,7 @@ class TableFormatter:
             )
 
             # Добавить записи вещества
-            for i, record in enumerate(result.records_found[:max_records_per_compound]):
+            for i, record in enumerate(records[:max_records_per_compound]):
                 row = [
                     self._format_formula(record) if i == 0 else "",
                     self._format_name(record),
@@ -265,10 +269,12 @@ class TableFormatter:
         table_data = []
 
         for result in compounds_results:
-            if not result.records_found:
+            # Поддержка как старых, так и новых результатов поиска
+            records = result.records_found if hasattr(result, 'records_found') else result.records
+            if not records:
                 continue
 
-            record = result.records_found[0]
+            record = records[0]
             row = [
                 self._format_formula(record),
                 self._format_name(record),

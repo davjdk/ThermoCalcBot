@@ -12,7 +12,7 @@ from ..models.aggregation import (
     AggregatedReactionData,
     FilterStatistics,
 )
-from ..models.search import CompoundSearchResult, SearchStatistics
+from ..models.search import CompoundSearchResult, SearchStatistics, MultiPhaseSearchResult
 
 
 class ReactionAggregator:
@@ -63,8 +63,9 @@ class ReactionAggregator:
                 result.filter_statistics.stage_1_initial_matches > 0
             )
 
-            # Проверяем, остались ли данные после фильтрации
-            has_final_data = result.records_found and len(result.records_found) > 0
+            # Поддержка как старых, так и новых результатов поиска
+            records = result.records_found if hasattr(result, 'records_found') else result.records
+            has_final_data = records and len(records) > 0
 
             if has_initial_data:
                 if has_final_data:
@@ -124,7 +125,8 @@ class ReactionAggregator:
                 result.filter_statistics and
                 result.filter_statistics.stage_1_initial_matches > 0
             )
-            has_final_data = result.records_found and len(result.records_found) > 0
+            records = result.records_found if hasattr(result, 'records_found') else result.records
+            has_final_data = records and len(records) > 0
 
             if has_initial_data and not has_final_data:
                 warnings.append(
@@ -144,8 +146,9 @@ class ReactionAggregator:
                 warnings.extend(result.warnings)
 
             # Предупреждение о низком классе надёжности
-            if result.records_found and len(result.records_found) > 0:
-                top_record = result.records_found[0]
+            records = result.records_found if hasattr(result, 'records_found') else result.records
+            if records and len(records) > 0:
+                top_record = records[0]
                 if top_record.reliability_class and top_record.reliability_class > 2:
                     warnings.append(
                         f"Для {result.compound_formula} низкий класс надёжности данных "

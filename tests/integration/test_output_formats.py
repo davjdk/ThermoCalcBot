@@ -7,7 +7,7 @@
 import pytest
 from pathlib import Path
 
-from thermo_agents.orchestrator import Orchestrator
+from thermo_agents.orchestrator_multi_phase import MultiPhaseOrchestrator, MultiPhaseOrchestratorConfig
 from thermo_agents.search.database_connector import DatabaseConnector
 from thermo_agents.search.compound_searcher import CompoundSearcher
 from thermo_agents.search.sql_builder import SQLBuilder
@@ -95,31 +95,22 @@ def test_db_path():
 
 @pytest.fixture
 def orchestrator(test_db_path):
-    """Оркестратор для тестов."""
+    """Многофазный оркестратор для тестов."""
     # Проверяем существование базы данных
     if not Path(test_db_path).exists():
         pytest.skip(f"Тестовая база данных не найдена: {test_db_path}")
 
-    # Создание компонентов
-    db_connector = DatabaseConnector(test_db_path)
-    sql_builder = SQLBuilder()
-    compound_searcher = CompoundSearcher(sql_builder, db_connector)
-    filter_pipeline = FilterPipeline()
-
-    # Создание агента
-    agent_config = ThermoAgentConfig(
-        llm_base_url="mock://localhost",
-        llm_model="mock-model"
+    # Конфигурация многофазного оркестратора для тестов
+    config = MultiPhaseOrchestratorConfig(
+        db_path=test_db_path,
+        llm_api_key="test-key",
+        llm_base_url="https://openrouter.ai/api/v1",
+        llm_model="openai/gpt-4o",
+        static_cache_dir="data/static_compounds",
+        integration_points=50,  # Меньше точек для ускорения тестов
     )
-    MockThermodynamicAgent = create_mock_thermodynamic_agent()
-    thermodynamic_agent = MockThermodynamicAgent(agent_config)
 
-    # Создание оркестратора
-    return Orchestrator(
-        thermodynamic_agent=thermodynamic_agent,
-        compound_searcher=compound_searcher,
-        filter_pipeline=filter_pipeline
-    )
+    return MultiPhaseOrchestrator(config)
 
 
 class TestOutputFormats:

@@ -19,100 +19,37 @@ if str(src_path) not in sys.path:
 
 from dotenv import load_dotenv
 
-from thermo_agents.agent_storage import AgentStorage
-from thermo_agents.aggregation.reaction_aggregator import ReactionAggregator
-from thermo_agents.aggregation.statistics_formatter import StatisticsFormatter
-from thermo_agents.aggregation.table_formatter import TableFormatter
-from thermo_agents.filtering.complex_search_stage import ComplexFormulaSearchStage
-from thermo_agents.filtering.filter_stages import (
-    ReliabilityPriorityStage,
-    TemperatureCoverageStage,
+from thermo_agents.orchestrator_multi_phase import (
+    MultiPhaseOrchestrator,
+    MultiPhaseOrchestratorConfig
 )
-from thermo_agents.filtering.temperature_resolver import TemperatureResolver
-from thermo_agents.orchestrator import OrchestratorConfig, Orchestrator
-from thermo_agents.search.compound_searcher import CompoundSearcher
-from thermo_agents.search.database_connector import DatabaseConnector
-from thermo_agents.search.sql_builder import SQLBuilder
-from thermo_agents.thermo_agents_logger import create_session_logger
-from thermo_agents.thermodynamic_agent import ThermoAgentConfig, ThermodynamicAgent
 
 # Загрузка переменных окружения
 load_dotenv()
 
 
-def create_orchestrator(db_path: str = "data/thermo_data.db") -> Orchestrator:
+def create_orchestrator(db_path: str = "data/thermo_data.db") -> MultiPhaseOrchestrator:
     """
-    Создание и настройка оркестратора термодинамической системы.
+    Создание и настройка многофазного оркестратора термодинамической системы.
 
     Args:
         db_path: Путь к файлу базы данных
 
     Returns:
-        Настроенный Orchestrator с поддержкой расчётов реакций
+        Настроенный MultiPhaseOrchestrator с поддержкой многофазных расчётов
     """
-    # Инициализация хранилища
-    storage = AgentStorage()
-
-    # Единый session_logger для всей системы
-    session_logger = create_session_logger()
-
-    # LLM для извлечения параметров
-    thermo_config = ThermoAgentConfig(
-        agent_id="thermo_agent",
+    # Конфигурация многофазного оркестратора
+    config = MultiPhaseOrchestratorConfig(
+        db_path=db_path,
         llm_api_key=os.getenv("OPENROUTER_API_KEY", ""),
         llm_base_url=os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1"),
         llm_model=os.getenv("LLM_DEFAULT_MODEL", "openai/gpt-4o"),
-        storage=storage,
-        session_logger=session_logger,  # НОВОЕ: используем тот же logger
-    )
-    thermodynamic_agent = ThermodynamicAgent(thermo_config)
-
-    # Поиск в БД
-    sql_builder = SQLBuilder()
-    db_connector = DatabaseConnector(db_path)
-    compound_searcher = CompoundSearcher(
-        sql_builder, db_connector, session_logger=session_logger
-    )  # НОВОЕ
-
-    # Конвейер фильтрации с валидацией реакции (Stage 0)
-    from thermo_agents.filtering.filter_pipeline import FilterPipelineBuilder
-
-    filter_pipeline = (
-        FilterPipelineBuilder()
-        .with_reaction_validation(min_confidence_threshold=0.5)
-        .build()
+        static_cache_dir="data/static_compounds",
+        integration_points=100,  # Точность численного интегрирования
     )
 
-    # Добавляем остальные стадии напрямую
-    filter_pipeline.add_stage(ComplexFormulaSearchStage())
-    # Заменяем TemperatureFilterStage на умную фазовую фильтрацию
-    from thermo_agents.filtering.phase_based_temperature_stage import (
-        PhaseBasedTemperatureStage,
-    )
-
-    filter_pipeline.add_stage(
-        PhaseBasedTemperatureStage(
-            exclude_ions=True,
-            max_records_per_phase=1,
-            reliability_weight=0.6,
-            coverage_weight=0.4,
-        )
-    )
-    # Старая фазовая селекция больше не нужна - логика встроена в PhaseBasedTemperatureStage
-    # filter_pipeline.add_stage(PhaseSelectionStage(PhaseResolver()))
-    filter_pipeline.add_stage(
-        ReliabilityPriorityStage(max_records=3)
-    )  # Увеличиваем до 3 для множественных фаз
-    filter_pipeline.add_stage(TemperatureCoverageStage(TemperatureResolver()))
-
-    # Оркестратор с поддержкой расчётов реакций
-    orchestrator_config = OrchestratorConfig()
-    orchestrator = Orchestrator(
-        thermodynamic_agent=thermodynamic_agent,
-        compound_searcher=compound_searcher,
-        filter_pipeline=filter_pipeline,
-        config=orchestrator_config,
-    )
+    # Создание оркестратора
+    orchestrator = MultiPhaseOrchestrator(config)
 
     return orchestrator
 
@@ -121,7 +58,7 @@ async def main_interactive():
     """Главная функция в режиме ожидания запросов пользователя."""
     # Инициализация
     db_path = Path(__file__).parent / "data" / "thermo_data.db"
-    orchestrator = create_orchestrator(str(db_path))
+    orchestrator: MultiPhaseOrchestrator = create_orchestrator(str(db_path))
 
     print("\nТермодинамическая система v2.0")
     print("Гибридная архитектура: LLM + детерминированная логика\n")
@@ -140,74 +77,46 @@ async def main_interactive():
                 # Обработка запроса
                 response = await orchestrator.process_query(query)
 
-                # НОВОЕ: Логирование ответа в сессию
-                session_logger = orchestrator.thermodynamic_agent.config.session_logger
-                if session_logger:
-                    session_logger.log_info("")
-                    session_logger.log_info("=" * 60)
-                    session_logger.log_info("РЕЗУЛЬТАТ:")
-                    # Логируем response как есть, с эмодзи и таблицами
-                    for line in response.split("\n"):
-                        if line.strip():  # Пропускаем пустые строки
-                            session_logger.log_info(line)
-                    session_logger.log_info("=" * 60)
+  # Логирование упрощено в многофазной архитектуре
 
                 print(response)
                 print()
             except Exception as e:
                 print(f"Ошибка обработки: {e}\n")
 
-                # НОВОЕ: Логирование ошибки в сессию
-                session_logger = orchestrator.thermodynamic_agent.config.session_logger
-                if session_logger:
-                    session_logger.log_error(f"Ошибка обработки: {e}")
+                # Логирование ошибок упрощено в многофазной архитектуре
 
     except KeyboardInterrupt:
         print("\n\nЗавершение работы...")
     except Exception as e:
         print(f"\nКритическая ошибка: {e}")
     finally:
-        await orchestrator.shutdown()
+        # Многофазный оркестратор не требует shutdown()
+        pass
 
 
 async def main_test():
     """Тестовый режим с предопределённым запросом."""
     # Инициализация
     db_path = Path(__file__).parent / "data" / "thermo_data.db"
-    orchestrator = create_orchestrator(str(db_path))
+    orchestrator: MultiPhaseOrchestrator = create_orchestrator(str(db_path))
 
-    # Получаем session_logger из orchestrator для логирования начала сессии
-    session_logger = orchestrator.thermodynamic_agent.config.session_logger
-    if session_logger:
-        session_logger.log_info("SESSION STARTED")
-        session_logger.log_info("Термодинамическая система v2.0")
+    # Логирование упрощено в многофазной архитектуре
 
     print("\n" + "=" * 80)
     print("Термодинамическая система v2.0 - ТЕСТОВЫЙ РЕЖИМ")
     print("=" * 80)
 
     # Тестовый запрос
-    test_query = "Реагирует ли оксид кальция с диоксидом кремния при 1200–1500 °C?"
+    test_query = "Взаимодействует ли оксид кальция с фосфатом кальция при 1200 °C?"
 
-    # НОВОЕ: Логирование запроса пользователя
-    if session_logger:
-        session_logger.log_info(f"Запрос пользователя: {test_query}")
+    # Логирование упрощено в многофазной архитектуре
 
     try:
         # Обработка запроса
         response = await orchestrator.process_query(test_query)
 
-        # НОВОЕ: Логирование summary ответа в сессию
-        if session_logger:
-            session_logger.log_info("")
-            session_logger.log_info("=" * 80)
-            session_logger.log_info("СВОДНЫЕ РЕЗУЛЬТАТЫ СЕССИИ:")
-            session_logger.log_info("=" * 80)
-            # Логируем response как есть, с эмодзи и таблицами
-            for line in response.split("\n"):
-                if line.strip():  # Пропускаем пустые строки
-                    session_logger.log_info(line)
-            session_logger.log_info("=" * 80)
+        # Логирование упрощено в многофазной архитектуре
 
         # Убираем эмодзи и Unicode символы для совместимости с Windows
         response_clean = response.replace("✅", "[OK]").replace("❌", "[ОШИБКА]")
@@ -225,23 +134,18 @@ async def main_test():
         print("[ТЕСТ ЗАВЕРШЁН УСПЕШНО]")
         print("=" * 80)
 
-        # НОВОЕ: Логирование завершения сессии
-        if session_logger:
-            session_logger.log_info("Общее время обработки: успешно завершено")
-            session_logger.log_info("SESSION ENDED")
+        # Логирование упрощено в многофазной архитектуре
 
     except Exception as e:
         print(f"\n[ОШИБКА] Ошибка обработки: {e}")
         import traceback
 
-        # НОВОЕ: Логирование ошибки в сессии
-        if session_logger:
-            session_logger.log_error(f"Ошибка обработки: {e}")
-            session_logger.log_info("SESSION ENDED")
+        # Логирование упрощено в многофазной архитектуре
 
         traceback.print_exc()
     finally:
-        await orchestrator.shutdown()
+        # Многофазный оркестратор не требует shutdown()
+        pass
 
 
 if __name__ == "__main__":
