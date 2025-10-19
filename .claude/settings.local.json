@@ -36,7 +36,9 @@
       "Bash(PYTHONPATH=src uv run python:*)",
       "Bash(git remote prune:*)",
       "Bash(PYTHONPATH=src uv run pytest:*)",
-      "Bash(PYTHONPATH=../../src uv run pytest:*)"
+      "Bash(PYTHONPATH=../../src uv run pytest:*)",
+      "mcp__ide__executeCode",
+      "Bash(set:*)"
     ],
     "deny": [],
     "ask": []
