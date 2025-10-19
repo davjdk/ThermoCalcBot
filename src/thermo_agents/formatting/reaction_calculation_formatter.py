@@ -4,13 +4,13 @@
 Поддерживает Unicode символы для химических формул и математических выражений.
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import numpy as np
 
 from ..calculations.thermodynamic_calculator import ThermodynamicCalculator
 from ..models.extraction import ExtractedReactionParameters
-from ..models.search import CompoundSearchResult, DatabaseRecord
+from ..models.search import CompoundSearchResult, DatabaseRecord, MultiPhaseProperties
 
 
 class ReactionCalculationFormatter:
@@ -424,3 +424,196 @@ class ReactionCalculationFormatter:
                 lines.append("")
 
         return "\n".join(lines)
+
+    def format_comment_column(
+        self,
+        T: float,
+        compounds_multi_phase: Dict[str, MultiPhaseProperties]
+    ) -> str:
+        """
+        Форматирование колонки "Комментарий" с фазовыми переходами.
+
+        Args:
+            T: Текущая температура
+            compounds_multi_phase: Словарь {формула: MultiPhaseProperties}
+
+        Returns:
+            Строка комментария (пустая если нет переходов)
+        """
+        comments = []
+
+        for formula, mp_result in compounds_multi_phase.items():
+            # Проверить, есть ли фазовый переход при температуре T
+            for transition in mp_result.phase_transitions:
+                if abs(transition.temperature - T) < 1.0:  # Допуск 1K
+                    comment = self._format_transition_comment(
+                        formula, transition
+                    )
+                    comments.append(comment)
+
+            # Проверить смену записи без изменения фазы
+            for segment in mp_result.segments:
+                if abs(segment.T_end - T) < 1.0:
+                    if segment.is_transition_boundary:
+                        continue  # Уже добавлено как переход
+
+                    # Смена записи в той же фазе
+                    phase = segment.record.phase
+                    comments.append(f"{formula}: {phase}→{phase} (смена записи)")
+
+        return "; ".join(comments) if comments else ""
+
+    def _format_transition_comment(
+        self,
+        formula: str,
+        transition
+    ) -> str:
+        """
+        Форматирование комментария для фазового перехода.
+
+        Returns:
+            Строка вида "FeO: s→l (плавление, ΔH=+32 кДж/моль)"
+        """
+        transition_names = {
+            "melting": "плавление",
+            "boiling": "кипение",
+            "sublimation": "сублимация"
+        }
+
+        # Преобразуем enum в строку
+        transition_type = transition.transition_type.value if hasattr(transition.transition_type, 'value') else str(transition.transition_type)
+
+        transition_name = transition_names.get(
+            transition_type,
+            transition_type
+        )
+
+        comment = (
+            f"{formula}: {transition.from_phase}→{transition.to_phase} "
+            f"({transition_name}"
+        )
+
+        if abs(transition.delta_H_transition) > 0.01:
+            comment += f", ΔH={transition.delta_H_transition:+.1f} кДж/моль"
+
+        comment += ")"
+
+        return comment
+
+    def format_results_table_with_transitions(
+        self,
+        temperatures: List[float],
+        delta_H: List[float],
+        delta_S: List[float],
+        delta_G: List[float],
+        compounds_multi_phase: Dict[str, MultiPhaseProperties]
+    ) -> str:
+        """
+        Форматирование таблицы результатов с колонкой "Комментарий".
+
+        Returns:
+            Отформатированная таблица
+        """
+        from tabulate import tabulate
+
+        # Подготовка данных
+        table_data = []
+        for i, T in enumerate(temperatures):
+            comment = self.format_comment_column(T, compounds_multi_phase)
+
+            row = [
+                f"{T:.0f}",
+                f"{delta_H[i]:.2f}",
+                f"{delta_S[i]:.2f}",
+                f"{delta_G[i]:.2f}",
+                comment
+            ]
+            table_data.append(row)
+
+        # Заголовки
+        headers = [
+            "T(K)",
+            "ΔH°(кДж/моль)",
+            "ΔS°(Дж/(К·моль))",
+            "ΔG°(кДж/моль)",
+            "Комментарий"
+        ]
+
+        # Форматирование
+        table = tabulate(
+            table_data,
+            headers=headers,
+            tablefmt="simple",
+            stralign="right"
+        )
+
+        return table
+
+    def format_metadata(
+        self,
+        compounds_multi_phase: Dict[str, MultiPhaseProperties]
+    ) -> str:
+        """
+        Форматирование метаданных о сегментах и переходах.
+
+        Args:
+            compounds_multi_phase: Словарь {формула: MultiPhaseProperties}
+
+        Returns:
+            Строка с метаданными
+        """
+        lines = []
+
+        # Подсчёт сегментов
+        segments_info = []
+        total_segments = 0
+        for formula, mp_result in compounds_multi_phase.items():
+            count = len(mp_result.segments)
+            total_segments += count
+
+            # Определить типы фаз
+            phases = list(set(seg.record.phase for seg in mp_result.segments))
+            phase_desc = self._describe_phases(phases)
+
+            segments_info.append(f"{formula}({count} {phase_desc})")
+
+        lines.append(f"Использовано сегментов расчёта: {', '.join(segments_info)}")
+
+        # Подсчёт фазовых переходов
+        total_transitions = sum(
+            len(mp.phase_transitions) for mp in compounds_multi_phase.values()
+        )
+
+        if total_transitions > 0:
+            # Детали переходов
+            transition_details = []
+            for formula, mp_result in compounds_multi_phase.items():
+                if mp_result.phase_transitions:
+                    transition_details.append(f"{formula}")
+
+            lines.append(
+                f"Фазовых переходов обнаружено: {total_transitions} "
+                f"({', '.join(transition_details)})"
+            )
+        else:
+            lines.append("Фазовых переходов не обнаружено")
+
+        # Шаг по температуре
+        lines.append("Шаг по температуре: 100 K (плюс точки фазовых переходов)")
+
+        return "\n".join(lines)
+
+    def _describe_phases(self, phases: List[str]) -> str:
+        """Описание фаз (твёрдых, жидких и т.д.)."""
+        phase_counts = {
+            "s": "твёрдых",
+            "l": "жидких",
+            "g": "газовых"
+        }
+
+        descriptions = []
+        for phase in phases:
+            if phase in phase_counts:
+                descriptions.append(phase_counts[phase])
+
+        return " + ".join(descriptions) if descriptions else "фаз"

@@ -5,14 +5,14 @@
 для расчета термодинамических свойств.
 """
 
-from typing import Optional
+from typing import Optional, Dict
 from tabulate import tabulate
 
 from ..calculations.thermodynamic_calculator import (
     ThermodynamicCalculator,
     ThermodynamicTable
 )
-from ..models.search import DatabaseRecord, CompoundSearchResult
+from ..models.search import DatabaseRecord, CompoundSearchResult, MultiPhaseProperties
 
 
 class CompoundDataFormatter:
@@ -246,4 +246,83 @@ class CompoundDataFormatter:
                 table_data.append(row)
 
         lines.append(tabulate(table_data, headers=headers, tablefmt="grid"))
+        return "\n".join(lines)
+
+    def format_compound_data_multi_phase(
+        self,
+        formula: str,
+        compound_name: str,
+        multi_phase_result: MultiPhaseProperties
+    ) -> str:
+        """
+        Форматирование раздела "Данные веществ" для многофазного расчёта.
+
+        Args:
+            formula: Химическая формула
+            compound_name: Название вещества
+            multi_phase_result: Результат многофазного расчёта
+
+        Returns:
+            Отформатированная строка
+        """
+        lines = []
+        lines.append(f"{formula} — {compound_name}")
+
+        segment_num = 1
+        for i, segment in enumerate(multi_phase_result.segments):
+            # Заголовок сегмента
+            lines.append("")
+            lines.append(
+                f"  [Сегмент {segment_num}] Фаза: {segment.record.phase} | "
+                f"T_применимости: {segment.T_start:.0f}-{segment.T_end:.0f} K"
+            )
+
+            # H298 и S298
+            if segment.record.is_base_record():
+                lines.append(
+                    f"  H₂₉₈: {segment.record.h298 / 1000:.3f} кДж/моль | "
+                    f"S₂₉₈: {segment.record.s298:.3f} Дж/(моль·K)"
+                )
+            else:
+                lines.append(
+                    f"  H₂₉₈: 0.000 кДж/моль (накопленное) | "
+                    f"S₂₉₈: 0.000 Дж/(моль·K) (накопленное)"
+                )
+
+            # Cp коэффициенты
+            cp_coeffs = [
+                segment.record.f1, segment.record.f2, segment.record.f3,
+                segment.record.f4, segment.record.f5, segment.record.f6
+            ]
+            cp_str = ", ".join(f"{c:.3f}" for c in cp_coeffs)
+            lines.append(f"  Cp коэффициенты: [{cp_str}]")
+
+            # Дополнительная информация
+            if segment.record.first_name:
+                lines.append(f"  Источник: {segment.record.first_name}")
+            if segment.record.reliability_class:
+                reliability_desc = {1: "высокая", 2: "средняя", 3: "низкая"}
+                lines.append(f"  Надёжность: {segment.record.reliability_class} ({reliability_desc.get(segment.record.reliability_class, 'неизвестная')})")
+
+            # Фазовый переход после сегмента
+            if segment.is_transition_boundary:
+                # Ищем соответствующий переход
+                transition_idx = i - 1  # Переход после предыдущего сегмента
+                if 0 <= transition_idx < len(multi_phase_result.phase_transitions):
+                    transition = multi_phase_result.phase_transitions[transition_idx]
+                    lines.append("")
+                    # Преобразуем enum в строку
+                    transition_type = transition.transition_type.value if hasattr(transition.transition_type, 'value') else str(transition.transition_type)
+                    lines.append(
+                        f"  [ФАЗОВЫЙ ПЕРЕХОД при {transition.temperature:.0f}K: "
+                        f"{transition.from_phase} → {transition.to_phase} ({transition_type})]"
+                    )
+                    if abs(transition.delta_H_transition) > 0.01:
+                        lines.append(
+                            f"  ΔH_{transition_type}: {transition.delta_H_transition:.2f} кДж/моль | "
+                            f"ΔS_{transition_type}: {transition.delta_S_transition:.2f} Дж/(моль·K)"
+                        )
+
+            segment_num += 1
+
         return "\n".join(lines)
