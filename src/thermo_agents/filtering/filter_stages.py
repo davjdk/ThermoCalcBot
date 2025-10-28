@@ -431,3 +431,199 @@ class FormulaConsistencyStage(FilterStage):
 
     def get_stage_name(self) -> str:
         return "Проверка согласованности формул"
+
+
+class DeduplicationStage(FilterStage):
+    """Первая стадия фильтрации: удаление дубликатов по ключевым полям."""
+
+    def filter(
+        self, records: List[DatabaseRecord], context: FilterContext
+    ) -> List[DatabaseRecord]:
+        """
+        Удаление дубликатов записей на основе уникальности ключевых полей.
+
+        Критерии дедупликации:
+        1. Формула соединения (formula)
+        2. Фаза (phase)
+        3. Температурный диапазон (tmin, tmax)
+        4. Класс надежности (reliability_class)
+        5. Основные термодинамические коэффициенты (f1, f2, f3)
+
+        Приоритет при дедупликации:
+        - Более высокий класс надежности (1 > 2 > 3 > ...)
+        - Более широкий температурный диапазон
+        - Более полное покрытие термодинамических данных
+        """
+        start_time = time.time()
+
+        # Группируем записи по уникальным ключам
+        unique_groups = {}
+        duplicates_count = 0
+
+        for record in records:
+            # Создаем ключ для группировки
+            key = self._create_deduplication_key(record)
+
+            if key not in unique_groups:
+                unique_groups[key] = []
+            unique_groups[key].append(record)
+
+        # Выбираем лучшую запись из каждой группы
+        deduplicated_records = []
+        for key, group in unique_groups.items():
+            if len(group) > 1:
+                duplicates_count += len(group) - 1
+                # Выбираем лучшую запись из группы дубликатов
+                best_record = self._select_best_record(group)
+                deduplicated_records.append(best_record)
+            else:
+                deduplicated_records.append(group[0])
+
+        execution_time = (time.time() - start_time) * 1000
+
+        # Сбор статистики по дубликатам
+        duplicates_by_formula = {}
+        for key, group in unique_groups.items():
+            if len(group) > 1:
+                formula = key.split('|')[0]  # Extract formula from key
+                duplicates_by_formula[formula] = duplicates_by_formula.get(formula, 0) + len(group) - 1
+
+        self.last_stats = {
+            "initial_records": len(records),
+            "unique_records": len(deduplicated_records),
+            "duplicates_removed": duplicates_count,
+            "deduplication_rate": duplicates_count / len(records) if records else 0,
+            "duplicates_by_formula": duplicates_by_formula,
+            "execution_time_ms": execution_time,
+        }
+
+        return deduplicated_records
+
+    def _create_deduplication_key(self, record: DatabaseRecord) -> str:
+        """
+        Создать ключ для идентификации дубликатов.
+
+        Ключ включает основные поля, определяющие уникальность записи.
+        Для чистых соединений (без составных частей) игнорируем фазу для лучшей дедупликации.
+        """
+        # Нормализация формулы (приводим к верхнему регистру, удаляем пробелы)
+        formula = (record.formula or "").strip().upper()
+
+        # Проверяем, является ли соединение чистым (не содержит составных частей)
+        is_pure_compound = self._is_pure_compound(formula)
+
+        # Для чистых соединений игнорируем фазу при дедупликации
+        # Для составных соединений (например, BaO*Fe2O3) учитываем фазу
+        if is_pure_compound:
+            phase = "ANY"  # Любая фаза для чистых соединений
+        else:
+            phase = (record.phase or "").strip().lower()
+
+        # Температурный диапазон (округляем до 1K)
+        tmin = f"{record.tmin:.0f}" if record.tmin is not None else "None"
+        tmax = f"{record.tmax:.0f}" if record.tmax is not None else "None"
+
+        # Класс надежности
+        reliability = str(record.reliability_class) if record.reliability_class is not None else "None"
+
+        # Основные термодинамические коэффициенты (округляем)
+        f1 = f"{record.f1:.3f}" if record.f1 is not None else "None"
+        f2 = f"{record.f2:.3f}" if record.f2 is not None else "None"
+        f3 = f"{record.f3:.3f}" if record.f3 is not None else "None"
+
+        # Создаем составной ключ
+        key = f"{formula}|{phase}|{tmin}|{tmax}|{reliability}|{f1}|{f2}|{f3}"
+
+        return key
+
+    def _is_pure_compound(self, formula: str) -> bool:
+        """
+        Проверить, является ли формула чистым соединением (не составным).
+
+        Чистое соединение не содержит символов '*', '+', или других составных частей.
+        """
+        if not formula:
+            return False
+
+        # Составные соединения содержат "*", "+", или имеют составные части
+        compound_indicators = ['*', '+', '(', ')']
+        return not any(indicator in formula for indicator in compound_indicators)
+
+    def _select_best_record(self, duplicate_group: List[DatabaseRecord]) -> DatabaseRecord:
+        """
+        Выбрать лучшую запись из группы дубликатов.
+
+        Критерии выбора:
+        1. Класс надежности (меньше = лучше)
+        2. Ширина температурного диапазона (больше = лучше)
+        3. Наличие стандартных свойств H298, S298
+        4. Наличие фазовых переходов
+        """
+        if len(duplicate_group) == 1:
+            return duplicate_group[0]
+
+        # Сортируем записи по приоритету
+        scored_records = []
+        for record in duplicate_group:
+            score = self._calculate_record_score(record)
+            scored_records.append((record, score))
+
+        # Сортируем по убыванию оценки
+        scored_records.sort(key=lambda x: x[1], reverse=True)
+
+        # Возвращаем запись с наивысшей оценкой
+        return scored_records[0][0]
+
+    def _calculate_record_score(self, record: DatabaseRecord) -> float:
+        """
+        Рассчитать оценку качества записи.
+
+        Чем выше оценка, тем лучше запись.
+        """
+        score = 0.0
+
+        # Критерий 1: Класс надежности (1 = лучший, 5 = худший)
+        if record.reliability_class is not None:
+            score += (6 - record.reliability_class) * 100  # 1→5*100, 2→4*100, и т.д.
+
+        # Критерий 2: Ширина температурного диапазона
+        if record.tmin is not None and record.tmax is not None:
+            temp_range = record.tmax - record.tmin
+            score += min(temp_range / 100, 50)  # Максимум 50 баллов за диапазон
+
+        # Критерий 3: Наличие стандартных свойств ( nonzero values)
+        if record.h298 is not None and record.h298 != 0:
+            score += 20
+        if record.s298 is not None and record.s298 != 0:
+            score += 20
+
+        # Критерий 4: Наличие фазовых переходов
+        if record.tmelt is not None and record.tmelt > 0:
+            score += 10
+        if record.tboil is not None and record.tboil > 0:
+            score += 10
+
+        # Критерий 5: Полнота термодинамических коэффициентов
+        coefficients_count = 0
+        for coeff in [record.f1, record.f2, record.f3, record.f4, record.f5, record.f6]:
+            if coeff is not None and coeff != 0:
+                coefficients_count += 1
+        score += coefficients_count * 5
+
+        # Критерий 6: Предпочтение фазы для чистых соединений
+        formula = (record.formula or "").strip().upper()
+        if self._is_pure_compound(formula):
+            phase = (record.phase or "").strip().lower()
+            # Предпочитаем твердую фазу (s), затем жидкость (l), затем газ (g)
+            if phase == 's':
+                score += 15  # Твердая фаза наиболее стабильна
+            elif phase == 'l':
+                score += 10  # Жидкая фаза
+            elif phase == 'g':
+                score += 5   # Газовая фаза
+            # aqu фаза получает нейтральный балл
+
+        return score
+
+    def get_stage_name(self) -> str:
+        return "Удаление дубликатов"

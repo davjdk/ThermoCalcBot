@@ -272,30 +272,30 @@ class PerformanceOptimizedFilterPipeline:
 
         # Проверка temperature coverage
         for record in records:
-            if record.t_min > temp_min:
-                diff = record.t_min - temp_min
+            if record.tmin > temp_min:
+                diff = record.tmin - temp_min
                 validation_results["temperature_coverage"] = False
                 issues.append({
                     "severity": "MEDIUM" if diff > 50 else "LOW",
-                    "description": f"{record.formula}: t_min={record.t_min}K > required {temp_min}K (diff: {diff}K)",
+                    "description": f"{record.formula}: tmin={record.tmin}K > required {temp_min}K (diff: {diff}K)",
                     "impact": f"Extrapolation required for {diff}K",
                     "risk": "MEDIUM" if diff > 50 else "LOW",
                     "recommendations": [
-                        f"Search for alternative {record.formula} records with lower t_min",
+                        f"Search for alternative {record.formula} records with lower tmin",
                         "Validate extrapolation results"
                     ]
                 })
 
-            if record.t_max < temp_max:
-                diff = temp_max - record.t_max
+            if record.tmax < temp_max:
+                diff = temp_max - record.tmax
                 validation_results["temperature_coverage"] = False
                 issues.append({
                     "severity": "MEDIUM" if diff > 50 else "LOW",
-                    "description": f"{record.formula}: t_max={record.t_max}K < required {temp_max}K (diff: {diff}K)",
+                    "description": f"{record.formula}: tmax={record.tmax}K < required {temp_max}K (diff: {diff}K)",
                     "impact": f"Extrapolation required for {diff}K",
                     "risk": "MEDIUM" if diff > 50 else "LOW",
                     "recommendations": [
-                        f"Search for alternative {record.formula} records with higher t_max"
+                        f"Search for alternative {record.formula} records with higher tmax"
                     ]
                 })
 
@@ -694,6 +694,24 @@ class FilterPipeline:
                         }
                     )
 
+                # НОВОЕ: Логируем завершение фильтрации перед ранним возвратом
+                if self.session_logger:
+                    duration_seconds = total_time / 1000.0
+                    warnings = []
+                    if len(current_records) == 0:
+                        warnings.append("No records found after filtering")
+
+                    # Конвертируем записи в словари для логирования
+                    final_records_dict = [r.model_dump() for r in current_records]
+
+                    self.session_logger.log_filtering_complete(
+                        final_count=len(current_records),
+                        initial_count=len(records),
+                        duration=duration_seconds,
+                        warnings=warnings,
+                        final_records=final_records_dict
+                    )
+
                 return FilterResult(
                     filtered_records=current_records,
                     stage_statistics=self.statistics.copy(),
@@ -720,9 +738,13 @@ class FilterPipeline:
         )
 
         # НОВОЕ: Логирование завершения фильтрации
+
         if self.session_logger:
             duration_seconds = total_time / 1000.0
             warnings = []
+
+            # DEBUG: Проверяем вызов log_filtering_complete
+            print(f"DEBUG: Calling log_filtering_complete with {len(current_records)} records")
 
             # Собираем предупреждения на основе статистики
             if len(current_records) == 0:
@@ -786,6 +808,73 @@ class FilterPipeline:
             "statistics_count": len(self.statistics),
         }
 
+    def _validate_final_records(
+        self,
+        records: List[DatabaseRecord],
+        context: FilterContext
+    ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+        """
+        Валидация финального набора записей.
+
+        Returns:
+            Tuple[validation_results, issues]
+        """
+        validation_results = {
+            "all_compounds_present": len(records) > 0,
+            "temperature_coverage": True,
+            "phase_consistency": True,
+            "data_quality": True
+        }
+
+        issues = []
+        temp_min, temp_max = context.temperature_range
+
+        # Проверка temperature coverage
+        for record in records:
+            if record.tmin > temp_min:
+                diff = record.tmin - temp_min
+                validation_results["temperature_coverage"] = False
+                issues.append({
+                    "severity": "MEDIUM" if diff > 50 else "LOW",
+                    "description": f"{record.formula}: tmin={record.tmin}K > required {temp_min}K (diff: {diff}K)",
+                    "impact": f"Extrapolation required for {diff}K",
+                    "risk": "MEDIUM" if diff > 50 else "LOW",
+                    "recommendations": [
+                        f"Search for alternative {record.formula} records with lower tmin",
+                        "Validate extrapolation results"
+                    ]
+                })
+
+            if record.tmax < temp_max:
+                diff = temp_max - record.tmax
+                validation_results["temperature_coverage"] = False
+                issues.append({
+                    "severity": "MEDIUM" if diff > 50 else "LOW",
+                    "description": f"{record.formula}: tmax={record.tmax}K < required {temp_max}K (diff: {diff}K)",
+                    "impact": f"Extrapolation required for {diff}K",
+                    "risk": "MEDIUM" if diff > 50 else "LOW",
+                    "recommendations": [
+                        f"Search for alternative {record.formula} records with higher tmax"
+                    ]
+                })
+
+        # Проверка data quality
+        for record in records:
+            if record.h298 == 0 and record.s298 == 0:
+                validation_results["data_quality"] = False
+                issues.append({
+                    "severity": "HIGH",
+                    "description": f"{record.formula}: H298=0, S298=0",
+                    "impact": "May affect reaction enthalpy/entropy calculations",
+                    "risk": "HIGH",
+                    "recommendations": [
+                        f"Consider manual review for {record.formula}",
+                        "Search for alternative data sources"
+                    ]
+                })
+
+        return validation_results, issues
+
 
 class FilterPipelineBuilder:
     """
@@ -796,6 +885,13 @@ class FilterPipelineBuilder:
 
     def __init__(self):
         self.pipeline = FilterPipeline()
+
+    def with_deduplication(self, **kwargs) -> "FilterPipelineBuilder":
+        """Добавить стадию удаления дубликатов (первая стадия)."""
+        from .filter_stages import DeduplicationStage
+
+        self.pipeline.add_stage(DeduplicationStage(**kwargs))
+        return self
 
     def with_reaction_validation(self, **kwargs) -> "FilterPipelineBuilder":
         """Добавить стадию валидации реакции (Stage 0)."""

@@ -248,20 +248,91 @@ class SessionLogger:
         self._write(f"Records to display: {display_count} (first batch)")
         self._write("")
 
-        # Результаты в виде таблицы
-        if results:
-            self._write(separator)
-            self._write(f"[SEARCH RESULTS] First {display_count} records")
-            self._write(separator)
+        # Результаты в виде таблицы (вывод отключен по требованию пользователя)
+        # Таблицы с дубликатами из базы данных больше не показываются
+        # if results:
+        #     self._write(separator)
+        #     self._write(f"[SEARCH RESULTS] First {display_count} records")
+        #     self._write(separator)
+        #
+        #     # Берём первые 30 записей
+        #     display_results = results[:30]
+        #
+        #     # Форматирование через tabulate
+        #     table_data = []
+        #     headers = list(display_results[0].keys())
+        #
+        #     for row in display_results:
+        #         formatted_row = []
+        #         for key in headers:
+        #             value = row[key]
+        #             # Сокращение длинных значений
+        #             if isinstance(value, str) and len(value) > 50:
+        #                 value = value[:47] + "..."
+        #             formatted_row.append(value)
+        #         table_data.append(formatted_row)
+        #
+        #     # Создание таблицы
+        #     table = tabulate(
+        #         table_data,
+        #         headers=headers,
+        #         tablefmt="grid",
+        #         numalign="right",
+        #         stralign="left"
+        #     )
+        #     self._write(table)
+        #
+        #     if len(results) > 30:
+        #         remaining = len(results) - 30
+        #         self._write(f"\n... and {remaining} more records (not shown)")
 
-            # Берём первые 30 записей
-            display_results = results[:30]
+        self._write("")
+
+        # Группировка по формулам (опционально)
+        self._log_formula_distribution(results)
+
+    def log_deduplicated_results(
+        self,
+        original_results: List[Dict[str, Any]],
+        deduplicated_results: List[Dict[str, Any]],
+        compound_formula: str,
+        execution_time: float = 0.0
+    ) -> None:
+        """
+        Логирование результатов после дедупликации.
+
+        Args:
+            original_results: Оригинальные результаты с дубликатами
+            deduplicated_results: Результаты после удаления дубликатов
+            compound_formula: Формула соединения
+            execution_time: Время выполнения дедупликации
+        """
+        separator = "=" * 80
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+
+        self._write(separator)
+        self._write(f"[DEDUPLICATION RESULTS] {timestamp}")
+        self._write(separator)
+
+        self._write(f"Compound: {compound_formula}")
+        self._write(f"Original records: {len(original_results)}")
+        self._write(f"Deduplicated records: {len(deduplicated_results)}")
+        self._write(f"Duplicates removed: {len(original_results) - len(deduplicated_results)}")
+        self._write(f"Deduplication rate: {((len(original_results) - len(deduplicated_results)) / len(original_results) * 100):.1f}%")
+        self._write(f"Execution time: {execution_time*1000:.1f} ms")
+        self._write("")
+
+        # Результаты в виде таблицы после дедупликации
+        if deduplicated_results:
+            self._write(separator)
+            self._write(f"[RESULTS AFTER DEDUPLICATION] All {len(deduplicated_results)} unique records")
+            self._write(separator)
 
             # Форматирование через tabulate
             table_data = []
-            headers = list(display_results[0].keys())
+            headers = list(deduplicated_results[0].keys())
 
-            for row in display_results:
+            for row in deduplicated_results:
                 formatted_row = []
                 for key in headers:
                     value = row[key]
@@ -281,14 +352,10 @@ class SessionLogger:
             )
             self._write(table)
 
-            if len(results) > 30:
-                remaining = len(results) - 30
-                self._write(f"\n... and {remaining} more records (not shown)")
-
         self._write("")
 
-        # Группировка по формулам (опционально)
-        self._log_formula_distribution(results)
+        # Группировка по формулам после дедупликации
+        self._log_formula_distribution(deduplicated_results)
 
     def _log_formula_distribution(self, results: List[Dict[str, Any]]) -> None:
         """Логирование распределения результатов по формулам."""
@@ -408,10 +475,13 @@ class SessionLogger:
             self._log_phase_distribution(output_records, label="  After")
             self._write("")
 
-        # Результаты после этапа (первые 30)
+        # Результаты после этапа (первые 30) - только для STAGE 1 (дедупликация) и последней стадии
         if output_count > 0 and output_records:
-            self._write(f"Records after stage {stage_number} (first 30):")
-            self._log_records_table(output_records, max_records=30)
+            # Выводим таблицу после STAGE 1 (дедупликация)
+            if stage_number == 1 or stage_name.lower().find("дубликат") != -1:
+                self._write(f"Records after stage {stage_number} (first 30):")
+                self._log_records_table(output_records, max_records=30)
+            # Для других стадий таблицы не выводим
         self._write("")
 
     def log_filtering_pipeline_start(
@@ -461,11 +531,9 @@ class SessionLogger:
         self._write(f"Errors: 0")
         self._write("")
 
-        # Предупреждения
+        # Предупреждения (вывод убран по требованию пользователя)
         if warnings:
-            self._write("Issues detected:")
-            for i, warning in enumerate(warnings, 1):
-                self._write(f"  {i}. {warning}")
+            self._write(f"Warnings: {len(warnings)} warnings detected")
             self._write("")
 
         # Финальный датасет
@@ -550,35 +618,11 @@ class SessionLogger:
             self._write(f"  {status} {check_display}: {result}")
         self._write("")
 
-        # Найденные проблемы
+        # Пропускаем вывод проблем и рекомендаций по требованию пользователя
+        # Секция "Issues detected:" и "Recommendations:" удалены
         if issues:
-            self._write("Issues detected:")
-            for i, issue in enumerate(issues, 1):
-                severity = issue.get("severity", "MEDIUM")
-                impact = issue.get("impact", "Unknown impact")
-                risk = issue.get("risk", "MEDIUM")
-                description = issue.get("description", "")
-
-                self._write(f"  {i}. {description}")
-                self._write(f"     Impact: {impact}")
-                self._write(f"     Risk: {risk}")
-                if i < len(issues):
-                    self._write("")
+            # Только подсчитываем количество проблем для статистики
+            issue_count = len(issues)
+            if issue_count > 0:
+                self._write(f"Validation completed with {issue_count} issue(s) detected")
         self._write("")
-
-        # Рекомендации (если есть)
-        if issues:
-            recommendations = []
-            for issue in issues:
-                if "recommendations" in issue:
-                    recommendations.extend(issue["recommendations"])
-                elif "recommendation" in issue:
-                    recommendations.append(issue["recommendation"])
-
-            if recommendations:
-                self._write("Recommendations:")
-                # Уникальные рекомендации
-                unique_recommendations = list(set(recommendations))
-                for rec in unique_recommendations:
-                    self._write(f"  • {rec}")
-                self._write("")

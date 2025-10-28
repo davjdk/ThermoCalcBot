@@ -144,8 +144,37 @@ class MultiPhaseOrchestrator:
         self.compound_formatter = CompoundDataFormatter(self.calculator)
         self.reaction_formatter = ReactionCalculationFormatter(self.calculator)
 
-        # 6. FilterPipeline с SessionLogger
+        # 6. FilterPipeline с SessionLogger - строим полный 6-стадийный конвейер
+        from .filtering.filter_pipeline import FilterPipeline
+        from .filtering.filter_stages import (
+            DeduplicationStage, TemperatureFilterStage, PhaseSelectionStage,
+            ReliabilityPriorityStage, FormulaConsistencyStage
+        )
+        from .filtering.phase_based_temperature_stage import PhaseBasedTemperatureStage
+        from .filtering.phase_resolver import PhaseResolver
+        from .filtering.temperature_resolver import TemperatureResolver
+
+        # Создаем конвейер с SessionLogger
         self.filter_pipeline = FilterPipeline(session_logger=self.session_logger)
+
+        # Стадия 1: Удаление дубликатов
+        self.filter_pipeline.add_stage(DeduplicationStage())
+
+        # Стадия 2: Температурная фильтрация
+        self.filter_pipeline.add_stage(TemperatureFilterStage())
+
+        # Стадия 3: Умная фазовая и температурная фильтрация
+        self.filter_pipeline.add_stage(PhaseBasedTemperatureStage())
+
+        # Стадия 4: Выбор фазы
+        phase_resolver = PhaseResolver()
+        self.filter_pipeline.add_stage(PhaseSelectionStage(phase_resolver))
+
+        # Стадия 5: Проверка согласованности формул
+        self.filter_pipeline.add_stage(FormulaConsistencyStage())
+
+        # Стадия 6: Приоритизация по надежности
+        self.filter_pipeline.add_stage(ReliabilityPriorityStage())
 
         # 7. ThermodynamicAgent (LLM)
         if self.config.llm_api_key:
@@ -222,6 +251,53 @@ class MultiPhaseOrchestrator:
             self.logger.error(f"Ошибка обработки запроса: {e}")
             return f"❌ Ошибка обработки запроса: {str(e)}"
 
+    def _apply_deduplication(
+        self,
+        records: List[DatabaseRecord],
+        compound_formula: str,
+        temperature_range: Tuple[float, float]
+    ) -> List[DatabaseRecord]:
+        """
+        Применить дедупликацию к записям с использованием FilterPipeline.
+
+        Args:
+            records: Список записей для дедупликации
+            compound_formula: Формула соединения
+            temperature_range: Температурный диапазон
+
+        Returns:
+            Список уникальных записей после дедупликации
+        """
+        if not records:
+            return records
+
+        # Создаем контекст фильтрации
+        context = FilterContext(
+            temperature_range=temperature_range,
+            compound_formula=compound_formula,
+            user_query=compound_formula
+        )
+
+        # Применяем конвейер фильтрации (содержащий только DeduplicationStage)
+        result = self.filter_pipeline.execute(records, context)
+
+        # Логирование результатов дедупликации
+        if self.session_logger and result.filtered_records != records:
+            # Конвертируем записи в словари для логирования
+            original_dicts = [r.model_dump() for r in records]
+            deduplicated_dicts = [r.model_dump() for r in result.filtered_records]
+            execution_time = self.filter_pipeline.get_last_execution_time_ms() / 1000.0 if self.filter_pipeline.get_last_execution_time_ms() else 0.0
+
+            self.session_logger.log_deduplicated_results(
+                original_results=original_dicts,
+                deduplicated_results=deduplicated_dicts,
+                compound_formula=compound_formula,
+                execution_time=execution_time
+            )
+
+        # Возвращаем отфильтрованные записи
+        return result.filtered_records
+
     async def _process_compound_data_multi_phase(
         self,
         params: ExtractedReactionParameters
@@ -258,13 +334,26 @@ class MultiPhaseOrchestrator:
             f"{search_result.phase_count} фаз"
         )
 
-        # Шаг 2: Многофазный расчёт
-        mp_result = self.calculator.calculate_multi_phase_properties(
+        # Шаг 2: Дедупликация записей
+        temperature_range = params.temperature_range_k
+        deduplicated_records = self._apply_deduplication(
             records=search_result.records,
+            compound_formula=formula,
+            temperature_range=temperature_range
+        )
+
+        self.logger.info(
+            f"После дедупликации: {len(deduplicated_records)} уникальных записей "
+            f"(удалено {len(search_result.records) - len(deduplicated_records)} дубликатов)"
+        )
+
+        # Шаг 3: Многофазный расчёт
+        mp_result = self.calculator.calculate_multi_phase_properties(
+            records=deduplicated_records,
             trajectory=[T_max]  # Используем правильный параметр
         )
 
-        # Шаг 3: Форматирование результата
+        # Шаг 4: Форматирование результата
         compound_name = search_result.records[0].name or formula
 
         # Форматирование данных вещества
@@ -366,7 +455,25 @@ class MultiPhaseOrchestrator:
             )
             if not result.records:
                 return f"❌ Не найдено вещество: {formula}"
+
+            # Сохраняем оригинальное количество записей для логирования
+            original_count = len(result.records)
+
+            # Применяем дедупликацию к результатам поиска
+            deduplicated_records = self._apply_deduplication(
+                records=result.records,
+                compound_formula=formula,
+                temperature_range=params.temperature_range_k
+            )
+
+            # Обновляем результат с дедуплицированными записями
+            result.records = deduplicated_records
             reactant_results.append(result)
+
+            self.logger.info(
+                f"Реагент {formula}: {len(deduplicated_records)} уникальных записей "
+                f"(из {original_count} оригинальных)"
+            )
 
         # Поиск продуктов
         product_results = []
@@ -377,7 +484,25 @@ class MultiPhaseOrchestrator:
             )
             if not result.records:
                 return f"❌ Не найдено вещество: {formula}"
+
+            # Сохраняем оригинальное количество записей для логирования
+            original_count = len(result.records)
+
+            # Применяем дедупликацию к результатам поиска
+            deduplicated_records = self._apply_deduplication(
+                records=result.records,
+                compound_formula=formula,
+                temperature_range=params.temperature_range_k
+            )
+
+            # Обновляем результат с дедуплицированными записями
+            result.records = deduplicated_records
             product_results.append(result)
+
+            self.logger.info(
+                f"Продукт {formula}: {len(deduplicated_records)} уникальных записей "
+                f"(из {original_count} оригинальных)"
+            )
 
         # Временно используем существующий форматтер
         return self.reaction_formatter.format_response(
