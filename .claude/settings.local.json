@@ -38,7 +38,10 @@
       "Bash(PYTHONPATH=src uv run pytest:*)",
       "Bash(PYTHONPATH=../../src uv run pytest:*)",
       "mcp__ide__executeCode",
-      "Bash(set:*)"
+      "Bash(set:*)",
+      "Bash(dir logssessions)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []

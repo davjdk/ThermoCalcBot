@@ -31,6 +31,29 @@ from ..utils.chem_utils import (
 
 
 @dataclass
+class FilterContext:
+    """Контекст фильтрации, передаваемый между стадиями."""
+
+    temperature_range: Tuple[float, float]
+    compound_formula: str
+    user_query: Optional[str] = None
+    additional_params: Optional[Dict[str, Any]] = None
+    reaction_params: Optional[ExtractedReactionParameters] = None  # НОВОЕ
+
+    def __post_init__(self):
+        """Валидация контекста после инициализации."""
+        if self.temperature_range[0] > self.temperature_range[1]:
+            raise ValueError(
+                "Минимальная температура не может быть больше максимальной"
+            )
+        if not self.compound_formula:
+            raise ValueError("Формула соединения не может быть пустой")
+
+        if self.additional_params is None:
+            self.additional_params = {}
+
+
+@dataclass
 class CacheEntry:
     """Элемент кэша для результатов фильтрации."""
     result: List["DatabaseRecord"]
@@ -226,28 +249,72 @@ class PerformanceOptimizedFilterPipeline:
             "last_execution_time_ms": self._last_execution_time_ms,
         }
 
+    def _validate_final_records(
+        self,
+        records: List[DatabaseRecord],
+        context: FilterContext
+    ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+        """
+        Валидация финального набора записей.
 
-@dataclass
-class FilterContext:
-    """Контекст фильтрации, передаваемый между стадиями."""
+        Returns:
+            Tuple[validation_results, issues]
+        """
+        validation_results = {
+            "all_compounds_present": len(records) > 0,
+            "temperature_coverage": True,
+            "phase_consistency": True,
+            "data_quality": True
+        }
 
-    temperature_range: Tuple[float, float]
-    compound_formula: str
-    user_query: Optional[str] = None
-    additional_params: Optional[Dict[str, Any]] = None
-    reaction_params: Optional[ExtractedReactionParameters] = None  # НОВОЕ
+        issues = []
+        temp_min, temp_max = context.temperature_range
 
-    def __post_init__(self):
-        """Валидация контекста после инициализации."""
-        if self.temperature_range[0] > self.temperature_range[1]:
-            raise ValueError(
-                "Минимальная температура не может быть больше максимальной"
-            )
-        if not self.compound_formula:
-            raise ValueError("Формула соединения не может быть пустой")
+        # Проверка temperature coverage
+        for record in records:
+            if record.t_min > temp_min:
+                diff = record.t_min - temp_min
+                validation_results["temperature_coverage"] = False
+                issues.append({
+                    "severity": "MEDIUM" if diff > 50 else "LOW",
+                    "description": f"{record.formula}: t_min={record.t_min}K > required {temp_min}K (diff: {diff}K)",
+                    "impact": f"Extrapolation required for {diff}K",
+                    "risk": "MEDIUM" if diff > 50 else "LOW",
+                    "recommendations": [
+                        f"Search for alternative {record.formula} records with lower t_min",
+                        "Validate extrapolation results"
+                    ]
+                })
 
-        if self.additional_params is None:
-            self.additional_params = {}
+            if record.t_max < temp_max:
+                diff = temp_max - record.t_max
+                validation_results["temperature_coverage"] = False
+                issues.append({
+                    "severity": "MEDIUM" if diff > 50 else "LOW",
+                    "description": f"{record.formula}: t_max={record.t_max}K < required {temp_max}K (diff: {diff}K)",
+                    "impact": f"Extrapolation required for {diff}K",
+                    "risk": "MEDIUM" if diff > 50 else "LOW",
+                    "recommendations": [
+                        f"Search for alternative {record.formula} records with higher t_max"
+                    ]
+                })
+
+        # Проверка data quality
+        for record in records:
+            if record.h298 == 0 and record.s298 == 0:
+                validation_results["data_quality"] = False
+                issues.append({
+                    "severity": "HIGH",
+                    "description": f"{record.formula}: H298=0, S298=0",
+                    "impact": "May affect reaction enthalpy/entropy calculations",
+                    "risk": "HIGH",
+                    "recommendations": [
+                        f"Consider manual review for {record.formula}",
+                        "Search for alternative data sources"
+                    ]
+                })
+
+        return validation_results, issues
 
 
 class FilterStage(ABC):
@@ -303,16 +370,17 @@ class FilterPipeline:
     Оптимизированный конвейер фильтрации для прямых вызовов.
 
     Особенности оптимизации:
-    - Убрана зависимость от session_logger
+    - Опциональная зависимость от session_logger
     - Прямые вызовы стадий без message passing
     - Упрощенная архитектура для предсказуемости
     - Сохранена статистика для отладки
     """
 
-    def __init__(self):
+    def __init__(self, session_logger: Optional[Any] = None):
         self.stages: List[FilterStage] = []
         self.statistics: List[Dict[str, Any]] = []
         self._last_execution_time_ms: Optional[float] = None
+        self.session_logger = session_logger
 
     def _prefilter_exclude_ions(
         self, records: List[DatabaseRecord], query: Optional[str] = None
@@ -442,6 +510,18 @@ class FilterPipeline:
         ionic_records = []  # Сохраняем исключённые ионные записи
         prefilter_applied = False
 
+        # НОВОЕ: Логирование начала pipeline фильтрации
+        if self.session_logger:
+            required_compounds = [context.compound_formula]
+            if context.reaction_params and context.reaction_params.all_compounds:
+                required_compounds = context.reaction_params.all_compounds
+
+            self.session_logger.log_filtering_pipeline_start(
+                input_count=len(records),
+                target_temp_range=context.temperature_range,
+                required_compounds=required_compounds
+            )
+
         # Добавляем начальную статистику
         self.statistics.append(
             {
@@ -501,6 +581,43 @@ class FilterPipeline:
                 }
             )
             self.statistics.append(stats)
+
+            # НОВОЕ: Логирование этапа фильтрации
+            if self.session_logger:
+                # Определяем удалённые записи для логирования
+                removed_records = []
+                removal_reasons = {}
+
+                if len(current_records) > len(filtered):
+                    # Находим удалённые записи
+                    current_ids = {r.id for r in current_records}
+                    filtered_ids = {r.id for r in filtered}
+                    removed_ids = current_ids - filtered_ids
+
+                    removed_records = [r.model_dump() for r in current_records if r.id in removed_ids]
+
+                    # Группируем причины удаления (примерная логика)
+                    removal_reasons = {
+                        f"Filtered by {stage.get_stage_name()}": [
+                            f"Record ID: {r.id}, Formula: {getattr(r, 'formula', 'N/A')}"
+                            for r in current_records if r.id in removed_ids
+                        ]
+                    }
+
+                # Логируем этап
+                input_records_dict = [r.model_dump() for r in current_records]
+                output_records_dict = [r.model_dump() for r in filtered]
+
+                self.session_logger.log_filtering_stage(
+                    stage_name=stage.get_stage_name(),
+                    stage_number=i,
+                    criteria=stats.get("filter_criteria", {}),
+                    input_count=len(current_records),
+                    output_count=len(filtered),
+                    input_records=input_records_dict,
+                    output_records=output_records_dict,
+                    removal_reasons=removal_reasons
+                )
 
             # Проверка провала
             if len(filtered) == 0:
@@ -601,6 +718,45 @@ class FilterPipeline:
                 "stages_executed": len(self.stages),
             }
         )
+
+        # НОВОЕ: Логирование завершения фильтрации
+        if self.session_logger:
+            duration_seconds = total_time / 1000.0
+            warnings = []
+
+            # Собираем предупреждения на основе статистики
+            if len(current_records) == 0:
+                warnings.append("No records found after filtering")
+            elif len(current_records) < 3:
+                warnings.append(f"Only {len(current_records)} records found - may be insufficient for reliable analysis")
+
+            # Проверяем температурное покрытие
+            temp_min, temp_max = context.temperature_range
+            for record in current_records[:5]:  # Проверяем первые 5 записей
+                if hasattr(record, 't_min') and hasattr(record, 't_max'):
+                    if record.t_min > temp_max or record.t_max < temp_min:
+                        warnings.append(f"Record {record.id} has incomplete temperature coverage")
+                        break
+
+            # Валидация финального набора
+            validation_results, issues = self._validate_final_records(
+                current_records, context
+            )
+            self.session_logger.log_validation_check(
+                validation_results=validation_results,
+                issues=issues
+            )
+
+            # Конвертируем записи в словари для логирования
+            final_records_dict = [r.model_dump() for r in current_records]
+
+            self.session_logger.log_filtering_complete(
+                final_count=len(current_records),
+                initial_count=len(records),
+                duration=duration_seconds,
+                warnings=warnings,
+                final_records=final_records_dict
+            )
 
         return FilterResult(
             filtered_records=current_records,

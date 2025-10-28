@@ -43,6 +43,7 @@ from .models.extraction import ExtractedReactionParameters
 from .models.search import CompoundSearchResult
 from .search.compound_searcher import CompoundSearcher
 from .thermodynamic_agent import ThermodynamicAgent
+from .session_logger import SessionLogger
 
 
 class OrchestratorRequest(BaseModel):
@@ -386,6 +387,7 @@ class Orchestrator:
         compound_searcher: CompoundSearcher,
         filter_pipeline: FilterPipeline,
         config: Optional[OrchestratorConfig] = None,
+        session_logger: Optional[SessionLogger] = None,
     ):
         """
         Инициализация оркестратора с маршрутизацией.
@@ -395,10 +397,12 @@ class Orchestrator:
             compound_searcher: Поисковик соединений
             filter_pipeline: Конвейер фильтрации
             config: Конфигурация оркестратора
+            session_logger: Логгер сессии (опционально)
         """
         self.thermodynamic_agent = thermodynamic_agent
         self.compound_searcher = compound_searcher
         self.filter_pipeline = filter_pipeline
+        self.session_logger = session_logger
 
         # Новые компоненты для форматирования v2.1
         self.calculator = ThermodynamicCalculator()
@@ -421,8 +425,33 @@ class Orchestrator:
         try:
             self.logger.info(f"Обработка запроса: {user_query}")
 
-            # Извлечение параметров
-            params = await self.thermodynamic_agent.extract_parameters(user_query)
+            # Логирование запроса пользователя
+            if self.session_logger:
+                self.session_logger.log_llm_request(user_query)
+
+            # Извлечение параметров с замером времени
+            import time
+            start_time = time.time()
+
+            try:
+                params = await self.thermodynamic_agent.extract_parameters(user_query)
+                duration = time.time() - start_time
+
+                # Логирование успешного ответа LLM
+                if self.session_logger:
+                    params_dict = params.model_dump()
+                    self.session_logger.log_llm_response(
+                        response=params_dict,
+                        duration=duration,
+                        model=getattr(self.thermodynamic_agent, 'model_name', 'unknown')
+                    )
+            except Exception as e:
+                duration = time.time() - start_time
+                # Логирование ошибки LLM
+                if self.session_logger:
+                    self.session_logger.log_llm_error(e, raw_response="")
+                raise
+
             self.logger.debug(f"Извлечённые параметры: query_type={params.query_type}")
 
             # Маршрутизация по типу запроса

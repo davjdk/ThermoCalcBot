@@ -4,6 +4,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 # Устанавливаем кодировку для Windows
 if sys.platform == "win32":
@@ -23,17 +24,19 @@ from thermo_agents.orchestrator_multi_phase import (
     MultiPhaseOrchestrator,
     MultiPhaseOrchestratorConfig
 )
+from thermo_agents.session_logger import SessionLogger
 
 # Загрузка переменных окружения
 load_dotenv()
 
 
-def create_orchestrator(db_path: str = "data/thermo_data.db") -> MultiPhaseOrchestrator:
+def create_orchestrator(db_path: str = "data/thermo_data.db", session_logger: Optional[SessionLogger] = None) -> MultiPhaseOrchestrator:
     """
     Создание и настройка многофазного оркестратора термодинамической системы.
 
     Args:
         db_path: Путь к файлу базы данных
+        session_logger: Логгер сессии (опционально)
 
     Returns:
         Настроенный MultiPhaseOrchestrator с поддержкой многофазных расчётов
@@ -48,8 +51,8 @@ def create_orchestrator(db_path: str = "data/thermo_data.db") -> MultiPhaseOrche
         integration_points=100,  # Точность численного интегрирования
     )
 
-    # Создание оркестратора
-    orchestrator = MultiPhaseOrchestrator(config)
+    # Создание оркестратора с SessionLogger
+    orchestrator = MultiPhaseOrchestrator(config, session_logger=session_logger)
 
     return orchestrator
 
@@ -58,7 +61,6 @@ async def main_interactive():
     """Главная функция в режиме ожидания запросов пользователя."""
     # Инициализация
     db_path = Path(__file__).parent / "data" / "thermo_data.db"
-    orchestrator: MultiPhaseOrchestrator = create_orchestrator(str(db_path))
 
     print("\nТермодинамическая система v2.0")
     print("Гибридная архитектура: LLM + детерминированная логика\n")
@@ -73,18 +75,20 @@ async def main_interactive():
 
             print()
 
-            try:
-                # Обработка запроса
-                response = await orchestrator.process_query(query)
+            # Создаем новый SessionLogger для каждого запроса
+            with SessionLogger() as session_logger:
+                # Инициализация оркестратора с логгером сессии
+                orchestrator: MultiPhaseOrchestrator = create_orchestrator(str(db_path), session_logger)
 
-  # Логирование упрощено в многофазной архитектуре
+                try:
+                    # Обработка запроса
+                    response = await orchestrator.process_query(query)
 
-                print(response)
-                print()
-            except Exception as e:
-                print(f"Ошибка обработки: {e}\n")
-
-                # Логирование ошибок упрощено в многофазной архитектуре
+                    print(response)
+                    print()
+                except Exception as e:
+                    print(f"Ошибка обработки: {e}\n")
+                    # Логгер сессии автоматически закроется с ошибкой через context manager
 
     except KeyboardInterrupt:
         print("\n\nЗавершение работы...")
@@ -99,53 +103,46 @@ async def main_test():
     """Тестовый режим с предопределённым запросом."""
     # Инициализация
     db_path = Path(__file__).parent / "data" / "thermo_data.db"
-    orchestrator: MultiPhaseOrchestrator = create_orchestrator(str(db_path))
-
-    # Логирование упрощено в многофазной архитектуре
 
     print("\n" + "=" * 80)
     print("Термодинамическая система v2.0 - ТЕСТОВЫЙ РЕЖИМ")
     print("=" * 80)
 
     # Тестовый запрос
-    test_query = "Реагирует ли сероводород с оксидом железа(III) при температуре 500–700 °C??"
+    test_query = "Реагирует ли сероводород с оксидом железа(III) при температуре 500–700 °C?"
 
-    # Логирование упрощено в многофазной архитектуре
+    # Создаем SessionLogger для тестового запроса
+    with SessionLogger() as session_logger:
+        # Инициализация оркестратора с логгером сессии
+        orchestrator: MultiPhaseOrchestrator = create_orchestrator(str(db_path), session_logger)
 
-    try:
-        # Обработка запроса
-        response = await orchestrator.process_query(test_query)
+        try:
+            # Обработка запроса
+            response = await orchestrator.process_query(test_query)
 
-        # Логирование упрощено в многофазной архитектуре
+            # Убираем эмодзи и Unicode символы для совместимости с Windows
+            response_clean = response.replace("✅", "[OK]").replace("❌", "[ОШИБКА]")
+            response_clean = response_clean.replace("⚠️", "[ВНИМАНИЕ]").replace(
+                "📊", "[ДАННЫЕ]"
+            )
+            response_clean = response_clean.replace("💡", "[СОВЕТ]")
+            # Дополнительная замена Unicode символов
+            response_clean = response_clean.replace("→", "->")
+            response_clean = response_clean.replace("°", " deg ")
 
-        # Убираем эмодзи и Unicode символы для совместимости с Windows
-        response_clean = response.replace("✅", "[OK]").replace("❌", "[ОШИБКА]")
-        response_clean = response_clean.replace("⚠️", "[ВНИМАНИЕ]").replace(
-            "📊", "[ДАННЫЕ]"
-        )
-        response_clean = response_clean.replace("💡", "[СОВЕТ]")
-        # Дополнительная замена Unicode символов
-        response_clean = response_clean.replace("→", "->")
-        response_clean = response_clean.replace("°", " deg ")
+            print("\n[РЕЗУЛЬТАТ]")
+            print(response_clean)
+            print("\n" + "=" * 80)
+            print("[ТЕСТ ЗАВЕРШЁН УСПЕШНО]")
+            print("=" * 80)
 
-        print("\n[РЕЗУЛЬТАТ]")
-        print(response_clean)
-        print("\n" + "=" * 80)
-        print("[ТЕСТ ЗАВЕРШЁН УСПЕШНО]")
-        print("=" * 80)
-
-        # Логирование упрощено в многофазной архитектуре
-
-    except Exception as e:
-        print(f"\n[ОШИБКА] Ошибка обработки: {e}")
-        import traceback
-
-        # Логирование упрощено в многофазной архитектуре
-
-        traceback.print_exc()
-    finally:
-        # Многофазный оркестратор не требует shutdown()
-        pass
+        except Exception as e:
+            print(f"\n[ОШИБКА] Ошибка обработки: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            # SessionLogger автоматически закроется через context manager
+            pass
 
 
 if __name__ == "__main__":

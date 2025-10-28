@@ -47,6 +47,7 @@ from .search.database_connector import DatabaseConnector
 from .search.sql_builder import SQLBuilder
 from .storage.static_data_manager import StaticDataManager
 from .thermodynamic_agent import ThermodynamicAgent
+from .session_logger import SessionLogger
 
 
 @dataclass
@@ -80,16 +81,18 @@ class MultiPhaseOrchestrator:
     - Автоматическое определение сегментов
     """
 
-    def __init__(self, config: MultiPhaseOrchestratorConfig):
+    def __init__(self, config: MultiPhaseOrchestratorConfig, session_logger: Optional[SessionLogger] = None):
         """
         Инициализация многофазного оркестратора.
 
         Args:
             config: Конфигурация оркестратора
+            session_logger: Логгер сессии (опционально)
         """
         self.config = config
         self.logger = config.logger
         self.agent_id = "multi_phase_orchestrator"
+        self.session_logger = session_logger
 
         # Настройка многофазных параметров
         self.static_cache_dir = (
@@ -124,10 +127,11 @@ class MultiPhaseOrchestrator:
         self.db_connector = DatabaseConnector(self.config.db_path)
         self.sql_builder = SQLBuilder()
 
-        # 3. CompoundSearcher с StaticDataManager
+        # 3. CompoundSearcher с StaticDataManager и SessionLogger
         self.compound_searcher = CompoundSearcher(
             sql_builder=self.sql_builder,
             db_connector=self.db_connector,
+            session_logger=self.session_logger,
             static_data_manager=self.static_data_manager
         )
 
@@ -140,8 +144,8 @@ class MultiPhaseOrchestrator:
         self.compound_formatter = CompoundDataFormatter(self.calculator)
         self.reaction_formatter = ReactionCalculationFormatter(self.calculator)
 
-        # 6. FilterPipeline
-        self.filter_pipeline = FilterPipeline()
+        # 6. FilterPipeline с SessionLogger
+        self.filter_pipeline = FilterPipeline(session_logger=self.session_logger)
 
         # 7. ThermodynamicAgent (LLM)
         if self.config.llm_api_key:
@@ -176,7 +180,33 @@ class MultiPhaseOrchestrator:
 
             # Если есть LLM агент, используем его для извлечения параметров
             if self.thermodynamic_agent:
-                params = await self.thermodynamic_agent.extract_parameters(user_query)
+                # Логирование запроса пользователя
+                if self.session_logger:
+                    self.session_logger.log_llm_request(user_query)
+
+                # Извлечение параметров с замером времени
+                import time
+                start_time = time.time()
+
+                try:
+                    params = await self.thermodynamic_agent.extract_parameters(user_query)
+                    duration = time.time() - start_time
+
+                    # Логирование успешного ответа LLM
+                    if self.session_logger:
+                        params_dict = params.model_dump()
+                        self.session_logger.log_llm_response(
+                            response=params_dict,
+                            duration=duration,
+                            model=getattr(self.thermodynamic_agent, 'model_name', 'unknown')
+                        )
+                except Exception as e:
+                    duration = time.time() - start_time
+                    # Логирование ошибки LLM
+                    if self.session_logger:
+                        self.session_logger.log_llm_error(e, raw_response="")
+                    raise
+
                 self.logger.debug(f"Извлечённые параметры: query_type={params.query_type}")
 
                 # Маршрутизация по типу запроса

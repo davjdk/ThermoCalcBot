@@ -11,9 +11,9 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..filtering.constants import (
+    DEFAULT_CACHE_SIZE,
     DEFAULT_QUERY_LIMIT,
     MAX_QUERY_LIMIT,
-    DEFAULT_CACHE_SIZE,
     MAX_RELIABILITY_CLASS,
     SLOW_OPERATION_THRESHOLD_MS,
 )
@@ -147,10 +147,33 @@ class CompoundSearcher:
                     self.session_logger.log_info(f"Параметры: {params}")
 
             # Execute query
+            start_db_time = time.time()
             raw_results = self.db_connector.execute_query(query, params)
+            db_execution_time = time.time() - start_db_time
 
             # Parse results into DatabaseRecord objects
             records = [self._parse_record(row) for row in raw_results]
+
+            # НОВОЕ: Детальное логирование поиска в БД
+            if self.session_logger:
+                # Преобразуем записи в словари для логирования
+                records_dict = [record.model_dump() for record in records]
+                parameters = {
+                    "formula": formula,
+                    "temperature_range": temperature_range,
+                    "phase": phase,
+                    "limit": limit,
+                }
+                if compound_names:
+                    parameters["compound_names"] = compound_names
+
+                self.session_logger.log_database_search(
+                    sql_query=query,
+                    parameters=parameters,
+                    results=records_dict,
+                    execution_time=db_execution_time,
+                    context=f"Searching for compound {formula}",
+                )
 
             # Update result with found records
             result.records_found = records
@@ -562,7 +585,9 @@ class CompoundSearcher:
 
         # Check for low reliability data
         low_reliability = [
-            r for r in records if r.reliability_class and r.reliability_class > MAX_RELIABILITY_CLASS
+            r
+            for r in records
+            if r.reliability_class and r.reliability_class > MAX_RELIABILITY_CLASS
         ]
         if low_reliability:
             result.add_warning(
@@ -651,7 +676,7 @@ class CompoundSearcher:
         self,
         formula: str,
         max_temperature: float,
-        compound_names: Optional[List[str]] = None
+        compound_names: Optional[List[str]] = None,
     ) -> MultiPhaseSearchResult:
         """
         Search all phases of a compound with coverage up to max_temperature.
@@ -684,13 +709,37 @@ class CompoundSearcher:
             temperature_range=None,  # Ищем все записи
             phase=None,  # Все фазы
             limit=100,  # Увеличиваем лимит
-            compound_names=compound_names
+            compound_names=compound_names,
         )
 
         # Выполнение запроса
         query, params = sql_query
+        start_db_time = time.time()
         all_records_raw = self.db_connector.execute_query(query, params)
+        db_execution_time = time.time() - start_db_time
+
         all_records = [self._parse_record(row) for row in all_records_raw]
+
+        # НОВОЕ: Логирование поиска в БД
+        if self.session_logger:
+            records_dict = [record.model_dump() for record in all_records]
+            parameters = {
+                "formula": formula,
+                "temperature_range": None,
+                "phase": None,
+                "limit": 100,
+                "max_temperature": max_temperature,
+            }
+            if compound_names:
+                parameters["compound_names"] = compound_names
+
+            self.session_logger.log_database_search(
+                sql_query=query,
+                parameters=parameters,
+                results=records_dict,
+                execution_time=db_execution_time,
+                context=f"Searching all phases for compound {formula}",
+            )
 
         if not all_records:
             self.logger.warning(f"Не найдено записей для {formula}")
@@ -701,16 +750,13 @@ class CompoundSearcher:
                 coverage_end=0.0,
                 covers_298K=False,
                 phase_count=0,
-                warnings=["Вещество не найдено в БД"]
+                warnings=["Вещество не найдено в БД"],
             )
 
         return self._build_result(formula, all_records, max_temperature)
 
     def _build_result(
-        self,
-        formula: str,
-        all_records: List[DatabaseRecord],
-        max_temperature: float
+        self, formula: str, all_records: List[DatabaseRecord], max_temperature: float
     ) -> MultiPhaseSearchResult:
         """
         Build MultiPhaseSearchResult from found records.
@@ -724,10 +770,7 @@ class CompoundSearcher:
             MultiPhaseSearchResult
         """
         # ШАГ 1: Фильтрация по температуре
-        relevant_records = [
-            rec for rec in all_records
-            if rec.tmin <= max_temperature
-        ]
+        relevant_records = [rec for rec in all_records if rec.tmin <= max_temperature]
 
         # Сортировка по Tmin
         relevant_records.sort(key=lambda r: r.tmin)
@@ -740,7 +783,7 @@ class CompoundSearcher:
                 coverage_end=0.0,
                 covers_298K=False,
                 phase_count=0,
-                warnings=["Нет записей, покрывающих требуемый температурный диапазон"]
+                warnings=["Нет записей, покрывающих требуемый температурный диапазон"],
             )
 
         # ШАГ 2: Определение покрытия
@@ -769,12 +812,11 @@ class CompoundSearcher:
             tboil=tboil,
             phase_count=phase_count,
             has_gas_phase=has_gas_phase,
-            warnings=warnings
+            warnings=warnings,
         )
 
     def _extract_phase_transitions(
-        self,
-        records: List[DatabaseRecord]
+        self, records: List[DatabaseRecord]
     ) -> Tuple[Optional[float], Optional[float]]:
         """
         Extract phase transition temperatures from records.
@@ -802,9 +844,7 @@ class CompoundSearcher:
         return tmelt, tboil
 
     def _generate_warnings(
-        self,
-        records: List[DatabaseRecord],
-        covers_298K: bool
+        self, records: List[DatabaseRecord], covers_298K: bool
     ) -> List[str]:
         """
         Generate warnings about coverage problems.
@@ -820,9 +860,7 @@ class CompoundSearcher:
 
         # Предупреждение 1: Нет покрытия 298K
         if not covers_298K:
-            warnings.append(
-                "⚠️ Отсутствует покрытие 298K (стандартная температура)"
-            )
+            warnings.append("⚠️ Отсутствует покрытие 298K (стандартная температура)")
 
         # Предупреждение 2: Пробелы между записями
         for i in range(len(records) - 1):
@@ -844,8 +882,6 @@ class CompoundSearcher:
 
         # Предупреждение 4: Нет базовой записи
         if records and not records[0].is_base_record():
-            warnings.append(
-                "⚠️ Первая запись не является базовой (H298=0, S298=0)"
-            )
+            warnings.append("⚠️ Первая запись не является базовой (H298=0, S298=0)")
 
         return warnings
