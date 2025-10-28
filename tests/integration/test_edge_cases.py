@@ -425,7 +425,7 @@ class TestExtractionModelEdgeCases:
         with pytest.raises(ValueError):
             ExtractedReactionParameters(
                 all_compounds=["H2O"],
-                temperature_range_k=[0, 100000],
+                temperature_range_k=[0, 200000],
                 balanced_equation="Test"
             )
 

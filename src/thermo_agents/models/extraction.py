@@ -137,8 +137,8 @@ class ExtractedReactionParameters(BaseModel):
             raise ValueError(f"Tmin не может быть отрицательной: {tmin}")
         if tmax <= tmin:
             raise ValueError(f"Tmax должен быть больше Tmin: {tmax} <= {tmin}")
-        if tmax > 10000:
-            raise ValueError(f"Tmax слишком высокая: {tmax} > 10000K")
+        if tmax > 150000:
+            raise ValueError(f"Tmax слишком высокая: {tmax} > 150000K")
         return v
 
     def is_complete(self) -> bool:

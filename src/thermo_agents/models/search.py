@@ -13,7 +13,9 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Define constants locally to avoid circular import
 MIN_TEMPERATURE_K = 0.0
-MAX_TEMPERATURE_K = 10000.0
+MAX_TEMPERATURE_K = 150000.0
+HIGH_TEMP_THRESHOLD = 50000.0
+EXTREME_TEMP_THRESHOLD = 100000.0
 MAX_RELIABILITY_CLASS = 3
 
 
@@ -269,6 +271,46 @@ class DatabaseRecord(BaseModel):
         """
         return not (self.tmax < other.tmin or self.tmin > other.tmax)
 
+    def has_extreme_temperatures(self) -> bool:
+        """
+        Check if this record has extreme temperature ranges.
+
+        Returns:
+            True if Tmax > EXTREME_TEMP_THRESHOLD
+        """
+        return self.tmax > EXTREME_TEMP_THRESHOLD
+
+    def has_high_temperatures(self) -> bool:
+        """
+        Check if this record has high temperature ranges.
+
+        Returns:
+            True if Tmax > HIGH_TEMP_THRESHOLD
+        """
+        return self.tmax > HIGH_TEMP_THRESHOLD
+
+    def get_temperature_warnings(self) -> List[str]:
+        """
+        Get warnings about temperature ranges for this record.
+
+        Returns:
+            List of warning messages about temperature ranges
+        """
+        warnings = []
+        if self.has_extreme_temperatures():
+            warnings.append(
+                f"Экстремально высокая температура: {self.tmax:.0f}K "
+                f"(>{EXTREME_TEMP_THRESHOLD:.0f}K). "
+                "Данные могут быть теоретическими расчетами."
+            )
+        elif self.has_high_temperatures():
+            warnings.append(
+                f"Высокая температура: {self.tmax:.0f}K "
+                f"(>{HIGH_TEMP_THRESHOLD:.0f}K). "
+                "Обычно для газовой фазы при высоких температурах."
+            )
+        return warnings
+
 
 class TemperatureRange(BaseModel):
     """Temperature range specification."""
@@ -371,6 +413,31 @@ class CompoundSearchResult(BaseModel):
     def add_warning(self, warning: str) -> None:
         """Add a warning to the search result."""
         self.warnings.append(warning)
+
+    def collect_temperature_warnings(self) -> None:
+        """
+        Collect temperature warnings from all records in this search result.
+
+        This method iterates through all found records and adds any
+        temperature-related warnings to the warnings list.
+        """
+        temp_warnings_counts = {}
+
+        for record in self.records_found:
+            record_warnings = record.get_temperature_warnings()
+            for warning in record_warnings:
+                # Count duplicate warnings to avoid repetition
+                if warning not in temp_warnings_counts:
+                    temp_warnings_counts[warning] = 0
+                temp_warnings_counts[warning] += 1
+
+        # Add unique warnings with counts
+        for warning, count in temp_warnings_counts.items():
+            if count > 1:
+                warning_with_count = f"{warning} ({count} записей)"
+                self.add_warning(warning_with_count)
+            else:
+                self.add_warning(warning)
 
     def has_records(self) -> bool:
         """Check if any records were found."""
