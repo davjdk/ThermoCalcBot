@@ -13,13 +13,10 @@
 
 from .filter_pipeline import FilterPipeline, FilterContext, FilterResult, FilterStage, FilterPipelineBuilder
 from .filter_stages import (
-    TemperatureFilterStage,
     PhaseSelectionStage,
     ReliabilityPriorityStage
 )
-from .temperature_resolver import TemperatureResolver
 from .phase_resolver import PhaseResolver
-from .temperature_range_resolver import TemperatureRangeResolver
 from .phase_segment_builder import PhaseSegmentBuilder
 from .record_selector import RecordSelector
 from .phase_segment_stage import PhaseSegmentStage, PhaseSegmentBuildingStage  # Backward compatibility
@@ -34,12 +31,9 @@ __all__ = [
     'FilterResult',
     'FilterStage',
     'FilterPipelineBuilder',
-    'TemperatureFilterStage',
     'PhaseSelectionStage',
     'ReliabilityPriorityStage',
-    'TemperatureResolver',
     'PhaseResolver',
-    'TemperatureRangeResolver',
     'PhaseSegmentBuilder',
     'RecordSelector',
     'PhaseSegmentStage',

@@ -5,7 +5,7 @@
 для расчета термодинамических свойств.
 """
 
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, List
 from tabulate import tabulate
 
 from ..calculations.thermodynamic_calculator import (

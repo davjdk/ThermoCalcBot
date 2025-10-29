@@ -10,7 +10,7 @@ import numpy as np
 
 from ..calculations.thermodynamic_calculator import ThermodynamicCalculator
 from ..models.extraction import ExtractedReactionParameters
-from ..models.search import CompoundSearchResult, DatabaseRecord, MultiPhaseProperties, MultiPhaseSearchResult
+from ..models.search import CompoundSearchResult, DatabaseRecord, MultiPhaseProperties, MultiPhaseSearchResult, MultiPhaseCompoundData
 from ..models.aggregation import MultiPhaseReactionData
 from ..models.search import PhaseTransition
 

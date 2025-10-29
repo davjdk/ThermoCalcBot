@@ -20,9 +20,9 @@ if str(src_path) not in sys.path:
 
 from dotenv import load_dotenv
 
-from thermo_agents.orchestrator_multi_phase import (
-    MultiPhaseOrchestrator,
-    MultiPhaseOrchestratorConfig
+from thermo_agents.orchestrator import (
+    ThermoOrchestrator,
+    ThermoOrchestratorConfig
 )
 from thermo_agents.session_logger import SessionLogger
 
@@ -30,19 +30,19 @@ from thermo_agents.session_logger import SessionLogger
 load_dotenv()
 
 
-def create_orchestrator(db_path: str = "data/thermo_data.db", session_logger: Optional[SessionLogger] = None) -> MultiPhaseOrchestrator:
+def create_orchestrator(db_path: str = "data/thermo_data.db", session_logger: Optional[SessionLogger] = None) -> ThermoOrchestrator:
     """
-    Создание и настройка многофазного оркестратора термодинамической системы.
+    Создание и настройка термодинамического оркестратора системы.
 
     Args:
         db_path: Путь к файлу базы данных
         session_logger: Логгер сессии (опционально)
 
     Returns:
-        Настроенный MultiPhaseOrchestrator с поддержкой многофазных расчётов
+        Настроенный ThermoOrchestrator с поддержкой многофазных расчётов
     """
-    # Конфигурация многофазного оркестратора
-    config = MultiPhaseOrchestratorConfig(
+    # Конфигурация термодинамического оркестратора
+    config = ThermoOrchestratorConfig(
         db_path=db_path,
         llm_api_key=os.getenv("OPENROUTER_API_KEY", ""),
         llm_base_url=os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1"),
@@ -52,7 +52,7 @@ def create_orchestrator(db_path: str = "data/thermo_data.db", session_logger: Op
     )
 
     # Создание оркестратора с SessionLogger
-    orchestrator = MultiPhaseOrchestrator(config, session_logger=session_logger)
+    orchestrator = ThermoOrchestrator(config, session_logger=session_logger)
 
     return orchestrator
 
@@ -78,7 +78,7 @@ async def main_interactive():
             # Создаем новый SessionLogger для каждого запроса
             with SessionLogger() as session_logger:
                 # Инициализация оркестратора с логгером сессии
-                orchestrator: MultiPhaseOrchestrator = create_orchestrator(str(db_path), session_logger)
+                orchestrator: ThermoOrchestrator = create_orchestrator(str(db_path), session_logger)
 
                 try:
                     # Обработка запроса
@@ -114,7 +114,7 @@ async def main_test():
     # Создаем SessionLogger для тестового запроса
     with SessionLogger() as session_logger:
         # Инициализация оркестратора с логгером сессии
-        orchestrator: MultiPhaseOrchestrator = create_orchestrator(str(db_path), session_logger)
+        orchestrator: ThermoOrchestrator = create_orchestrator(str(db_path), session_logger)
 
         try:
             # Обработка запроса

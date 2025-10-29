@@ -115,65 +115,20 @@ from ..utils.chem_utils import (
 class FilterContext:
     """Контекст фильтрации, передаваемый между стадиями."""
 
-    temperature_range: Tuple[float, float]
     compound_formula: str
     user_query: Optional[str] = None
     additional_params: Optional[Dict[str, Any]] = None
-    reaction_params: Optional[ExtractedReactionParameters] = None  # НОВОЕ
-
-    # Stage 1: Enhanced temperature range support
-    original_user_range: Optional[Tuple[float, float]] = None  # Original user request
-    full_calculation_range: Optional[Tuple[float, float]] = None  # Stage 1 calculation range
-    stage1_mode: bool = False  # Whether Stage 1 logic is enabled
+    reaction_params: Optional[ExtractedReactionParameters] = None
 
     def __post_init__(self):
         """Валидация контекста после инициализации."""
-        if self.temperature_range[0] > self.temperature_range[1]:
-            raise ValueError(
-                "Минимальная температура не может быть больше максимальной"
-            )
         if not self.compound_formula:
             raise ValueError("Формула соединения не может быть пустой")
 
         if self.additional_params is None:
             self.additional_params = {}
 
-        # Stage 1: Initialize ranges if not provided
-        if self.stage1_mode and not self.full_calculation_range:
-            self.full_calculation_range = self.temperature_range
-
-    @property
-    def effective_temperature_range(self) -> Tuple[float, float]:
-        """
-        Get the effective temperature range for filtering.
-
-        In Stage 1 mode, returns the full calculation range.
-        Otherwise, returns the original temperature range.
-        """
-        if self.stage1_mode and self.full_calculation_range:
-            return self.full_calculation_range
-        return self.temperature_range
-
-    def get_range_info(self) -> Dict[str, Any]:
-        """
-        Get information about temperature ranges for logging and debugging.
-
-        Returns:
-            Dictionary with range information
-        """
-        info = {
-            "effective_range": self.effective_temperature_range,
-            "stage1_mode": self.stage1_mode,
-        }
-
-        if self.original_user_range:
-            info["original_user_range"] = self.original_user_range
-
-        if self.full_calculation_range and self.stage1_mode:
-            info["full_calculation_range"] = self.full_calculation_range
-
-        return info
-
+    
 
 @dataclass
 class CacheEntry:
@@ -221,7 +176,6 @@ class PerformanceOptimizedFilterPipeline:
         key_data = {
             "stage": stage_name,
             "formula": context.compound_formula,
-            "temp_range": context.temperature_range,
             "record_count": len(records),
             # Используем только ID записей для экономии памяти
             "record_ids": [r.id for r in records[:10]]  # Первые 10 ID
@@ -384,43 +338,12 @@ class PerformanceOptimizedFilterPipeline:
         """
         validation_results = {
             "all_compounds_present": len(records) > 0,
-            "temperature_coverage": True,
-            "phase_consistency": True,
             "data_quality": True
         }
 
         issues = []
-        temp_min, temp_max = context.temperature_range
-
-        # Проверка temperature coverage
-        for record in records:
-            if record.tmin > temp_min:
-                diff = record.tmin - temp_min
-                validation_results["temperature_coverage"] = False
-                issues.append({
-                    "severity": "MEDIUM" if diff > 50 else "LOW",
-                    "description": f"{record.formula}: tmin={record.tmin}K > required {temp_min}K (diff: {diff}K)",
-                    "impact": f"Extrapolation required for {diff}K",
-                    "risk": "MEDIUM" if diff > 50 else "LOW",
-                    "recommendations": [
-                        f"Search for alternative {record.formula} records with lower tmin",
-                        "Validate extrapolation results"
-                    ]
-                })
-
-            if record.tmax < temp_max:
-                diff = temp_max - record.tmax
-                validation_results["temperature_coverage"] = False
-                issues.append({
-                    "severity": "MEDIUM" if diff > 50 else "LOW",
-                    "description": f"{record.formula}: tmax={record.tmax}K < required {temp_max}K (diff: {diff}K)",
-                    "impact": f"Extrapolation required for {diff}K",
-                    "risk": "MEDIUM" if diff > 50 else "LOW",
-                    "recommendations": [
-                        f"Search for alternative {record.formula} records with higher tmax"
-                    ]
-                })
-
+        
+        
         # Проверка data quality
         for record in records:
             if record.h298 == 0 and record.s298 == 0:
@@ -638,23 +561,9 @@ class FilterPipeline:
             if context.reaction_params and context.reaction_params.all_compounds:
                 required_compounds = context.reaction_params.all_compounds
 
-            # Stage 1: Use effective temperature range for logging
-            effective_range = context.effective_temperature_range
-
-            # Stage 1: Log range information
-            range_info = context.get_range_info()
-            if context.stage1_mode:
-                self.session_logger.log_info(
-                    f"🔄 Stage 1: Фильтрация с расширенным диапазоном {effective_range[0]:.0f}-{effective_range[1]:.0f}K"
-                )
-                if context.original_user_range:
-                    self.session_logger.log_info(
-                        f"   (пользователь запросил {context.original_user_range[0]:.0f}-{context.original_user_range[1]:.0f}K)"
-                    )
-
             self.session_logger.log_filtering_pipeline_start(
                 input_count=len(records),
-                target_temp_range=effective_range,
+                target_temp_range=(298.15, 298.15),
                 required_compounds=required_compounds
             )
 
@@ -888,14 +797,6 @@ class FilterPipeline:
             elif len(current_records) < 3:
                 warnings.append(f"Only {len(current_records)} records found - may be insufficient for reliable analysis")
 
-            # Проверяем температурное покрытие
-            temp_min, temp_max = context.temperature_range
-            for record in current_records[:5]:  # Проверяем первые 5 записей
-                if hasattr(record, 't_min') and hasattr(record, 't_max'):
-                    if record.t_min > temp_max or record.t_max < temp_min:
-                        warnings.append(f"Record {record.id} has incomplete temperature coverage")
-                        break
-
             # Валидация финального набора
             validation_results, issues = self._validate_final_records(
                 current_records, context
@@ -957,43 +858,12 @@ class FilterPipeline:
         """
         validation_results = {
             "all_compounds_present": len(records) > 0,
-            "temperature_coverage": True,
-            "phase_consistency": True,
             "data_quality": True
         }
 
         issues = []
-        temp_min, temp_max = context.temperature_range
-
-        # Проверка temperature coverage
-        for record in records:
-            if record.tmin > temp_min:
-                diff = record.tmin - temp_min
-                validation_results["temperature_coverage"] = False
-                issues.append({
-                    "severity": "MEDIUM" if diff > 50 else "LOW",
-                    "description": f"{record.formula}: tmin={record.tmin}K > required {temp_min}K (diff: {diff}K)",
-                    "impact": f"Extrapolation required for {diff}K",
-                    "risk": "MEDIUM" if diff > 50 else "LOW",
-                    "recommendations": [
-                        f"Search for alternative {record.formula} records with lower tmin",
-                        "Validate extrapolation results"
-                    ]
-                })
-
-            if record.tmax < temp_max:
-                diff = temp_max - record.tmax
-                validation_results["temperature_coverage"] = False
-                issues.append({
-                    "severity": "MEDIUM" if diff > 50 else "LOW",
-                    "description": f"{record.formula}: tmax={record.tmax}K < required {temp_max}K (diff: {diff}K)",
-                    "impact": f"Extrapolation required for {diff}K",
-                    "risk": "MEDIUM" if diff > 50 else "LOW",
-                    "recommendations": [
-                        f"Search for alternative {record.formula} records with higher tmax"
-                    ]
-                })
-
+        
+        
         # Проверка data quality
         for record in records:
             if record.h298 == 0 and record.s298 == 0:
@@ -1013,82 +883,7 @@ class FilterPipeline:
 
     # Stage 1: Convenience methods for enhanced temperature range support
 
-    def create_stage1_context(
-        self,
-        compound_formula: str,
-        user_temperature_range: Optional[Tuple[float, float]] = None,
-        full_calculation_range: Optional[Tuple[float, float]] = None,
-        user_query: Optional[str] = None,
-        reaction_params: Optional[Any] = None,
-        additional_params: Optional[Dict[str, Any]] = None
-    ) -> FilterContext:
-        """
-        Create a Stage 1 FilterContext with enhanced temperature range support.
-
-        Args:
-            compound_formula: Chemical formula
-            user_temperature_range: Original user temperature range
-            full_calculation_range: Stage 1 full calculation range
-            user_query: Optional user query
-            reaction_params: Optional reaction parameters
-            additional_params: Additional parameters
-
-        Returns:
-            FilterContext configured for Stage 1 operation
-        """
-        # For Stage 1, we use the full calculation range as the primary range
-        effective_range = full_calculation_range or user_temperature_range or (298.15, 298.15)
-
-        return FilterContext(
-            temperature_range=effective_range,
-            compound_formula=compound_formula,
-            user_query=user_query,
-            reaction_params=reaction_params,
-            additional_params=additional_params or {},
-            # Stage 1 specific fields
-            original_user_range=user_temperature_range,
-            full_calculation_range=full_calculation_range,
-            stage1_mode=True
-        )
-
-    def execute_stage1(
-        self,
-        records: List[DatabaseRecord],
-        compound_formula: str,
-        user_temperature_range: Optional[Tuple[float, float]] = None,
-        full_calculation_range: Optional[Tuple[float, float]] = None,
-        user_query: Optional[str] = None,
-        reaction_params: Optional[Any] = None
-    ) -> FilterResult:
-        """
-        Execute pipeline with Stage 1 enhanced temperature range logic.
-
-        This method automatically creates a Stage 1 context and executes
-        the pipeline with full temperature range support.
-
-        Args:
-            records: Records to filter
-            compound_formula: Chemical formula
-            user_temperature_range: Original user temperature range
-            full_calculation_range: Stage 1 full calculation range
-            user_query: Optional user query
-            reaction_params: Optional reaction parameters
-
-        Returns:
-            FilterResult with Stage 1 enhanced processing
-        """
-        # Create Stage 1 context
-        context = self.create_stage1_context(
-            compound_formula=compound_formula,
-            user_temperature_range=user_temperature_range,
-            full_calculation_range=full_calculation_range,
-            user_query=user_query,
-            reaction_params=reaction_params
-        )
-
-        # Execute pipeline with Stage 1 context
-        return self.execute(records, context)
-
+    
 
 class FilterPipelineBuilder:
     """
@@ -1114,20 +909,7 @@ class FilterPipelineBuilder:
         self.pipeline.add_stage(ReactionValidationStage(**kwargs))
         return self
 
-    def with_temperature_filter(self, **kwargs) -> "FilterPipelineBuilder":
-        """Добавить стадию температурной фильтрации."""
-        from .filter_stages import TemperatureFilterStage
-
-        self.pipeline.add_stage(TemperatureFilterStage(**kwargs))
-        return self
-
-    def with_phase_based_temperature_filter(self, **kwargs) -> "FilterPipelineBuilder":
-        """Добавить умную стадию фильтрации по фазам и температуре."""
-        from .phase_based_temperature_stage import PhaseBasedTemperatureStage
-
-        self.pipeline.add_stage(PhaseBasedTemperatureStage(**kwargs))
-        return self
-
+    
     def with_phase_segment_building(self, **kwargs) -> "FilterPipelineBuilder":
         """Добавить стадию построения фазовых сегментов."""
         from .phase_segment_stage import PhaseSegmentStage

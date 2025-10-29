@@ -18,162 +18,11 @@ if str(src_path) not in sys.path:
 from src.thermo_agents.models.search import DatabaseRecord
 from src.thermo_agents.filtering.filter_pipeline import FilterContext
 from src.thermo_agents.filtering.filter_stages import (
-    TemperatureFilterStage, PhaseSelectionStage, ReliabilityPriorityStage
+    PhaseSelectionStage, ReliabilityPriorityStage
 )
-from src.thermo_agents.filtering.temperature_resolver import TemperatureResolver
 from src.thermo_agents.filtering.phase_resolver import PhaseResolver
 
 
-class TestTemperatureFilterStage:
-    """Test cases for TemperatureFilterStage."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.stage = TemperatureFilterStage()
-        self.context = FilterContext(
-            temperature_range=(300.0, 500.0),
-            compound_formula="H2O"
-        )
-
-    def create_test_records(self) -> List[DatabaseRecord]:
-        """Create test database records with various temperature ranges."""
-        return [
-            DatabaseRecord(
-                id=1,
-                formula="H2O(g)",
-                tmin=298.0,
-                tmax=2000.0,  # Covers target range
-                h298=-241.8,
-                s298=188.7,
-                f1=30.0,
-                f2=10.0,
-                f3=1.0,
-                f4=-0.1,
-                f5=0.01,
-                f6=-0.001,
-                tmelt=273.0,
-                tboil=373.0,
-                reliability_class=1
-            ),
-            DatabaseRecord(
-                id=2,
-                formula="H2O(l)",
-                tmin=273.0,
-                tmax=373.0,  # Partially covers target range
-                h298=-285.8,
-                s298=69.9,
-                f1=25.0,
-                f2=8.0,
-                f3=0.5,
-                f4=-0.05,
-                f5=0.005,
-                f6=-0.0005,
-                tmelt=273.0,
-                tboil=373.0,
-                reliability_class=1
-            ),
-            DatabaseRecord(
-                id=3,
-                formula="Fe(s)",
-                tmin=1000.0,
-                tmax=2000.0,  # Above target range
-                h298=0.0,
-                s298=27.3,
-                f1=20.0,
-                f2=5.0,
-                f3=0.3,
-                f4=-0.02,
-                f5=0.002,
-                f6=-0.0002,
-                tmelt=1811.0,
-                tboil=3134.0,
-                reliability_class=2
-            ),
-            DatabaseRecord(
-                id=4,
-                formula="N2(g)",
-                tmin=100.0,
-                tmax=250.0,  # Below target range
-                h298=0.0,
-                s298=191.5,
-                f1=28.0,
-                f2=7.0,
-                f3=0.6,
-                f4=-0.06,
-                f5=0.006,
-                f6=-0.0006,
-                tmelt=63.0,
-                tboil=77.0,
-                reliability_class=1
-            )
-        ]
-
-    def test_temperature_filter_coverage(self):
-        """Test temperature filtering with various coverage scenarios."""
-        records = self.create_test_records()
-        filtered = self.stage.filter(records, self.context)
-
-        # Should include records 1 and 2 (cover target range)
-        # Should exclude records 3 and 4 (outside target range)
-        assert len(filtered) == 2
-        assert filtered[0].id in [1, 2]
-        assert filtered[1].id in [1, 2]
-
-    def test_temperature_filter_statistics(self):
-        """Test temperature filter statistics collection."""
-        records = self.create_test_records()
-        self.stage.filter(records, self.context)
-
-        stats = self.stage.get_statistics()
-
-        assert 'temperature_range' in stats
-        assert 'records_in_range' in stats
-        assert 'records_out_of_range' in stats
-        assert 'execution_time_ms' in stats
-        assert 'coverage_percentage' in stats
-
-        assert stats['temperature_range'] == (300.0, 500.0)
-        assert stats['records_in_range'] == 2
-        assert stats['records_out_of_range'] == 2
-        assert stats['coverage_percentage'] == 50.0
-
-    def test_temperature_filter_full_coverage(self):
-        """Test temperature filtering with full coverage."""
-        context = FilterContext(
-            temperature_range=(350.0, 360.0),
-            compound_formula="H2O"
-        )
-        records = self.create_test_records()
-        filtered = self.stage.filter(records, context)
-
-        # Record 1 covers this range completely
-        assert len(filtered) == 1
-        assert filtered[0].id == 1
-
-    def test_temperature_filter_no_coverage(self):
-        """Test temperature filtering with no coverage."""
-        context = FilterContext(
-            temperature_range=(2500.0, 3000.0),
-            compound_formula="H2O"
-        )
-        records = self.create_test_records()
-        filtered = self.stage.filter(records, context)
-
-        assert len(filtered) == 0
-
-    def test_temperature_filter_with_custom_resolver(self):
-        """Test temperature filter with custom resolver."""
-        custom_resolver = TemperatureResolver()
-        stage = TemperatureFilterStage(custom_resolver)
-
-        records = self.create_test_records()
-        filtered = stage.filter(records, self.context)
-
-        assert len(filtered) == 2
-
-    def test_get_stage_name(self):
-        """Test stage name."""
-        assert self.stage.get_stage_name() == "Температурная фильтрация"
 
 
 class TestPhaseSelectionStage:
@@ -184,7 +33,6 @@ class TestPhaseSelectionStage:
         self.phase_resolver = PhaseResolver()
         self.stage = PhaseSelectionStage(self.phase_resolver)
         self.context = FilterContext(
-            temperature_range=(300.0, 350.0),
             compound_formula="H2O"
         )
 
@@ -281,7 +129,6 @@ class TestPhaseSelectionStage:
     def test_phase_selection_solid_temperature(self):
         """Test phase selection at solid temperature range."""
         context = FilterContext(
-            temperature_range=(250.0, 270.0),
             compound_formula="H2O"
         )
         records = self.create_test_records()
@@ -295,7 +142,6 @@ class TestPhaseSelectionStage:
     def test_phase_selection_gas_temperature(self):
         """Test phase selection at gas temperature range."""
         context = FilterContext(
-            temperature_range=(400.0, 500.0),
             compound_formula="H2O"
         )
         records = self.create_test_records()
@@ -477,7 +323,6 @@ class TestReliabilityPriorityStage:
         """Set up test fixtures."""
         self.stage = ReliabilityPriorityStage(max_records=2)
         self.context = FilterContext(
-            temperature_range=(300.0, 500.0),
             compound_formula="H2O"
         )
 

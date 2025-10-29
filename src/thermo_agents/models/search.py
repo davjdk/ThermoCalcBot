@@ -349,15 +349,7 @@ class DatabaseRecord(BaseModel):
 
         return f"{from_phase}→{to_phase}"
 
-    def get_temperature_range(self) -> Tuple[float, float]:
-        """
-        Get the temperature range of this record.
-
-        Returns:
-            Tuple of (Tmin, Tmax)
-        """
-        return (self.tmin, self.tmax)
-
+    
     def overlaps_with(self, other: "DatabaseRecord") -> bool:
         """
         Check if this record's temperature range overlaps with another record.
@@ -411,27 +403,6 @@ class DatabaseRecord(BaseModel):
         return warnings
 
 
-class TemperatureRange(BaseModel):
-    """Temperature range specification."""
-
-    tmin: float = Field(..., description="Minimum temperature (K)")
-    tmax: float = Field(..., description="Maximum temperature (K)")
-
-    @field_validator("tmax")
-    @classmethod
-    def validate_range(cls, v, info):
-        """Validate temperature range is valid."""
-        if hasattr(info, 'data') and "tmin" in info.data and v <= info.data["tmin"]:
-            raise ValueError("tmax must be greater than tmin")
-        return v
-
-    def contains(self, temperature: float) -> bool:
-        """Check if temperature is within range."""
-        return self.tmin <= temperature <= self.tmax
-
-    def overlaps_with(self, other: "TemperatureRange") -> bool:
-        """Check if this range overlaps with another."""
-        return not (self.tmax < other.tmin or self.tmin > other.tmax)
 
 
 class SearchStatistics(BaseModel):
@@ -439,22 +410,8 @@ class SearchStatistics(BaseModel):
 
     total_records: int = Field(0, description="Total records found")
     unique_phases: int = Field(0, description="Number of unique phases")
-    temperature_coverage: Optional[float] = Field(
-        None, description="Temperature coverage fraction"
-    )
     avg_reliability: Optional[float] = Field(
         None, description="Average reliability class"
-    )
-
-    # Temperature statistics
-    min_temperature: Optional[float] = Field(
-        None, description="Minimum temperature in records"
-    )
-    max_temperature: Optional[float] = Field(
-        None, description="Maximum temperature in records"
-    )
-    avg_temperature_range: Optional[float] = Field(
-        None, description="Average temperature range"
     )
 
     # Phase distribution
@@ -561,25 +518,7 @@ class CompoundSearchResult(BaseModel):
                 phases.add(record.phase)
         return sorted(list(phases))
 
-    def get_temperature_range(self) -> Optional[TemperatureRange]:
-        """Get combined temperature range from all records."""
-        if not self.records_found:
-            return None
-
-        valid_temps = [
-            (r.tmin, r.tmax)
-            for r in self.records_found
-            if r.tmin is not None and r.tmax is not None
-        ]
-
-        if not valid_temps:
-            return None
-
-        min_temp = min(t[0] for t in valid_temps)
-        max_temp = max(t[1] for t in valid_temps)
-
-        return TemperatureRange(tmin=min_temp, tmax=max_temp)
-
+    
     def get_best_record(self) -> Optional[DatabaseRecord]:
         """Get the best record based on reliability class."""
         if not self.records_found:
@@ -598,25 +537,7 @@ class CompoundSearchResult(BaseModel):
 
     # Stage 1: Enhanced temperature range methods
 
-    def get_effective_temperature_range(self) -> Optional[Tuple[float, float]]:
-        """
-        Get the effective temperature range used for calculations.
-
-        In Stage 1 mode, returns the full calculation range.
-        Otherwise, returns the original temperature range from search parameters.
-
-        Returns:
-            Effective temperature range or None if not available
-        """
-        if self.stage1_mode and self.full_calculation_range:
-            return self.full_calculation_range
-
-        # Try to get from search parameters
-        if self.search_parameters and "temperature_range" in self.search_parameters:
-            return self.search_parameters["temperature_range"]
-
-        return None
-
+    
     def has_range_expansion(self) -> bool:
         """
         Check if Stage 1 expanded the temperature range beyond user request.
@@ -1190,10 +1111,6 @@ class MultiPhaseCompoundData(BaseModel):
     )
 
     # Metadata
-    total_temperature_range: Optional[Tuple[float, float]] = Field(
-        None,
-        description="Overall temperature coverage [Tmin, Tmax]"
-    )
     has_multiple_records_per_segment: bool = Field(
         False,
         description="Whether any segment has multiple records"
@@ -1205,9 +1122,6 @@ class MultiPhaseCompoundData(BaseModel):
 
     def __post_init__(self) -> None:
         """Post-initialization setup."""
-        if self.all_records and not self.total_temperature_range:
-            self._calculate_total_range()
-
         # Check for multiple records per segment
         self.has_multiple_records_per_segment = self._check_multiple_records()
 
@@ -1326,9 +1240,6 @@ class MultiPhaseCompoundData(BaseModel):
         Returns:
             Tuple of (Tmin, Tmax) for complete coverage
         """
-        if self.total_temperature_range:
-            return self.total_temperature_range
-
         if not self.phase_segments:
             return (0.0, 0.0)
 
@@ -1375,16 +1286,7 @@ class MultiPhaseCompoundData(BaseModel):
 
         return overlapping_segments
 
-    def _calculate_total_range(self) -> None:
-        """Calculate the total temperature range from all records."""
-        if not self.all_records:
-            return
-
-        t_min = min(record.tmin for record in self.all_records)
-        t_max = max(record.tmax for record in self.all_records)
-
-        self.total_temperature_range = (t_min, t_max)
-
+    
     def _check_multiple_records(self) -> bool:
         """Check if any phase segment contains multiple records."""
         # Group by phase

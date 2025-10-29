@@ -4,19 +4,20 @@
 
 ## Обзор проекта
 
-Это проект термодинамических AI-агентов на Python для анализа термодинамических данных химических соединений. Система использует **гибридную архитектуру v2.0**, сочетающую LLM и детерминированную логику:
+Это проект термодинамических AI-агентов на Python для анализа термодинамических данных химических соединений. Система использует **чистую многофазную архитектуру v2.2**, сочетающую LLM и детерминированную логику:
 
 ### LLM-компоненты
 - **Thermodynamic Agent** - Извлекает параметры из запросов пользователей (соединения, температура, фазы и т.д.)
 
 ### Детерминированные компоненты
+- **ThermoOrchestrator** - Основной оркестратор системы (чистая многофазная архитектура)
 - **CompoundSearcher** - Поиск данных для вещества
-- **FilterPipeline** - Конвейерная фильтрация (6 стадий)
+- **FilterPipeline** - Упрощенная конвейерная фильтрация (без температурных ограничений)
 - **ReactionAggregator** - Агрегация данных по реакции
 - **TableFormatter** - Форматирование результатов через tabulate
 - **StatisticsFormatter** - Форматирование детальной статистики
 
-Система заменяет традиционных LLM-агентов на детерминированные модули для повышения производительности и предсказуемости результатов.
+Система использует чистую многофазную архитектуру без дублирования логики для максимальной производительности и предсказуемости результатов.
 
 ## Команды
 
@@ -58,14 +59,15 @@ uv run python -m ipykernel
 # Затем выбрать ядро .venv (Python 3.12) в VS Code
 ```
 
-## Архитектура после рефакторинга (v2.0)
+## Архитектура (v2.2 - Чистая многофазная)
 
 ### LLM-компоненты
 - **ThermodynamicAgent** — извлечение параметров из естественного языка
 
 ### Детерминированные компоненты
+- **ThermoOrchestrator** — единый оркестратор (без дублирования логики)
 - **CompoundSearcher** — поиск данных для вещества
-- **FilterPipeline** — конвейерная фильтрация (6 стадий)
+- **FilterPipeline** — упрощенная конвейерная фильтрация (без температурных ограничений)
 - **ReactionAggregator** — агрегация данных по реакции
 - **TableFormatter** — форматирование результатов
 
@@ -73,11 +75,11 @@ uv run python -m ipykernel
 1. User Query → ThermodynamicAgent → ExtractedReactionParameters
 2. For each compound:
    - CompoundSearcher → SQL query → DatabaseRecord[]
-   - FilterPipeline → Filtered records
+   - FilterPipeline → Filtered records (без температурной фильтрации)
 3. ReactionAggregator → AggregatedReactionData
 4. TableFormatter → Formatted response
 
-### Основные компоненты v2.0
+### Основные компоненты v2.2
 
 #### LLM-компонент
 - **src/thermo_agents/thermodynamic_agent.py** - Агент извлечения параметров (PydanticAI)
@@ -88,11 +90,11 @@ uv run python -m ipykernel
   - `database_connector.py` - Надежное соединение с SQLite
   - `compound_searcher.py` - Координация поиска соединений
 
-- **src/thermo_agents/filtering/** - Конвейерная фильтрация
-  - `filter_pipeline.py` - 6-стадийный конвейер фильтрации
+- **src/thermo_agents/filtering/** - Упрощенная конвейерная фильтрация
+  - `filter_pipeline.py` - Конвейер фильтрации (без температурных ограничений)
   - `filter_stages.py` - Реализация стадий фильтрации
-  - `temperature_resolver.py` - Разрешение температурных диапазонов
   - `phase_resolver.py` - Определение фазовых состояний
+  - `phase_segment_builder.py` - Построение фазовых сегментов
   - `complex_search_stage.py` - Комплексный поиск для сложных соединений
 
 - **src/thermo_agents/aggregation/** - Агрегация и форматирование
@@ -101,7 +103,7 @@ uv run python -m ipykernel
   - `statistics_formatter.py` - Форматирование статистики
 
 #### Оркестрация
-- **src/thermo_agents/orchestrator.py** - ThermoOrchestrator v2.0 с гибридной архитектурой
+- **src/thermo_agents/orchestrator.py** - ThermoOrchestrator v2.2 (чистая многофазная архитектура)
 
 #### Модели данных
 - **src/thermo_agents/models/** - Pydantic модели
@@ -114,16 +116,16 @@ uv run python -m ipykernel
 - **src/thermo_agents/prompts.py** - Системные промпты
 - **src/thermo_agents/thermo_agents_logger.py** - Система логирования
 
-### Модели данных v2.0
+### Модели данных v2.2
 
 Ключевые Pydantic модели:
-- `ExtractedReactionParameters` - Параметры из запроса (до 10 соединений, валидация диапазонов)
+- `ExtractedReactionParameters` - Параметры из запроса (до 10 соединений)
 - `DatabaseRecord` - Запись из базы данных термодинамических свойств
-- `CompoundSearchResult` - Результат поиска соединения со статистикой
+- `MultiPhaseCompoundData` - Многофазные данные соединения
 - `FilterStatistics` - Статистика по стадиям фильтрации
 - `AggregatedReactionData` - Агрегированные данные по реакции
 - `ThermoAgentConfig` - Конфигурация LLM агента
-- `OrchestratorConfig` - Конфигурация оркестратора v2.0
+- `ThermoOrchestratorConfig` - Конфигурация оркестратора v2.2
 
 ### Конфигурация
 
