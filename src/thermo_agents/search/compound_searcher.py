@@ -18,6 +18,7 @@ coordinating SQL generation and database execution to find thermodynamic data.
 Основные методы CompoundSearcher:
 - search_compound(): Основной метод поиска с координацией SQL и БД
 - search_compound_with_pipeline(): Поиск с детальным трейсингом конвейера
+- search_compound_stage1(): Stage 1 - поиск без температурных ограничений (все записи)
 - search_all_phases(): Поиск всех фаз соединения с температурным покрытием
 - count_compound_records(): Подсчет записей без извлечения полных данных
 - get_temperature_statistics(): Статистика температурных диапазонов
@@ -139,6 +140,7 @@ class CompoundSearcher:
         phase: Optional[str] = None,
         limit: int = DEFAULT_QUERY_LIMIT,
         compound_names: Optional[List[str]] = None,
+        ignore_temperature_range: bool = False,  # Stage 1 parameter
     ) -> CompoundSearchResult:
         """
         Search for a chemical compound in the thermodynamic database.
@@ -152,6 +154,7 @@ class CompoundSearcher:
             phase: Optional phase filter ('s', 'l', 'g', 'aq', etc.)
             limit: Maximum number of results to return
             compound_names: Optional list of compound names for additional search
+            ignore_temperature_range: If True, ignores temperature limits for maximum data retrieval (Stage 1)
 
         Returns:
             CompoundSearchResult with found records and metadata
@@ -172,6 +175,19 @@ class CompoundSearcher:
                     "   Используется точная логика поиска (без широких паттернов)"
                 )
 
+            # Stage 1: Log if temperature range is being ignored
+            if ignore_temperature_range:
+                self.session_logger.log_info(
+                    "🔄 Stage 1: Игнорирование температурного диапазона для поиска всех записей"
+                )
+                if temperature_range:
+                    self.session_logger.log_info(
+                        f"   Пользовательский диапазон {temperature_range[0]:.0f}-{temperature_range[1]:.0f}K сохранен для вывода"
+                    )
+
+        # Stage 1: Determine actual temperature range for SQL query
+        sql_temperature_range = None if ignore_temperature_range else temperature_range
+
         # Initialize result
         result = CompoundSearchResult(
             compound_formula=formula,
@@ -180,6 +196,7 @@ class CompoundSearcher:
                 "phase": phase,
                 "limit": limit,
                 "compound_names": compound_names,
+                "ignore_temperature_range": ignore_temperature_range,  # Stage 1
             },
         )
 
@@ -187,7 +204,7 @@ class CompoundSearcher:
             # Generate SQL query
             query, params = self.sql_builder.build_compound_search_query(
                 formula=formula,
-                temperature_range=temperature_range,
+                temperature_range=sql_temperature_range,  # Use modified range
                 phase=phase,
                 limit=limit,
                 compound_names=compound_names,
@@ -415,6 +432,92 @@ class CompoundSearcher:
         self._add_warnings(result, records, temperature_range)
 
         return result, pipeline
+
+    def search_compound_stage1(
+        self,
+        formula: str,
+        user_temperature_range: Optional[Tuple[float, float]] = None,
+        phase: Optional[str] = None,
+        limit: int = DEFAULT_QUERY_LIMIT,
+        compound_names: Optional[List[str]] = None,
+    ) -> CompoundSearchResult:
+        """
+        Stage 1: Search compound with full temperature range data retrieval.
+
+        This method implements the core Stage 1 requirement: ignore user temperature
+        limitations during database search to ensure all relevant records are found.
+        The user's temperature range is preserved for result reporting.
+
+        Args:
+            formula: Chemical formula (e.g., "FeO", "H2O", "O2")
+            user_temperature_range: User's original temperature range (for reporting only)
+            phase: Optional phase filter
+            limit: Maximum number of results to return (default increased for Stage 1)
+            compound_names: Optional list of compound names for additional search
+
+        Returns:
+            CompoundSearchResult with all available records and Stage 1 metadata
+        """
+        self.logger.info(f"Stage 1 search for compound: {formula}")
+
+        # Stage 1: Always use higher limit for comprehensive data retrieval
+        stage1_limit = max(limit, 100)
+
+        # Stage 1: Call main search with ignore_temperature_range=True
+        result = self.search_compound(
+            formula=formula,
+            temperature_range=user_temperature_range,
+            phase=phase,
+            limit=stage1_limit,
+            compound_names=compound_names,
+            ignore_temperature_range=True  # Core Stage 1 logic
+        )
+
+        # Stage 1: Add specific metadata and recommendations
+        if user_temperature_range:
+            range_diff_note = (
+                f"Запрошенный диапазон {user_temperature_range[0]:.0f}-{user_temperature_range[1]:.0f}K, "
+                f"найдены записи в полном диапазоне данных"
+            )
+            result.add_warning(f"Stage 1: {range_diff_note}")
+
+        # Stage 1: Add record count improvement notification
+        if len(result.records_found) > 1:
+            result.add_warning(f"Stage 1: Найдено {len(result.records_found)} записей (многофазный поиск)")
+
+        # Stage 1: Log comprehensive search results
+        if self.session_logger:
+            self.session_logger.log_info("")
+            separator = "═" * 63
+            self.session_logger.log_info(separator)
+            self.session_logger.log_info(f"Stage 1 ЗАВЕРШЕН: {formula}")
+            self.session_logger.log_info("─" * 63)
+            self.session_logger.log_info(f"📊 Найдено записей: {len(result.records_found)}")
+
+            if result.records_found:
+                min_temp = min(r.tmin for r in result.records_found)
+                max_temp = max(r.tmax for r in result.records_found)
+                self.session_logger.log_info(f"🌡️  Полный диапазон: {min_temp:.0f}-{max_temp:.0f}K")
+
+                if user_temperature_range:
+                    self.session_logger.log_info(
+                        f"🎯 Запрошенный диапазон: {user_temperature_range[0]:.0f}-{user_temperature_range[1]:.0f}K"
+                    )
+
+                # Check if 298K data is available
+                has_298K = any(r.covers_temperature(298.15) for r in result.records_found)
+                if has_298K:
+                    self.session_logger.log_info("✅ Данные для 298K доступны")
+                else:
+                    self.session_logger.log_info("⚠️  Данные для 298K отсутствуют")
+
+            self.session_logger.log_info(separator)
+
+        # Set Stage 1 mode and ranges on the result
+        result.stage1_mode = True
+        result.original_user_range = user_temperature_range
+
+        return result
 
     def get_search_strategy(self, formula: str) -> SearchStrategy:
         """

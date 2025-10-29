@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
+from tabulate import tabulate
 
 # Определение поддержки Unicode для консоли
 try:
@@ -38,6 +39,7 @@ from .config.multi_phase_config import (
     is_multi_phase_enabled,
 )
 from .filtering.filter_pipeline import FilterContext, FilterPipeline, FilterResult
+from .filtering.temperature_range_resolver import TemperatureRangeResolver  # Stage 1
 from .formatting.compound_data_formatter import CompoundDataFormatter
 from .formatting.reaction_calculation_formatter import ReactionCalculationFormatter
 from .models.extraction import ExtractedReactionParameters
@@ -153,6 +155,10 @@ class MultiPhaseOrchestrator:
         from .filtering.phase_based_temperature_stage import PhaseBasedTemperatureStage
         from .filtering.phase_resolver import PhaseResolver
         from .filtering.temperature_resolver import TemperatureResolver
+
+        # Stage 1: TemperatureRangeResolver for enhanced temperature range logic
+        self.temperature_range_resolver = TemperatureRangeResolver()
+        self.logger.info("✅ TemperatureRangeResolver (Stage 1) инициализирован")
 
         # Создаем конвейер с SessionLogger
         self.filter_pipeline = FilterPipeline(session_logger=self.session_logger)
@@ -425,6 +431,215 @@ class MultiPhaseOrchestrator:
                 metadata_lines.append(f"  - {warning}")
 
         result = f"{output}\n\n{table_output}\n{''.join(metadata_lines)}"
+
+        return result
+
+    async def _process_compound_data_stage1(
+        self,
+        params: ExtractedReactionParameters
+    ) -> str:
+        """
+        Stage 1: Enhanced compound data processing with full temperature range logic.
+
+        This method implements the core Stage 1 requirements:
+        - Ignores user temperature limitations during database search
+        - Uses TemperatureRangeResolver for optimal range determination
+        - Provides comprehensive data utilization
+        - Shows both requested and calculation ranges
+
+        Args:
+            params: Extracted reaction parameters
+
+        Returns:
+            Formatted response with Stage 1 enhancements
+        """
+        if not params.all_compounds:
+            return "❌ Не указано вещество для поиска"
+
+        formula = params.all_compounds[0]
+        user_range = params.temperature_range_k
+
+        self.logger.info(f"Stage 1: Enhanced search for {formula}")
+
+        # Stage 1: Log range information
+        if self.session_logger:
+            self.session_logger.log_info("")
+            separator = "═" * 70
+            self.session_logger.log_info(separator)
+            self.session_logger.log_info(f"🔄 Stage 1: Многофазный поиск с полной температурной логикой")
+            self.session_logger.log_info(separator)
+            self.session_logger.log_info(f"🎯 Запрошенный диапазон: {user_range[0]:.0f}-{user_range[1]:.0f}K")
+            self.session_logger.log_info(f"🔍 Запускается поиск всех доступных записей...")
+
+        # Step 1: Use Stage 1 enhanced search (ignores temperature limitations)
+        search_result = self.compound_searcher.search_compound_stage1(
+            formula=formula,
+            user_temperature_range=user_range,
+            compound_names=params.compound_names.get(formula, []) if params.compound_names else None
+        )
+
+        if not search_result.records_found:
+            return f"❌ Вещество {formula} не найдено в БД"
+
+        # Step 2: Determine optimal calculation range using TemperatureRangeResolver
+        compounds_data = {formula: search_result.records_found}
+        range_analysis = self.temperature_range_resolver.determine_calculation_range(
+            compounds_data=compounds_data,
+            user_range=user_range
+        )
+
+        # Update search result with Stage 1 information
+        search_result.set_stage1_ranges(
+            full_calculation_range=range_analysis.calculation_range,
+            original_user_range=user_range
+        )
+
+        # Step 3: Apply Stage 1 filtering with full calculation range
+        from .filtering.filter_pipeline import FilterPipeline
+        stage1_pipeline = FilterPipeline(session_logger=self.session_logger)
+
+        # Build the same 6-stage pipeline but with Stage 1 context
+        from .filtering.filter_stages import (
+            DeduplicationStage, TemperatureFilterStage, PhaseSelectionStage,
+            ReliabilityPriorityStage, FormulaConsistencyStage
+        )
+        from .filtering.phase_based_temperature_stage import PhaseBasedTemperatureStage
+        from .filtering.phase_resolver import PhaseResolver
+
+        stage1_pipeline.add_stage(DeduplicationStage())
+        stage1_pipeline.add_stage(TemperatureFilterStage())
+        stage1_pipeline.add_stage(PhaseBasedTemperatureStage())
+
+        phase_resolver = PhaseResolver()
+        stage1_pipeline.add_stage(PhaseSelectionStage(phase_resolver))
+        stage1_pipeline.add_stage(FormulaConsistencyStage())
+        stage1_pipeline.add_stage(ReliabilityPriorityStage())
+
+        # Create Stage 1 context with full calculation range
+        stage1_context = stage1_pipeline.create_stage1_context(
+            compound_formula=formula,
+            user_temperature_range=user_range,
+            full_calculation_range=range_analysis.calculation_range,
+            reaction_params=params
+        )
+
+        # Execute Stage 1 filtering
+        filter_result = stage1_pipeline.execute(search_result.records_found, stage1_context)
+        filtered_records = filter_result.filtered_records
+
+        self.logger.info(
+            f"Stage 1: {len(search_result.records_found)} → {len(filtered_records)} записей после фильтрации"
+        )
+
+        # Step 4: Multi-phase calculation with full range
+        T_calc_max = range_analysis.calculation_range[1]
+        mp_result = self.calculator.calculate_multi_phase_properties(
+            records=filtered_records,
+            trajectory=[T_calc_max]
+        )
+
+        # Step 5: Enhanced formatting with Stage 1 information
+        compound_name = search_result.records_found[0].name or formula
+
+        # Format compound data
+        output = self.compound_formatter.format_compound_data_multi_phase(
+            formula=formula,
+            compound_name=compound_name,
+            multi_phase_result=mp_result
+        )
+
+        # Step 6: Build enhanced properties table
+        T_min, T_max = range_analysis.calculation_range
+        step_k = params.temperature_step_k
+
+        # Include temperatures from user range plus phase transitions
+        temperatures = list(range(int(T_min), int(T_max) + 1, step_k))
+
+        # Add phase transition temperatures
+        for transition in mp_result.phase_transitions:
+            if T_min <= transition.temperature <= T_max:
+                if transition.temperature not in temperatures:
+                    temperatures.append(transition.temperature)
+
+        temperatures = sorted(temperatures)
+
+        # Calculate properties for each temperature
+        table_rows = []
+        headers = ["T(K)", "ΔH°", "ΔS°", "ΔG°", "Cp°"]
+
+        for T in temperatures:
+            if T_min <= T <= T_max:
+                try:
+                    result = self.calculator.calculate_multi_phase_properties(
+                        records=filtered_records,
+                        trajectory=[T]
+                    )
+                    row = result.segments[0] if result.segments else None
+
+                    if row:
+                        table_rows.append([
+                            f"{T:.0f}",
+                            f"{row.H_start:.2f}",
+                            f"{row.S_start:.2f}",
+                            f"{row.G_start:.2f}",
+                            f"{row.Cp_start:.2f}"
+                        ])
+                except Exception as e:
+                    self.logger.warning(f"Error calculating at T={T}: {e}")
+                    table_rows.append([
+                        f"{T:.0f}", "Error", "Error", "Error", "Error"
+                    ])
+
+        table_output = tabulate(table_rows, headers=headers, tablefmt="grid")
+
+        # Step 7: Enhanced metadata with Stage 1 information
+        metadata_lines = []
+        metadata_lines.append("")
+        metadata_lines.append("📈 Метаданные расчёта (Stage 1):")
+        metadata_lines.append(f"  - Запрошенный диапазон: {user_range[0]:.0f}-{user_range[1]:.0f}K")
+        metadata_lines.append(f"  - Расчётный диапазон: {range_analysis.calculation_range[0]:.0f}-{range_analysis.calculation_range[1]:.0f}K")
+
+        if range_analysis.includes_298K:
+            metadata_lines.append(f"  - ✅ Включает стандартные условия (298K)")
+        else:
+            metadata_lines.append(f"  - ⚠️  Не включает 298K")
+
+        metadata_lines.append(f"  - Сегментов: {len(mp_result.segments)}")
+        metadata_lines.append(f"  - Фазовых переходов: {len(mp_result.phase_transitions)}")
+        metadata_lines.append(f"  - Найдено записей: {len(search_result.records_found)}")
+        metadata_lines.append(f"  - После фильтрации: {len(filtered_records)}")
+
+        # Add range expansion information
+        expansion_info = search_result.get_range_expansion_info()
+        if expansion_info.get("expanded", False):
+            metadata_lines.append(f"  - 🔄 Расширение диапазона: {expansion_info.get('expansion_factor', 1.0):.1f}x")
+            metadata_lines.append(f"    Записей в запрошенном диапазоне: {expansion_info.get('records_in_original_range', 0)}")
+            metadata_lines.append(f"    Записей в полном диапазоне: {expansion_info.get('records_in_full_range', 0)}")
+
+        # Add recommendations from TemperatureRangeResolver
+        if range_analysis.recommendations:
+            metadata_lines.append("")
+            metadata_lines.append("💡 Рекомендации:")
+            for rec in range_analysis.recommendations:
+                metadata_lines.append(f"  - {rec}")
+
+        # Add warnings
+        if search_result.warnings:
+            metadata_lines.append("")
+            metadata_lines.append("⚠️ Предупреждения:")
+            for warning in search_result.warnings:
+                metadata_lines.append(f"  - {warning}")
+
+        result = f"{output}\n\n{table_output}\n{''.join(metadata_lines)}"
+
+        # Stage 1: Final logging
+        if self.session_logger:
+            self.session_logger.log_info("")
+            self.session_logger.log_info(f"✅ Stage 1 завершён для {formula}")
+            self.session_logger.log_info(f"   Найдено записей: {len(search_result.records_found)}")
+            self.session_logger.log_info(f"   Расчётный диапазон: {range_analysis.calculation_range[0]:.0f}-{range_analysis.calculation_range[1]:.0f}K")
+            separator = "═" * 70
+            self.session_logger.log_info(separator)
 
         return result
 

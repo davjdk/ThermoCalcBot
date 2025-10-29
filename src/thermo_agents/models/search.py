@@ -484,6 +484,17 @@ class CompoundSearchResult(BaseModel):
         None, description="Parameters used in search"
     )
 
+    # Stage 1: Enhanced temperature range fields
+    full_calculation_range: Optional[Tuple[float, float]] = Field(
+        None, description="Full calculation temperature range (Stage 1)"
+    )
+    original_user_range: Optional[Tuple[float, float]] = Field(
+        None, description="Original user-requested temperature range (Stage 1)"
+    )
+    stage1_mode: bool = Field(
+        False, description="Whether Stage 1 enhanced search was used"
+    )
+
     # Results analysis
     coverage_status: CoverageStatus = Field(
         CoverageStatus.UNKNOWN, description="Coverage status"
@@ -584,6 +595,120 @@ class CompoundSearchResult(BaseModel):
         )
 
         return sorted_records[0]
+
+    # Stage 1: Enhanced temperature range methods
+
+    def get_effective_temperature_range(self) -> Optional[Tuple[float, float]]:
+        """
+        Get the effective temperature range used for calculations.
+
+        In Stage 1 mode, returns the full calculation range.
+        Otherwise, returns the original temperature range from search parameters.
+
+        Returns:
+            Effective temperature range or None if not available
+        """
+        if self.stage1_mode and self.full_calculation_range:
+            return self.full_calculation_range
+
+        # Try to get from search parameters
+        if self.search_parameters and "temperature_range" in self.search_parameters:
+            return self.search_parameters["temperature_range"]
+
+        return None
+
+    def has_range_expansion(self) -> bool:
+        """
+        Check if Stage 1 expanded the temperature range beyond user request.
+
+        Returns:
+            True if calculation range is wider than original user range
+        """
+        if not self.stage1_mode:
+            return False
+
+        if not self.original_user_range or not self.full_calculation_range:
+            return False
+
+        return (
+            self.full_calculation_range[0] < self.original_user_range[0] or
+            self.full_calculation_range[1] > self.original_user_range[1]
+        )
+
+    def get_range_expansion_info(self) -> Dict[str, Any]:
+        """
+        Get information about temperature range expansion in Stage 1.
+
+        Returns:
+            Dictionary with expansion details
+        """
+        if not self.stage1_mode:
+            return {"expanded": False, "reason": "Stage 1 mode not enabled"}
+
+        if not self.original_user_range or not self.full_calculation_range:
+            return {"expanded": False, "reason": "Missing range information"}
+
+        original_width = self.original_user_range[1] - self.original_user_range[0]
+        expanded_width = self.full_calculation_range[1] - self.full_calculation_range[0]
+
+        return {
+            "expanded": self.has_range_expansion(),
+            "original_range": self.original_user_range,
+            "full_range": self.full_calculation_range,
+            "original_width": original_width,
+            "expanded_width": expanded_width,
+            "expansion_factor": expanded_width / original_width if original_width > 0 else 1.0,
+            "records_in_original_range": self._count_records_in_range(self.original_user_range),
+            "records_in_full_range": len(self.records_found)
+        }
+
+    def _count_records_in_range(self, temp_range: Tuple[float, float]) -> int:
+        """Count records that overlap with the given temperature range."""
+        if not temp_range:
+            return 0
+
+        return sum(
+            1 for record in self.records_found
+            if not (temp_range[1] < record.tmin or temp_range[0] > record.tmax)
+        )
+
+    def set_stage1_ranges(
+        self,
+        full_calculation_range: Tuple[float, float],
+        original_user_range: Optional[Tuple[float, float]] = None
+    ) -> None:
+        """
+        Set Stage 1 temperature ranges.
+
+        Args:
+            full_calculation_range: Full calculation temperature range
+            original_user_range: Original user-requested temperature range
+        """
+        self.full_calculation_range = full_calculation_range
+        self.original_user_range = original_user_range
+        self.stage1_mode = True
+
+    def get_stage1_summary(self) -> Dict[str, Any]:
+        """
+        Get a summary of Stage 1 enhancements.
+
+        Returns:
+            Dictionary with Stage 1 summary information
+        """
+        summary = {
+            "stage1_enabled": self.stage1_mode,
+            "records_found": len(self.records_found),
+            "execution_time_ms": self.execution_time_ms
+        }
+
+        if self.stage1_mode:
+            summary.update({
+                "original_user_range": self.original_user_range,
+                "full_calculation_range": self.full_calculation_range,
+                "range_expansion": self.get_range_expansion_info()
+            })
+
+        return summary
 
 
 class SearchStrategy(BaseModel):

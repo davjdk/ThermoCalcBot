@@ -121,6 +121,11 @@ class FilterContext:
     additional_params: Optional[Dict[str, Any]] = None
     reaction_params: Optional[ExtractedReactionParameters] = None  # НОВОЕ
 
+    # Stage 1: Enhanced temperature range support
+    original_user_range: Optional[Tuple[float, float]] = None  # Original user request
+    full_calculation_range: Optional[Tuple[float, float]] = None  # Stage 1 calculation range
+    stage1_mode: bool = False  # Whether Stage 1 logic is enabled
+
     def __post_init__(self):
         """Валидация контекста после инициализации."""
         if self.temperature_range[0] > self.temperature_range[1]:
@@ -132,6 +137,42 @@ class FilterContext:
 
         if self.additional_params is None:
             self.additional_params = {}
+
+        # Stage 1: Initialize ranges if not provided
+        if self.stage1_mode and not self.full_calculation_range:
+            self.full_calculation_range = self.temperature_range
+
+    @property
+    def effective_temperature_range(self) -> Tuple[float, float]:
+        """
+        Get the effective temperature range for filtering.
+
+        In Stage 1 mode, returns the full calculation range.
+        Otherwise, returns the original temperature range.
+        """
+        if self.stage1_mode and self.full_calculation_range:
+            return self.full_calculation_range
+        return self.temperature_range
+
+    def get_range_info(self) -> Dict[str, Any]:
+        """
+        Get information about temperature ranges for logging and debugging.
+
+        Returns:
+            Dictionary with range information
+        """
+        info = {
+            "effective_range": self.effective_temperature_range,
+            "stage1_mode": self.stage1_mode,
+        }
+
+        if self.original_user_range:
+            info["original_user_range"] = self.original_user_range
+
+        if self.full_calculation_range and self.stage1_mode:
+            info["full_calculation_range"] = self.full_calculation_range
+
+        return info
 
 
 @dataclass
@@ -597,9 +638,23 @@ class FilterPipeline:
             if context.reaction_params and context.reaction_params.all_compounds:
                 required_compounds = context.reaction_params.all_compounds
 
+            # Stage 1: Use effective temperature range for logging
+            effective_range = context.effective_temperature_range
+
+            # Stage 1: Log range information
+            range_info = context.get_range_info()
+            if context.stage1_mode:
+                self.session_logger.log_info(
+                    f"🔄 Stage 1: Фильтрация с расширенным диапазоном {effective_range[0]:.0f}-{effective_range[1]:.0f}K"
+                )
+                if context.original_user_range:
+                    self.session_logger.log_info(
+                        f"   (пользователь запросил {context.original_user_range[0]:.0f}-{context.original_user_range[1]:.0f}K)"
+                    )
+
             self.session_logger.log_filtering_pipeline_start(
                 input_count=len(records),
-                target_temp_range=context.temperature_range,
+                target_temp_range=effective_range,
                 required_compounds=required_compounds
             )
 
@@ -955,6 +1010,84 @@ class FilterPipeline:
                 })
 
         return validation_results, issues
+
+    # Stage 1: Convenience methods for enhanced temperature range support
+
+    def create_stage1_context(
+        self,
+        compound_formula: str,
+        user_temperature_range: Optional[Tuple[float, float]] = None,
+        full_calculation_range: Optional[Tuple[float, float]] = None,
+        user_query: Optional[str] = None,
+        reaction_params: Optional[Any] = None,
+        additional_params: Optional[Dict[str, Any]] = None
+    ) -> FilterContext:
+        """
+        Create a Stage 1 FilterContext with enhanced temperature range support.
+
+        Args:
+            compound_formula: Chemical formula
+            user_temperature_range: Original user temperature range
+            full_calculation_range: Stage 1 full calculation range
+            user_query: Optional user query
+            reaction_params: Optional reaction parameters
+            additional_params: Additional parameters
+
+        Returns:
+            FilterContext configured for Stage 1 operation
+        """
+        # For Stage 1, we use the full calculation range as the primary range
+        effective_range = full_calculation_range or user_temperature_range or (298.15, 298.15)
+
+        return FilterContext(
+            temperature_range=effective_range,
+            compound_formula=compound_formula,
+            user_query=user_query,
+            reaction_params=reaction_params,
+            additional_params=additional_params or {},
+            # Stage 1 specific fields
+            original_user_range=user_temperature_range,
+            full_calculation_range=full_calculation_range,
+            stage1_mode=True
+        )
+
+    def execute_stage1(
+        self,
+        records: List[DatabaseRecord],
+        compound_formula: str,
+        user_temperature_range: Optional[Tuple[float, float]] = None,
+        full_calculation_range: Optional[Tuple[float, float]] = None,
+        user_query: Optional[str] = None,
+        reaction_params: Optional[Any] = None
+    ) -> FilterResult:
+        """
+        Execute pipeline with Stage 1 enhanced temperature range logic.
+
+        This method automatically creates a Stage 1 context and executes
+        the pipeline with full temperature range support.
+
+        Args:
+            records: Records to filter
+            compound_formula: Chemical formula
+            user_temperature_range: Original user temperature range
+            full_calculation_range: Stage 1 full calculation range
+            user_query: Optional user query
+            reaction_params: Optional reaction parameters
+
+        Returns:
+            FilterResult with Stage 1 enhanced processing
+        """
+        # Create Stage 1 context
+        context = self.create_stage1_context(
+            compound_formula=compound_formula,
+            user_temperature_range=user_temperature_range,
+            full_calculation_range=full_calculation_range,
+            user_query=user_query,
+            reaction_params=reaction_params
+        )
+
+        # Execute pipeline with Stage 1 context
+        return self.execute(records, context)
 
 
 class FilterPipelineBuilder:
