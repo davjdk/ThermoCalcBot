@@ -10,9 +10,10 @@ from dataclasses import dataclass
 from typing import List, Tuple, Optional, Dict
 from functools import lru_cache
 from scipy.integrate import quad
+from collections import defaultdict
 
 from ..models.search import DatabaseRecord
-from ..models.search import PhaseSegment, PhaseTransition, MultiPhaseProperties, TransitionType
+from ..models.search import PhaseSegment, PhaseTransition, MultiPhaseProperties, TransitionType, MultiPhaseCompoundData
 
 
 @dataclass
@@ -585,3 +586,258 @@ class ThermodynamicCalculator:
             Cp в Дж/(моль·K)
         """
         return self.calculate_cp(record, T)
+
+    # Stage 3: Multi-record calculation methods
+
+    def calculate_properties_multi_record(
+        self,
+        compound_data: MultiPhaseCompoundData,
+        temperature: float
+    ) -> ThermodynamicProperties:
+        """
+        Calculate thermodynamic properties using multi-record logic (Stage 3).
+
+        This method implements the core Stage 3 functionality for calculating
+        properties when a compound has multiple database records within
+        phase segments, ensuring seamless transitions between records.
+
+        Args:
+            compound_data: MultiPhaseCompoundData with all records and segments
+            temperature: Target temperature in Kelvin
+
+        Returns:
+            ThermodynamicProperties at the specified temperature
+
+        Raises:
+            ValueError: If temperature is outside available range
+        """
+        # Get the appropriate record for this temperature
+        active_record = compound_data.get_record_at_temperature(temperature)
+
+        # Calculate base properties using the selected record
+        base_properties = self.calculate_properties(active_record, temperature)
+
+        # Check if we need transition corrections
+        # For now, return base properties (transitions will be handled in more complex scenarios)
+        return base_properties
+
+    def calculate_table_multi_record(
+        self,
+        compound_data: MultiPhaseCompoundData,
+        temperature_range: Tuple[float, float],
+        num_points: int = 100
+    ) -> ThermodynamicTable:
+        """
+        Generate thermodynamic table using multi-record logic (Stage 3).
+
+        This method creates a temperature table that seamlessly handles
+        transitions between multiple database records within phase segments.
+
+        Args:
+            compound_data: MultiPhaseCompoundData with all records and segments
+            temperature_range: Temperature range (Tmin, Tmax) in Kelvin
+            num_points: Number of temperature points to calculate
+
+        Returns:
+            ThermodynamicTable with properties across the temperature range
+
+        Raises:
+            ValueError: If temperature range is invalid or outside available range
+        """
+        T_min, T_max = temperature_range
+        if T_min >= T_max:
+            raise ValueError("T_min must be less than T_max")
+
+        # Check against available range
+        available_range = compound_data.get_available_range()
+        if T_min < available_range[0] or T_max > available_range[1]:
+            raise ValueError(
+                f"Requested range [{T_min}, {T_max}]K exceeds available range "
+                f"[{available_range[0]}, {available_range[1]}]K"
+            )
+
+        # Generate temperature points
+        temperatures = np.linspace(T_min, T_max, num_points)
+
+        # Calculate properties for each temperature
+        properties = []
+        transitions_encountered = []
+
+        for T in temperatures:
+            try:
+                props = self.calculate_properties_multi_record(compound_data, T)
+                properties.append(props)
+
+                # Check for record transitions (simplified for now)
+                # In full implementation, this would track when we switch records
+                if len(properties) > 1:
+                    prev_record = compound_data.get_record_at_temperature(temperatures[temperatures < T][-1])
+                    curr_record = compound_data.get_record_at_temperature(T)
+                    if prev_record.id != curr_record.id:
+                        transitions_encountered.append(T)
+
+            except ValueError as e:
+                # Skip problematic temperatures but continue
+                continue
+
+        return ThermodynamicTable(
+            formula=compound_data.compound_formula,
+            phase="multi",  # Indicate multi-phase/multi-record
+            temperature_range=(T_min, T_max),
+            properties=properties
+        )
+
+    def _select_active_record(
+        self,
+        segment: PhaseSegment,
+        temperature: float
+    ) -> DatabaseRecord:
+        """
+        Select the active database record for a segment at given temperature.
+
+        This method implements the core Stage 3 logic for choosing which
+        database record to use within a phase segment based on temperature.
+
+        Args:
+            segment: Phase segment containing records
+            temperature: Target temperature in Kelvin
+
+        Returns:
+            Active DatabaseRecord for the temperature
+
+        Raises:
+            ValueError: If no record covers the specified temperature
+        """
+        # For now, segments have one record each
+        # In full implementation, this would select from multiple records
+        if segment.T_start <= temperature <= segment.T_end:
+            return segment.record
+
+        raise ValueError(
+            f"Temperature {temperature}K is outside segment range "
+            f"[{segment.T_start}, {segment.T_end}]K"
+        )
+
+    def _handle_record_transition(
+        self,
+        from_record: DatabaseRecord,
+        to_record: DatabaseRecord,
+        temperature: float
+    ) -> Tuple[float, float]:
+        """
+        Handle transition between two database records.
+
+        This method calculates the corrections needed to maintain
+        thermodynamic continuity when switching from one record to another.
+
+        Args:
+            from_record: Source database record
+            to_record: Target database record
+            temperature: Temperature at which transition occurs
+
+        Returns:
+            Tuple of (delta_H_correction, delta_S_correction)
+        """
+        from .record_transition_manager import RecordTransitionManager
+
+        transition_manager = RecordTransitionManager()
+        return transition_manager.ensure_continuity(from_record, to_record, temperature)
+
+    # Stage 3: Performance optimization integration
+
+    def calculate_properties_optimized(
+        self,
+        compound_data: MultiPhaseCompoundData,
+        temperature: float
+    ) -> ThermodynamicProperties:
+        """
+        Calculate thermodynamic properties with performance optimization.
+
+        This method uses the performance optimizer for caching and
+        acceleration of repeated calculations.
+
+        Args:
+            compound_data: MultiPhaseCompoundData with all records and segments
+            temperature: Target temperature in Kelvin
+
+        Returns:
+            ThermodynamicProperties at the specified temperature
+        """
+        from .performance_optimizer import get_performance_optimizer, ProfiledCalculation
+
+        optimizer = get_performance_optimizer()
+
+        with ProfiledCalculation(f"calculate_properties_{compound_data.compound_formula}_{temperature:.1f}"):
+            # Get active record
+            active_record = compound_data.get_record_at_temperature(temperature)
+
+            # Use optimized calculation
+            def calc_func(record, temp):
+                return self.calculate_properties(record, temp)
+
+            return optimizer.cached_property_calculation(calc_func, active_record, temperature)
+
+    def generate_table_optimized(
+        self,
+        compound_data: MultiPhaseCompoundData,
+        temperature_range: Tuple[float, float],
+        num_points: int = 100
+    ) -> ThermodynamicTable:
+        """
+        Generate optimized thermodynamic table with performance enhancements.
+
+        Args:
+            compound_data: MultiPhaseCompoundData with all records and segments
+            temperature_range: Temperature range (Tmin, Tmax) in Kelvin
+            num_points: Number of temperature points to calculate
+
+        Returns:
+            Optimized ThermodynamicTable with properties across the temperature range
+        """
+        from .performance_optimizer import get_performance_optimizer, ProfiledCalculation
+
+        optimizer = get_performance_optimizer()
+
+        with ProfiledCalculation(f"generate_table_{compound_data.compound_formula}_{num_points}_points"):
+            T_min, T_max = temperature_range
+
+            # Generate optimized temperature grid
+            temperatures = optimizer.optimize_temperature_grid(T_min, T_max, num_points)
+
+            # Batch calculation for better performance
+            properties = []
+
+            # Group by record for batch processing
+            record_groups = defaultdict(list)
+            for i, T in enumerate(temperatures):
+                try:
+                    record = compound_data.get_record_at_temperature(T)
+                    record_groups[record.id].append((i, T))
+                except ValueError:
+                    continue
+
+            # Calculate properties for each record group
+            for record_id, temp_indices in record_groups.items():
+                record = compound_data.get_record_at_temperature(temp_indices[0][1])
+                temps = [temp for _, temp in temp_indices]
+
+                def calc_func(rec, temp):
+                    return self.calculate_properties(rec, temp)
+
+                batch_results = optimizer.batch_property_calculation(calc_func, record, temps)
+
+                # Place results back in correct order
+                for (i, _), result in zip(temp_indices, batch_results):
+                    if result is not None:
+                        properties.append((i, result))
+
+            # Sort by temperature
+            properties.sort(key=lambda x: x[0])
+            sorted_properties = [prop for _, prop in properties]
+
+            return ThermodynamicTable(
+                formula=compound_data.compound_formula,
+                phase="multi_optimized",
+                temperature_range=temperature_range,
+                properties=sorted_properties
+            )

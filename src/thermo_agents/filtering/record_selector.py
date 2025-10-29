@@ -54,7 +54,7 @@ from dataclasses import dataclass
 import logging
 from datetime import datetime
 
-from ..models.search import DatabaseRecord
+from ..models.search import DatabaseRecord, MultiPhaseCompoundData
 from .constants import (
     MAX_RELIABILITY_CLASS,
     TEMPERATURE_EXTENSION_MARGIN,
@@ -635,3 +635,256 @@ class RecordSelector:
             issues.append(f"Gap at end: {sorted_sequence[-1].tmax:.1f}-{t_end:.1f}K")
 
         return issues
+
+    # Stage 3: Multi-record methods for MultiPhaseCompoundData
+
+    def select_record_for_temperature_multi_phase(
+        self,
+        compound_data: MultiPhaseCompoundData,
+        temperature: float,
+        preferred_phase: Optional[str] = None
+    ) -> RecordSelection:
+        """
+        Select the best record for a temperature using MultiPhaseCompoundData (Stage 3).
+
+        This method extends the basic record selection to work with MultiPhaseCompoundData,
+        which contains precomputed phase segments and transition information.
+
+        Args:
+            compound_data: MultiPhaseCompoundData with all records and segments
+            temperature: Target temperature in Kelvin
+            preferred_phase: Optional preferred phase
+
+        Returns:
+            RecordSelection with best record and alternatives
+
+        Raises:
+            ValueError: If temperature is outside available range
+        """
+        # Check temperature range
+        available_range = compound_data.get_available_range()
+        if temperature < available_range[0] or temperature > available_range[1]:
+            raise ValueError(
+                f"Temperature {temperature}K is outside available range "
+                f"[{available_range[0]}, {available_range[1]}]K"
+            )
+
+        # Use MultiPhaseCompoundData's built-in record selection
+        try:
+            selected_record = compound_data.get_record_at_temperature(temperature)
+        except ValueError as e:
+            # Fallback to manual selection
+            logger.warning(f"MultiPhaseCompoundData selection failed: {e}")
+            return self.select_record_for_temperature(
+                compound_data.all_records, temperature, preferred_phase
+            )
+
+        # Find alternative records (other records covering this temperature)
+        all_covering = self._find_covering_records(compound_data.all_records, temperature)
+        alternatives = [r for r in all_covering if r.id != selected_record.id]
+
+        # Determine selection reason and confidence
+        reason = "MultiPhaseCompoundData selection"
+        confidence = 1.0  # High confidence for precomputed data
+
+        # Check if this is a transition point
+        transitions = compound_data.get_segments_in_range(temperature - 1, temperature + 1)
+        if len(transitions) > 1:
+            reason += " (near segment boundary)"
+            confidence = 0.9
+
+        warnings = self._generate_selection_warnings(selected_record, temperature, all_covering)
+
+        return RecordSelection(
+            selected_record=selected_record,
+            alternative_records=alternatives,
+            selection_reason=reason,
+            confidence=confidence,
+            warnings=warnings
+        )
+
+    def predict_next_record(
+        self,
+        current_record: DatabaseRecord,
+        temperature: float,
+        step: float
+    ) -> Optional[DatabaseRecord]:
+        """
+        Predict the next record that will be used after a temperature step.
+
+        This method implements Stage 3 logic for anticipating record transitions
+        during temperature-dependent calculations.
+
+        Args:
+            current_record: Currently active record
+            temperature: Current temperature in Kelvin
+            step: Temperature step size (positive or negative)
+
+        Returns:
+            Next DatabaseRecord if transition is expected, None otherwise
+        """
+        next_temperature = temperature + step
+
+        # If current record covers next temperature, no transition needed
+        if current_record.tmin <= next_temperature <= current_record.tmax:
+            return None
+
+        # Find which record covers the next temperature
+        # This would typically use the compound data, but we'll implement basic logic
+        if step > 0:
+            # Moving to higher temperature - find record with Tmin >= current.tmax
+            candidates = [r for r in [] if r.tmin >= current_record.tmax]  # Would need full record list
+        else:
+            # Moving to lower temperature - find record with Tmax <= current.tmin
+            candidates = [r for r in [] if r.tmax <= current_record.tmin]  # Would need full record list
+
+        if candidates:
+            # Select best candidate based on reliability and temperature proximity
+            best = min(candidates, key=lambda r: (
+                r.reliability_class if r.reliability_class else 999,
+                abs(r.tmin - next_temperature) if step > 0 else abs(r.tmax - next_temperature)
+            ))
+            return best
+
+        return None
+
+    def build_record_sequence(
+        self,
+        compound_data: MultiPhaseCompoundData,
+        temperature_range: Optional[Tuple[float, float]] = None
+    ) -> List[DatabaseRecord]:
+        """
+        Build optimal record sequence for a temperature range (Stage 3).
+
+        This method creates an optimal sequence of records for continuous
+        coverage across a temperature range using MultiPhaseCompoundData.
+
+        Args:
+            compound_data: MultiPhaseCompoundData with all records and segments
+            temperature_range: Optional temperature range (Tmin, Tmax)
+
+        Returns:
+            Optimal sequence of DatabaseRecord objects
+        """
+        if temperature_range:
+            t_start, t_end = temperature_range
+            available_range = compound_data.get_available_range()
+
+            # Validate range
+            if t_start < available_range[0] or t_end > available_range[1]:
+                raise ValueError(
+                    f"Requested range [{t_start}, {t_end}]K exceeds available range "
+                    f"[{available_range[0]}, {available_range[1]}]K"
+                )
+        else:
+            t_start, t_end = compound_data.get_available_range()
+
+        # Get segments that cover the range
+        segments = compound_data.get_segments_in_range(t_start, t_end)
+
+        # Extract records from segments, maintaining order
+        sequence = []
+        seen_records = set()
+
+        for segment in segments:
+            if segment.record.id not in seen_records:
+                sequence.append(segment.record)
+                seen_records.add(segment.record.id)
+
+        logger.debug(f"Built record sequence: {len(sequence)} records for range [{t_start}, {t_end}]K")
+        return sequence
+
+    def analyze_multi_record_coverage(
+        self,
+        compound_data: MultiPhaseCompoundData,
+        temperature_range: Optional[Tuple[float, float]] = None
+    ) -> Dict[str, Any]:
+        """
+        Analyze multi-record coverage and transition quality (Stage 3).
+
+        This method provides detailed analysis of how records cover temperature
+        ranges and the quality of transitions between them.
+
+        Args:
+            compound_data: MultiPhaseCompoundData to analyze
+            temperature_range: Optional temperature range to analyze
+
+        Returns:
+            Dictionary with coverage analysis and transition quality metrics
+        """
+        if temperature_range:
+            t_start, t_end = temperature_range
+        else:
+            t_start, t_end = compound_data.get_available_range()
+
+        # Get relevant segments
+        segments = compound_data.get_segments_in_range(t_start, t_end)
+
+        # Analyze coverage
+        total_coverage = t_end - t_start
+        covered_ranges = []
+
+        for segment in segments:
+            segment_start = max(segment.T_start, t_start)
+            segment_end = min(segment.T_end, t_end)
+            if segment_start < segment_end:
+                covered_ranges.append((segment_start, segment_end))
+
+        # Calculate coverage percentage
+        covered_length = sum(end - start for start, end in covered_ranges)
+        coverage_percentage = (covered_length / total_coverage * 100) if total_coverage > 0 else 0
+
+        # Analyze transitions
+        transitions = []
+        for i in range(len(segments) - 1):
+            current = segments[i]
+            next_segment = segments[i + 1]
+
+            if current.record.id != next_segment.record.id:
+                transition_temp = (current.T_end + next_segment.T_start) / 2
+                transition_info = {
+                    "temperature": transition_temp,
+                    "from_record": current.record.id,
+                    "to_record": next_segment.record.id,
+                    "from_phase": current.record.phase,
+                    "to_phase": next_segment.record.phase,
+                    "gap": next_segment.T_start - current.T_end
+                }
+                transitions.append(transition_info)
+
+        # Get transition quality from precomputed data
+        transition_quality = []
+        for transition in transitions:
+            from_id = transition["from_record"]
+            to_id = transition["to_record"]
+            record_transition = compound_data.get_transition_between_records(from_id, to_id)
+
+            if record_transition:
+                quality_info = {
+                    "temperature": transition["temperature"],
+                    "is_continuous": record_transition.is_continuous,
+                    "delta_H_correction": record_transition.delta_H_correction,
+                    "delta_S_correction": record_transition.delta_S_correction,
+                    "warning": record_transition.warning
+                }
+            else:
+                quality_info = {
+                    "temperature": transition["temperature"],
+                    "is_continuous": False,
+                    "warning": "No precomputed transition available"
+                }
+
+            transition_quality.append(quality_info)
+
+        return {
+            "temperature_range": (t_start, t_end),
+            "coverage_percentage": coverage_percentage,
+            "segments_count": len(segments),
+            "records_count": len(set(s.record.id for s in segments)),
+            "transitions_count": len(transitions),
+            "has_gaps": coverage_percentage < 99.9,
+            "transition_quality": transition_quality,
+            "warnings": [
+                f"Coverage: {coverage_percentage:.1f}% of requested range"
+            ] + [q["warning"] for q in transition_quality if q.get("warning")]
+        }

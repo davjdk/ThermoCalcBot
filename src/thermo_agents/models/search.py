@@ -1062,3 +1062,300 @@ class MultiPhaseSearchResult(BaseModel):
             "records_count": len(self.records),
             "warnings": self.warnings
         }
+
+
+class RecordTransition(BaseModel):
+    """Information about transition between two database records."""
+
+    from_record_id: int = Field(..., description="ID of source record")
+    to_record_id: int = Field(..., description="ID of target record")
+    transition_temperature: float = Field(..., description="Temperature of transition, K")
+
+    # Corrections needed for continuity
+    delta_H_correction: float = Field(0.0, description="Enthalpy correction for continuity, J/mol")
+    delta_S_correction: float = Field(0.0, description="Entropy correction for continuity, J/(mol·K)")
+
+    # Transition metadata
+    is_continuous: bool = Field(True, description="Whether transition is naturally continuous")
+    warning: Optional[str] = Field(None, description="Warning about transition quality")
+
+    def to_dict(self) -> dict:
+        """Serialize transition info."""
+        return {
+            "from_id": self.from_record_id,
+            "to_id": self.to_record_id,
+            "T": self.transition_temperature,
+            "ΔH_correction": self.delta_H_correction,
+            "ΔS_correction": self.delta_S_correction,
+            "continuous": self.is_continuous,
+            "warning": self.warning
+        }
+
+
+class MultiPhaseCompoundData(BaseModel):
+    """
+    Container for managing multiple database records of a single compound.
+
+    This class serves as the central data structure for Stage 3, providing
+    seamless access to multiple records within phase segments and managing
+    transitions between them.
+    """
+
+    # Basic compound information
+    compound_formula: str = Field(..., description="Chemical formula of the compound")
+
+    # All records for this compound
+    all_records: List[DatabaseRecord] = Field(
+        default_factory=list,
+        description="All database records for this compound"
+    )
+
+    # Phase segments (from Stage 2)
+    phase_segments: List[PhaseSegment] = Field(
+        default_factory=list,
+        description="Phase segments for multi-phase calculations"
+    )
+
+    # Stage 3: Record transition management
+    record_transitions: Dict[Tuple[int, int], RecordTransition] = Field(
+        default_factory=dict,
+        description="Precomputed transitions between records (from_id, to_id) → transition"
+    )
+
+    active_records_cache: Dict[float, DatabaseRecord] = Field(
+        default_factory=dict,
+        description="Cache of active records by temperature"
+    )
+
+    # Metadata
+    total_temperature_range: Optional[Tuple[float, float]] = Field(
+        None,
+        description="Overall temperature coverage [Tmin, Tmax]"
+    )
+    has_multiple_records_per_segment: bool = Field(
+        False,
+        description="Whether any segment has multiple records"
+    )
+
+    class Config:
+        """Pydantic configuration."""
+        arbitrary_types_allowed = True
+
+    def __post_init__(self) -> None:
+        """Post-initialization setup."""
+        if self.all_records and not self.total_temperature_range:
+            self._calculate_total_range()
+
+        # Check for multiple records per segment
+        self.has_multiple_records_per_segment = self._check_multiple_records()
+
+    def get_record_at_temperature(self, temperature: float) -> DatabaseRecord:
+        """
+        Get the appropriate database record for the specified temperature.
+
+        This method implements the core Stage 3 logic for selecting records
+        within phase segments based on temperature.
+
+        Args:
+            temperature: Temperature in Kelvin
+
+        Returns:
+            DatabaseRecord that covers the specified temperature
+
+        Raises:
+            ValueError: If no record covers the specified temperature
+        """
+        # Check cache first
+        if temperature in self.active_records_cache:
+            return self.active_records_cache[temperature]
+
+        # Find appropriate phase segment
+        target_segment = None
+        for segment in self.phase_segments:
+            if segment.T_start <= temperature <= segment.T_end:
+                target_segment = segment
+                break
+
+        if not target_segment:
+            raise ValueError(
+                f"No phase segment covers temperature {temperature}K. "
+                f"Available range: {self.get_available_range()}"
+            )
+
+        # Find record within segment
+        # For now, segments contain one record each, but this prepares for multiple records
+        selected_record = target_segment.record
+
+        # Cache the result
+        self.active_records_cache[temperature] = selected_record
+
+        return selected_record
+
+    def get_transition_between_records(self, from_id: int, to_id: int) -> Optional[RecordTransition]:
+        """
+        Get precomputed transition information between two records.
+
+        Args:
+            from_id: ID of source record
+            to_id: ID of target record
+
+        Returns:
+            RecordTransition if available, None otherwise
+        """
+        return self.record_transitions.get((from_id, to_id))
+
+    def precompute_transitions(self) -> None:
+        """
+        Precompute all possible transitions between records.
+
+        This method analyzes records within each phase segment and computes
+        the corrections needed to maintain thermodynamic continuity.
+        """
+        from ..calculations.record_transition_manager import RecordTransitionManager
+
+        transition_manager = RecordTransitionManager()
+
+        # Group records by phase segment
+        segments_records = {}
+        for segment in self.phase_segments:
+            segment_key = f"{segment.record.phase}_{segment.T_start}_{segment.T_end}"
+            if segment_key not in segments_records:
+                segments_records[segment_key] = []
+            segments_records[segment_key].append(segment.record)
+
+        # Compute transitions within each segment
+        for segment_key, records in segments_records.items():
+            if len(records) < 2:
+                continue  # No transitions needed for single record
+
+            # Sort records by temperature
+            sorted_records = sorted(records, key=lambda r: r.tmin)
+
+            # Compute transitions between consecutive records
+            for i in range(len(sorted_records) - 1):
+                from_record = sorted_records[i]
+                to_record = sorted_records[i + 1]
+
+                # Find transition temperature (boundary between records)
+                transition_temp = (from_record.tmax + to_record.tmin) / 2
+
+                # Compute transition corrections
+                correction = transition_manager.calculate_transition_corrections(
+                    from_record, to_record, transition_temp
+                )
+
+                # Create and store transition
+                transition = RecordTransition(
+                    from_record_id=from_record.id or 0,
+                    to_record_id=to_record.id or 0,
+                    transition_temperature=transition_temp,
+                    delta_H_correction=correction.get("delta_H", 0.0),
+                    delta_S_correction=correction.get("delta_S", 0.0),
+                    is_continuous=abs(correction.get("delta_H", 0.0)) < 1e-6,
+                    warning=correction.get("warning")
+                )
+
+                self.record_transitions[(from_record.id or 0, to_record.id or 0)] = transition
+
+    def get_available_range(self) -> Tuple[float, float]:
+        """
+        Get the total available temperature range.
+
+        Returns:
+            Tuple of (Tmin, Tmax) for complete coverage
+        """
+        if self.total_temperature_range:
+            return self.total_temperature_range
+
+        if not self.phase_segments:
+            return (0.0, 0.0)
+
+        t_min = min(seg.T_start for seg in self.phase_segments)
+        t_max = max(seg.T_end for seg in self.phase_segments)
+
+        return (t_min, t_max)
+
+    def get_records_in_range(self, t_start: float, t_end: float) -> List[DatabaseRecord]:
+        """
+        Get all records that overlap with the specified temperature range.
+
+        Args:
+            t_start: Start temperature
+            t_end: End temperature
+
+        Returns:
+            List of DatabaseRecord overlapping with the range
+        """
+        overlapping_records = []
+
+        for record in self.all_records:
+            if not (t_end < record.tmin or t_start > record.tmax):
+                overlapping_records.append(record)
+
+        return overlapping_records
+
+    def get_segments_in_range(self, t_start: float, t_end: float) -> List[PhaseSegment]:
+        """
+        Get all phase segments that overlap with the specified temperature range.
+
+        Args:
+            t_start: Start temperature
+            t_end: End temperature
+
+        Returns:
+            List of PhaseSegment overlapping with the range
+        """
+        overlapping_segments = []
+
+        for segment in self.phase_segments:
+            if not (t_end < segment.T_start or t_start > segment.T_end):
+                overlapping_segments.append(segment)
+
+        return overlapping_segments
+
+    def _calculate_total_range(self) -> None:
+        """Calculate the total temperature range from all records."""
+        if not self.all_records:
+            return
+
+        t_min = min(record.tmin for record in self.all_records)
+        t_max = max(record.tmax for record in self.all_records)
+
+        self.total_temperature_range = (t_min, t_max)
+
+    def _check_multiple_records(self) -> bool:
+        """Check if any phase segment contains multiple records."""
+        # Group by phase
+        phase_groups = {}
+        for record in self.all_records:
+            phase = record.phase or "unknown"
+            if phase not in phase_groups:
+                phase_groups[phase] = []
+            phase_groups[phase].append(record)
+
+        # Check if any phase has multiple records
+        for phase, records in phase_groups.items():
+            if len(records) > 1:
+                # Check if records have overlapping temperature ranges
+                sorted_records = sorted(records, key=lambda r: r.tmin)
+                for i in range(len(sorted_records) - 1):
+                    current = sorted_records[i]
+                    next_record = sorted_records[i + 1]
+
+                    # If records touch or overlap, we have multiple records per segment
+                    if next_record.tmin <= current.tmax + 1e-6:  # Small tolerance
+                        return True
+
+        return False
+
+    def to_dict(self) -> dict:
+        """Serialize to dictionary."""
+        return {
+            "formula": self.compound_formula,
+            "records_count": len(self.all_records),
+            "segments_count": len(self.phase_segments),
+            "temperature_range": self.get_available_range(),
+            "has_multiple_records": self.has_multiple_records_per_segment,
+            "transitions_count": len(self.record_transitions),
+            "phase_sequence": self.phase_segments[0].record.phase if self.phase_segments else "unknown"
+        }
