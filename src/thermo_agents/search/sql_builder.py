@@ -10,6 +10,76 @@ Key findings from database analysis implemented:
 - 100% temperature range coverage (Tmin/Tmax always filled)
 - Complex formula variability requiring multi-level search approach
 - Many compounds need prefix/suffix search (e.g., HCl, CO2, NH3, CH4)
+
+Техническое описание:
+Детерминированный генератор SQL запросов для поиска термодинамических соединений.
+Заменяет LLM-based подход на высокопроизводительную детерминированную логику
+с кэшированием и оптимизациями на основе анализа базы данных.
+
+Ключевые компоненты:
+- FilterPriorities: Конфигурация приоритетов фильтрации и сортировки
+- SQLBuilder: Основной класс генератора SQL запросов
+- CommonCompoundResolver: Специализированный резолвер распространенных веществ
+
+Основные методы SQLBuilder:
+- build_compound_search_query(): Генерация основного запроса поиска с кэшированием
+- build_compound_count_query(): Запрос для подсчета количества записей
+- build_temperature_range_stats_query(): Запрос статистики температурных диапазонов
+- suggest_search_strategy(): Рекомендации по стратегии поиска
+- get_performance_metrics(): Метрики производительности
+
+Оптимизации производительности:
+- Кэширование сгенерированных запросов (LRU cache)
+- Измерение времени выполнения запросов
+- Статистика cache hit rate
+- Оптимизированные алгоритмы построения условий
+
+Стратегии поиска соединений:
+- Multi-level formula search (exact → prefix → containment)
+- Global ion exclusion (исключение формул с + и -)
+- Temperature range filtering (пересечение диапазонов)
+- Phase filtering с приоритизацией
+- Compound name search через FirstName поле
+
+Анализ сложности формул:
+- Простые формулы: Fe, O, H2O, CO2, NH3, CH4 (избегают containment search)
+- Сложные формулы: FeSiO3, H2SO4, CaCO3 (используют все типы поиска)
+- Бинарные соединения: FeS, FeO, NaCl, KCl
+- Диатомные молекулы: O2, N2, H2, Cl2
+
+CommonCompoundResolver:
+- Специальная обработка H2O, CO2, O2, N2 и др.
+- Точная логика для избежания ложных совпадений
+- Защита от H2O2 → H2O и подобных ошибок
+
+Параметры фильтрации:
+- ReliabilityClass priority (1 > 2 > 3 > 0 > 4 > 5)
+- Temperature range width preference
+- Data completeness requirements
+- Phase priority (g > l > s > aq)
+
+Безопасность:
+- SQL escaping для предотвращения инъекций
+- Валидация входных параметров
+- Проверка корректности температурных диапазонов
+
+Метрики:
+- Cache hit rate и количество запросов
+- Среднее время построения запроса
+- Размер кэша и эффективность
+- Общее количество обработанных запросов
+
+Интеграция:
+- Используется CompoundSearcher для генерации запросов
+- Интегрируется с FilterPipeline для температурной фильтрации
+- Поддерживает CompoundIndex для оптимизации
+- Совместим с DatabaseConnector
+
+Особенности v2.0:
+- Полностью детерминированная логика вместо LLM
+- Высокая производительность с кэшированием
+- Специализированная обработка распространенных веществ
+- Глобальное исключение ионов из результатов поиска
 """
 
 import re
