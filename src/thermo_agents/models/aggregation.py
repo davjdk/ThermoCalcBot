@@ -111,11 +111,12 @@ AggregatedReactionData:
 - Системах отчетности и анализа
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set, Tuple, Any
+from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
-from ..models.search import CompoundSearchResult
+from ..models.search import CompoundSearchResult, MultiPhaseCompoundData
 
 
 class FilterStatistics(BaseModel):
@@ -220,3 +221,71 @@ class AggregatedReactionData(BaseModel):
         """Pydantic configuration."""
 
         arbitrary_types_allowed = True
+
+
+@dataclass
+class MultiPhaseReactionData:
+    """Данные многофазной реакции для Stage 5."""
+
+    balanced_equation: str
+    reactants: List[str]
+    products: List[str]
+    stoichiometry: Dict[str, float]
+
+    # Новые поля для Stage 5
+    user_temperature_range: Optional[Tuple[float, float]]
+    calculation_range: Tuple[float, float]
+    compounds_data: Dict[str, MultiPhaseCompoundData]
+    phase_changes: List[Tuple[float, str, str]]  # (T, compound, transition)
+
+    # Результаты
+    calculation_table: List[Dict[str, Any]]
+    data_statistics: Dict[str, Any]
+
+    # Метаданные
+    calculation_method: str
+    total_records_used: int
+    phases_used: Set[str]
+
+    def __post_init__(self):
+        """Post-initialization validation."""
+        # Validate temperature ranges
+        if self.calculation_range[0] >= self.calculation_range[1]:
+            raise ValueError("Invalid calculation range: start >= end")
+
+        # Validate that user range is within calculation range if provided
+        if self.user_temperature_range:
+            user_min, user_max = self.user_temperature_range
+            calc_min, calc_max = self.calculation_range
+            if user_min < calc_min or user_max > calc_max:
+                # This is acceptable - we'll expand the range
+                pass
+
+        # Validate stoichiometry
+        if not self.stoichiometry:
+            raise ValueError("Stoichiometry cannot be empty")
+
+    def get_range_expansion_factor(self) -> float:
+        """Calculate how much the range was expanded."""
+        if not self.user_temperature_range:
+            return 1.0
+
+        user_width = self.user_temperature_range[1] - self.user_temperature_range[0]
+        calc_width = self.calculation_range[1] - self.calculation_range[0]
+
+        return calc_width / user_width if user_width > 0 else 1.0
+
+    def get_database_coverage_percentage(self) -> float:
+        """Calculate database coverage percentage."""
+        total_available = sum(
+            len(data.records) for data in self.compounds_data.values()
+        )
+        return (self.total_records_used / total_available * 100) if total_available > 0 else 0.0
+
+    def get_phase_transition_count(self) -> int:
+        """Get total number of phase transitions."""
+        return len(self.phase_changes)
+
+    def get_compounds_with_transitions(self) -> Set[str]:
+        """Get compounds that have phase transitions."""
+        return {compound for _, compound, _ in self.phase_changes}

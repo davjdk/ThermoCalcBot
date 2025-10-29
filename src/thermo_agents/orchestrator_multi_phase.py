@@ -32,6 +32,7 @@ SYMBOLS = {
 }
 
 from .calculations.thermodynamic_calculator import ThermodynamicCalculator
+from .calculations.reaction_calculator import MultiPhaseReactionCalculator  # Stage 3
 from .config.multi_phase_config import (
     MULTI_PHASE_CONFIG,
     get_static_cache_dir,
@@ -40,10 +41,12 @@ from .config.multi_phase_config import (
 )
 from .filtering.filter_pipeline import FilterContext, FilterPipeline, FilterResult
 from .filtering.temperature_range_resolver import TemperatureRangeResolver  # Stage 1
+from .filtering.phase_segment_builder import PhaseSegmentBuilder  # Stage 2
 from .formatting.compound_data_formatter import CompoundDataFormatter
 from .formatting.reaction_calculation_formatter import ReactionCalculationFormatter
 from .models.extraction import ExtractedReactionParameters
-from .models.search import CompoundSearchResult, MultiPhaseSearchResult
+from .models.search import CompoundSearchResult, MultiPhaseSearchResult, MultiPhaseCompoundData
+from .models.aggregation import MultiPhaseReactionData  # Stage 5
 from .search.compound_searcher import CompoundSearcher
 from .search.database_connector import DatabaseConnector
 from .search.sql_builder import SQLBuilder
@@ -160,6 +163,16 @@ class MultiPhaseOrchestrator:
         self.temperature_range_resolver = TemperatureRangeResolver()
         self.logger.info("✅ TemperatureRangeResolver (Stage 1) инициализирован")
 
+        # Stage 2: PhaseSegmentBuilder for building phase segments
+        self.phase_segment_builder = PhaseSegmentBuilder()
+        self.logger.info("✅ PhaseSegmentBuilder (Stage 2) инициализирован")
+
+        # Stage 3: MultiPhaseReactionCalculator for reaction calculations
+        self.reaction_calculator = MultiPhaseReactionCalculator(
+            thermodynamic_calculator=self.calculator
+        )
+        self.logger.info("✅ MultiPhaseReactionCalculator (Stage 3) инициализирован")
+
         # Создаем конвейер с SessionLogger
         self.filter_pipeline = FilterPipeline(session_logger=self.session_logger)
 
@@ -199,6 +212,183 @@ class MultiPhaseOrchestrator:
         else:
             self.thermodynamic_agent = None
             self.logger.warning("⚠️ ThermodynamicAgent не инициализирован (нет API ключа)")
+
+    async def process_query_with_multi_phase(self, user_query: str) -> str:
+        """
+        Enhanced processing with full Stage 1-4 integration.
+
+        Args:
+            user_query: Запрос на естественном языке
+
+        Returns:
+            Отформатированный ответ с полной многофазной информацией
+        """
+        try:
+            self.logger.info(f"⚡ Stage 5: Enhanced multi-phase calculation for: {user_query}")
+
+            # 1. Извлечение параметров (без изменений)
+            if not self.thermodynamic_agent:
+                return self._fallback_processing(user_query)
+
+            params = await self.thermodynamic_agent.extract_parameters(user_query)
+            self.logger.debug(f"Извлечённые параметры: query_type={params.query_type}")
+
+            # 2. Поиск всех записей (без температурных ограничений)
+            all_records = {}
+            for compound in params.all_compounds:
+                result = self.compound_searcher.search_compound(
+                    compound,
+                    temperature_range=None,  # ← КЛЮЧЕВОЕ ИЗМЕНЕНИЕ
+                    max_records=200
+                )
+                all_records[compound] = result.records if result else []
+
+            # 3. Определение полного расчётного диапазона
+            calculation_range = self._determine_full_calculation_range(all_records)
+
+            # 4. Построение фазовых сегментов
+            multi_phase_data = self._build_multi_phase_data(all_records)
+
+            # 5. Расчёты с учётом фазовых переходов
+            if params.query_type == "reaction_calculation":
+                reaction_data = await self.reaction_calculator.calculate_reaction_with_transitions(
+                    multi_phase_data, params.stoichiometry, calculation_range
+                )
+
+                # 6. Форматирование с полной информацией
+                return self.reaction_formatter.format_multi_phase_reaction(
+                    reaction_data, params
+                )
+            else:  # compound_data
+                return await self._process_compound_data_stage1(params)
+
+        except Exception as e:
+            self.logger.error(f"Ошибка обработки запроса: {e}")
+            return f"❌ Ошибка обработки запроса: {str(e)}"
+
+    def _determine_full_calculation_range(
+        self,
+        all_compounds_data: Dict[str, List]
+    ) -> Tuple[float, float]:
+        """
+        Determine the full calculation range from all available data.
+
+        Args:
+            all_compounds_data: Dictionary of compound -> records
+
+        Returns:
+            Tuple of (min_temp, max_temp) for full calculation range
+        """
+        all_temps = []
+        for compound, records in all_compounds_data.items():
+            for record in records:
+                if hasattr(record, 'Tmin') and hasattr(record, 'Tmax'):
+                    all_temps.append(record.Tmin)
+                    all_temps.append(record.Tmax)
+
+        if not all_temps:
+            return (298.0, 298.0)  # Default to standard conditions
+
+        return (min(all_temps), max(all_temps))
+
+    def _build_multi_phase_data(
+        self,
+        compounds_data: Dict[str, List]
+    ) -> Dict[str, MultiPhaseCompoundData]:
+        """
+        Build multi-phase compound data from raw records.
+
+        Args:
+            compounds_data: Dictionary of compound -> records
+
+        Returns:
+            Dictionary of compound -> MultiPhaseCompoundData
+        """
+        multi_phase_data = {}
+
+        for compound, records in compounds_data.items():
+            if not records:
+                continue
+
+            # Build multi-phase data using PhaseSegmentBuilder
+            multi_phase_compound = self.phase_segment_builder.build_compound_data(
+                compound_formula=compound,
+                records=records
+            )
+
+            multi_phase_data[compound] = multi_phase_compound
+
+        return multi_phase_data
+
+    async def _process_reaction_calculation_multi_phase(
+        self,
+        params: ExtractedReactionParameters
+    ) -> str:
+        """
+        Enhanced reaction calculation with Stage 5 multi-phase integration.
+
+        Args:
+            params: Извлеченные параметры
+
+        Returns:
+            Отформатированный ответ с полной многофазной информацией
+        """
+        try:
+            # 1. Поиск всех записей для всех веществ (без температурных ограничений)
+            all_records = {}
+            for compound in params.all_compounds:
+                self.logger.info(f"Поиск всех записей для {compound}...")
+
+                search_result = self.compound_searcher.search_compound(
+                    compound,
+                    temperature_range=None,  # Полный поиск без ограничений
+                    max_records=200
+                )
+
+                if not search_result or not search_result.records:
+                    return f"❌ Не найдено вещество: {compound}"
+
+                all_records[compound] = search_result.records
+
+            # 2. Определение полного расчётного диапазона
+            calculation_range = self._determine_full_calculation_range(all_records)
+            self.logger.info(f"Полный расчётный диапазон: {calculation_range[0]:.0f}-{calculation_range[1]:.0f}K")
+
+            # 3. Построение многофазных данных
+            multi_phase_data = self._build_multi_phase_data(all_records)
+
+            # 4. Определение стехиометрии (упрощённое)
+            stoichiometry = {}
+            for compound in params.reactants:
+                stoichiometry[compound] = -1.0  # Реагенты имеют отрицательные коэффициенты
+            for compound in params.products:
+                stoichiometry[compound] = 1.0   # Продукты имеют положительные коэффициенты
+
+            # 5. Создание данных реакции для Stage 5
+            reaction_data = MultiPhaseReactionData(
+                balanced_equation=params.balanced_equation,
+                reactants=params.reactants,
+                products=params.products,
+                stoichiometry=stoichiometry,
+                user_temperature_range=params.temperature_range_k,
+                calculation_range=calculation_range,
+                compounds_data=multi_phase_data,
+                phase_changes=[],  # Будет заполнено расчётом
+                calculation_table=[],  # Будет заполнено расчётом
+                data_statistics={},
+                calculation_method="multi_phase_v2",
+                total_records_used=sum(len(records) for records in all_records.values()),
+                phases_used=set()
+            )
+
+            # 6. Форматирование с использованием обновлённого форматтера
+            return self.reaction_formatter.format_multi_phase_reaction(
+                reaction_data, params
+            )
+
+        except Exception as e:
+            self.logger.error(f"Ошибка в многофазном расчёте реакции: {e}")
+            return f"❌ Ошибка расчёта реакции: {str(e)}"
 
     async def process_query(self, user_query: str) -> str:
         """

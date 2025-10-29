@@ -171,6 +171,26 @@ class ExtractedReactionParameters(BaseModel):
         description="Шаг температуры для таблиц, K (25-250)"
     )
 
+    use_multi_phase: bool = Field(
+        default=True,
+        description="Использовать многофазные расчёты (Stage 5)"
+    )
+
+    full_data_search: bool = Field(
+        default=True,
+        description="Игнорировать температурные ограничения при поиске (Stage 5)"
+    )
+
+    user_preferences: Dict[str, object] = Field(
+        default_factory=dict,
+        description="Пользовательские предпочтения для расчётов (Stage 5)"
+    )
+
+    stoichiometry: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Стехиометрические коэффициенты веществ (Stage 5)"
+    )
+
     @field_validator('all_compounds')
     @classmethod
     def validate_compounds_count(cls, v):
