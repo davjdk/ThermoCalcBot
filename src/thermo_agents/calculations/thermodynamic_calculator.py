@@ -841,3 +841,235 @@ class ThermodynamicCalculator:
                 temperature_range=temperature_range,
                 properties=sorted_properties
             )
+
+    # Stage 4: Phase transition integration methods
+
+    def calculate_properties_with_transitions(
+        self,
+        compound_data: MultiPhaseCompoundData,
+        temperature: float
+    ) -> ThermodynamicProperties:
+        """
+        Calculate thermodynamic properties with phase transition handling (Stage 4).
+
+        This method implements Stage 4 functionality by correctly accounting for
+        enthalpy and entropy jumps at phase transition points (melting, boiling).
+
+        Args:
+            compound_data: MultiPhaseCompoundData with transitions
+            temperature: Target temperature in Kelvin
+
+        Returns:
+            ThermodynamicProperties at the specified temperature with transition corrections
+
+        Raises:
+            ValueError: If temperature is outside available range
+        """
+        from .transition_data_manager import TransitionDataManager
+        from .phase_transition_calculator import PhaseTransitionCalculator
+
+        logger.debug(f"Расчёт свойств с учётом переходов для {compound_data.compound_formula} при T={temperature:.1f}K")
+
+        # Get base properties without transitions
+        base_properties = self.calculate_properties_multi_record(compound_data, temperature)
+
+        # Extract transition data from records
+        transition_manager = TransitionDataManager(self)
+        transitions = transition_manager.extract_transition_data(compound_data.records)
+
+        if not transitions:
+            logger.debug(f"Нет переходов для {compound_data.compound_formula}")
+            return base_properties
+
+        # Sort transitions by temperature
+        transitions.sort(key=lambda t: t.temperature)
+
+        # Check if temperature matches any transition point
+        transition_calculator = PhaseTransitionCalculator(self)
+        current_transition = transition_calculator.detect_transition_at_temperature(
+            transitions, temperature
+        )
+
+        if current_transition is None:
+            # No transition at this temperature - return base properties
+            return base_properties
+
+        logger.info(
+            f"Обнаружен переход {current_transition.from_phase}→{current_transition.to_phase} "
+            f"при T={temperature:.1f}K для {compound_data.compound_formula}"
+        )
+
+        # Calculate properties just before transition
+        temp_before = temperature - 0.001  # Small epsilon
+        try:
+            properties_before = self.calculate_properties_multi_record(compound_data, temp_before)
+        except ValueError:
+            # If we can't calculate before, use current
+            properties_before = base_properties
+
+        # Apply transition corrections
+        properties_after = transition_calculator.calculate_properties_at_transition(
+            current_transition,
+            properties_before.enthalpy,
+            properties_before.entropy,
+            properties_before.heat_capacity
+        )
+
+        # Create updated properties object
+        transitioned_properties = ThermodynamicProperties(
+            T=temperature,
+            H=properties_after[0],  # Enthalpy after transition
+            S=properties_after[1],  # Entropy after transition
+            G=properties_after[2],  # Gibbs energy after transition
+            Cp=properties_after[3]  # Heat capacity after transition
+        )
+
+        logger.debug(
+            f"Свойства после перехода: H={transitioned_properties.H:.0f} Дж/моль, "
+            f"S={transitioned_properties.S:.1f} Дж/(моль·K), "
+            f"G={transitioned_properties.G:.0f} Дж/моль"
+        )
+
+        return transitioned_properties
+
+    def calculate_table_with_transitions(
+        self,
+        compound_data: MultiPhaseCompoundData,
+        temperature_range: Tuple[float, float],
+        num_points: int = 100
+    ) -> ThermodynamicTable:
+        """
+        Generate thermodynamic table with phase transition handling (Stage 4).
+
+        Creates a temperature table that correctly handles enthalpy and entropy
+        jumps at phase transition points, ensuring thermodynamic consistency.
+
+        Args:
+            compound_data: MultiPhaseCompoundData with transitions
+            temperature_range: Temperature range (Tmin, Tmax) in Kelvin
+            num_points: Number of temperature points to calculate
+
+        Returns:
+            ThermodynamicTable with transition-aware properties
+
+        Raises:
+            ValueError: If temperature range is invalid
+        """
+        from .transition_data_manager import TransitionDataManager
+        from .phase_transition_calculator import PhaseTransitionCalculator
+
+        logger.info(
+            f"Создание таблицы с переходами для {compound_data.compound_formula} "
+            f"в диапазоне {temperature_range[0]:.1f}-{temperature_range[1]:.1f}K"
+        )
+
+        # Extract transition data
+        transition_manager = TransitionDataManager(self)
+        transitions = transition_manager.extract_transition_data(compound_data.records)
+
+        if not transitions:
+            # No transitions - use existing multi-record method
+            return self.calculate_table_multi_record(compound_data, temperature_range, num_points)
+
+        # Sort transitions by temperature
+        transitions.sort(key=lambda t: t.temperature)
+
+        # Create temperature grid that includes transition points
+        T_min, T_max = temperature_range
+        base_temperatures = np.linspace(T_min, T_max, num_points)
+
+        # Add transition temperatures to the grid
+        transition_temps = [t.temperature for t in transitions if T_min <= t.temperature <= T_max]
+        all_temperatures = sorted(list(set(base_temperatures) | set(transition_temps)))
+
+        logger.debug(f"Сетка температур включает {len(transition_temps)} точек перехода")
+
+        # Calculate properties with transition handling
+        properties = []
+        current_phase = None
+
+        for temp in all_temperatures:
+            try:
+                temp_properties = self.calculate_properties_with_transitions(compound_data, temp)
+                properties.append(temp_properties)
+
+                # Log phase changes
+                if current_phase != temp_properties.phase:
+                    logger.info(
+                        f"Смена фазы {compound_data.compound_formula} при T={temp:.1f}K: "
+                        f"{current_phase} → {temp_properties.phase}"
+                    )
+                    current_phase = temp_properties.phase
+
+            except ValueError as e:
+                logger.warning(f"Не удалось рассчитать свойства при T={temp:.1f}K: {e}")
+                continue
+
+        if not properties:
+            raise ValueError(f"Не удалось рассчитать свойства ни в одной точке диапазона")
+
+        return ThermodynamicTable(
+            formula=compound_data.compound_formula,
+            phase="multi_with_transitions",
+            temperature_range=temperature_range,
+            properties=properties
+        )
+
+    def _handle_phase_transition(
+        self,
+        transition: PhaseTransition,
+        h_before: float,
+        s_before: float
+    ) -> Tuple[float, float]:
+        """
+        Handle phase transition by applying enthalpy and entropy jumps.
+
+        Args:
+            transition: Phase transition data
+            h_before: Enthalpy before transition (J/mol)
+            s_before: Entropy before transition (J/(mol·K))
+
+        Returns:
+            Tuple[float, float]: (H_after, S_after) with transition corrections
+        """
+        # Apply enthalpy jump
+        h_after = h_before + (transition.delta_H_transition * 1000)  # кДж → Дж
+
+        # Apply entropy jump
+        s_after = s_before + transition.delta_S_transition
+
+        logger.debug(
+            f"Применён переход {transition.from_phase}→{transition.to_phase}: "
+            f"ΔH={transition.delta_H_transition:.3f} кДж/моль, "
+            f"ΔS={transition.delta_S_transition:.1f} Дж/(моль·K)"
+        )
+
+        return h_after, s_after
+
+    def _detect_transition_at_temperature(
+        self,
+        compound_data: MultiPhaseCompoundData,
+        temperature: float
+    ) -> Optional[PhaseTransition]:
+        """
+        Detect if there's a phase transition at the specified temperature.
+
+        Args:
+            compound_data: MultiPhaseCompoundData with transitions
+            temperature: Temperature to check (K)
+
+        Returns:
+            Optional[PhaseTransition]: Transition at this temperature or None
+        """
+        from .transition_data_manager import TransitionDataManager
+
+        # Extract transitions if not already done
+        transition_manager = TransitionDataManager(self)
+        transitions = transition_manager.extract_transition_data(compound_data.records)
+
+        # Check for transition at this temperature
+        for transition in transitions:
+            if abs(transition.temperature - temperature) < 1e-3:  # Small tolerance
+                return transition
+
+        return None

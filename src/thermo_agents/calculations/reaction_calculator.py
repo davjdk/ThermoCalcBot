@@ -451,3 +451,250 @@ class MultiPhaseReactionCalculator:
             "Some record transitions may affect reaction properties. "
             "Review transition points for critical applications."
         )
+
+    # Stage 4: Phase transition integration methods
+
+    def calculate_reaction_with_transitions(
+        self,
+        reactants_data: List[MultiPhaseCompoundData],
+        products_data: List[MultiPhaseCompoundData],
+        stoichiometry: Dict[str, float],
+        temperature: float
+    ) -> 'ReactionProperties':
+        """
+        Calculate reaction properties with phase transition handling (Stage 4).
+
+        This method implements Stage 4 functionality by correctly accounting for
+        enthalpy and entropy jumps at phase transition points for all reaction
+        participants.
+
+        Args:
+            reactants_data: List of reactant compound data
+            products_data: List of product compound data
+            stoichiometry: Stoichiometric coefficients (negative for reactants, positive for products)
+            temperature: Reaction temperature in Kelvin
+
+        Returns:
+            ReactionProperties with transition-aware calculations
+        """
+        logger.info(f"Расчёт реакции с учётом фазовых переходов при T={temperature:.1f}K")
+
+        # Create reaction components
+        components = []
+
+        # Add reactants
+        for compound_data in reactants_data:
+            coeff = stoichiometry.get(compound_data.compound_formula, 0.0)
+            if coeff < 0:  # Reactants have negative coefficients
+                components.append(ReactionComponent(compound_data, coeff))
+
+        # Add products
+        for compound_data in products_data:
+            coeff = stoichiometry.get(compound_data.compound_formula, 0.0)
+            if coeff > 0:  # Products have positive coefficients
+                components.append(ReactionComponent(compound_data, coeff))
+
+        # Calculate properties for each component with transitions
+        component_properties = {}
+        total_h = 0.0
+        total_s = 0.0
+        total_g = 0.0
+
+        for component in components:
+            formula = component.compound_data.compound_formula
+
+            # Calculate properties with transition handling
+            try:
+                properties = self.thermodynamic_calculator.calculate_properties_with_transitions(
+                    component.compound_data, temperature
+                )
+            except Exception:
+                # Fallback to regular calculation if transition handling fails
+                properties = self.thermodynamic_calculator.calculate_properties_multi_record(
+                    component.compound_data, temperature
+                )
+
+            # Apply stoichiometry
+            h_contribution = properties.enthalpy * component.stoichiometry
+            s_contribution = properties.entropy * component.stoichiometry
+            g_contribution = properties.gibbs_energy * component.stoichiometry
+
+            total_h += h_contribution
+            total_s += s_contribution
+            total_g += g_contribution
+
+            component_properties[formula] = {
+                "properties": properties,
+                "stoichiometry": component.stoichiometry,
+                "h_contribution": h_contribution,
+                "s_contribution": s_contribution,
+                "g_contribution": g_contribution
+            }
+
+            logger.debug(
+                f"{formula}: H={properties.enthalpy:.0f} Дж/моль × {component.stoichiometry:.2f} "
+                f"= {h_contribution:.0f} Дж/моль (фаза: {properties.phase})"
+            )
+
+        # Create reaction properties object
+        reaction_props = ReactionProperties(
+            temperature=temperature,
+            enthalpy=total_h,
+            entropy=total_s,
+            gibbs_energy=total_g,
+            component_properties=component_properties
+        )
+
+        logger.info(
+            f"Реакция с переходами: ΔH={total_h/1000:.3f} кДж/моль, "
+            f"ΔS={total_s:.1f} Дж/(моль·K), ΔG={total_g/1000:.3f} кДж/моль"
+        )
+
+        return reaction_props
+
+    def detect_reaction_phase_changes(
+        self,
+        temperature_range: Tuple[float, float],
+        all_compounds_data: List[MultiPhaseCompoundData]
+    ) -> List[Tuple[float, str, str]]:
+        """
+        Detect phase changes for all compounds in a reaction over temperature range.
+
+        Args:
+            temperature_range: Temperature range (Tmin, Tmax) in Kelvin
+            all_compounds_data: List of all compound data (reactants + products)
+
+        Returns:
+            List[Tuple[float, str, str]]: List of (temperature, compound, transition_type)
+        """
+        from .transition_data_manager import TransitionDataManager
+
+        logger.debug(f"Поиск фазовых изменений в диапазоне {temperature_range[0]:.1f}-{temperature_range[1]:.1f}K")
+
+        transition_manager = TransitionDataManager(self.thermodynamic_calculator)
+        all_transitions = []
+
+        for compound_data in all_compounds_data:
+            formula = compound_data.compound_formula
+
+            # Extract transitions for this compound
+            transitions = transition_manager.extract_transition_data(compound_data.records)
+
+            for transition in transitions:
+                # Check if transition is within our temperature range
+                if temperature_range[0] <= transition.temperature <= temperature_range[1]:
+                    all_transitions.append((
+                        transition.temperature,
+                        formula,
+                        f"{transition.from_phase}→{transition.to_phase} ({transition.transition_type.value})"
+                    ))
+
+        # Sort by temperature
+        all_transitions.sort(key=lambda x: x[0])
+
+        logger.debug(f"Найдено {len(all_transitions)} фазовых переходов в реакции")
+        for temp, formula, change in all_transitions:
+            logger.debug(f"  {temp:.1f}K: {formula} - {change}")
+
+        return all_transitions
+
+    def calculate_reaction_transition_effects(
+        self,
+        transition_temps: List[float],
+        reactants_data: List[MultiPhaseCompoundData],
+        products_data: List[MultiPhaseCompoundData],
+        stoichiometry: Dict[str, float]
+    ) -> Dict[float, Dict[str, float]]:
+        """
+        Calculate the effect of phase transitions on reaction properties.
+
+        Args:
+            transition_temps: List of transition temperatures to analyze
+            reactants_data: List of reactant compound data
+            products_data: List of product compound data
+            stoichiometry: Stoichiometric coefficients
+
+        Returns:
+            Dict[float, Dict[str, float]]: Reaction properties at each transition temperature
+        """
+        logger.info(f"Анализ влияния {len(transition_temps)} фазовых переходов на реакцию")
+
+        transition_effects = {}
+
+        for temp in transition_temps:
+            try:
+                # Calculate reaction properties with transitions
+                reaction_props = self.calculate_reaction_with_transitions(
+                    reactants_data, products_data, stoichiometry, temp
+                )
+
+                transition_effects[temp] = {
+                    "enthalpy_kJ_per_mol": reaction_props.enthalpy / 1000,
+                    "entropy_J_per_mol_K": reaction_props.entropy,
+                    "gibbs_energy_kJ_per_mol": reaction_props.gibbs_energy / 1000
+                }
+
+                logger.debug(
+                    f"T={temp:.1f}K: ΔH={reaction_props.enthalpy/1000:.3f} кДж/моль, "
+                    f"ΔG={reaction_props.gibbs_energy/1000:.3f} кДж/моль"
+                )
+
+            except Exception as e:
+                logger.warning(f"Не удалось рассчитать свойства реакции при T={temp:.1f}K: {e}")
+                transition_effects[temp] = {
+                    "enthalpy_kJ_per_mol": None,
+                    "entropy_J_per_mol_K": None,
+                    "gibbs_energy_kJ_per_mol": None,
+                    "error": str(e)
+                }
+
+        return transition_effects
+
+    def generate_transition_report(
+        self,
+        transition_effects: Dict[float, Dict[str, float]]
+    ) -> str:
+        """
+        Generate a detailed report on phase transition effects in the reaction.
+
+        Args:
+            transition_effects: Results from calculate_reaction_transition_effects
+
+        Returns:
+            str: Formatted report on transition effects
+        """
+        if not transition_effects:
+            return "Нет фазовых переходов в анализируемом диапазоне температур."
+
+        lines = [
+            "🔄 Анализ влияния фазовых переходов на реакцию",
+            "=" * 50
+        ]
+
+        sorted_temps = sorted(transition_effects.keys())
+
+        for temp in sorted_temps:
+            effects = transition_effects[temp]
+
+            if "error" in effects:
+                lines.append(f"\n📍 T = {temp:.1f}K: Ошибка расчёта - {effects['error']}")
+                continue
+
+            lines.append(f"\n📍 T = {temp:.1f}K (фазовый переход):")
+            lines.append(f"   ΔH = {effects['enthalpy_kJ_per_mol']:+.3f} кДж/моль")
+            lines.append(f"   ΔS = {effects['entropy_J_per_mol_K']:+.1f} Дж/(моль·K)")
+            lines.append(f"   ΔG = {effects['gibbs_energy_kJ_per_mol']:+.3f} кДж/моль")
+
+        # Add summary
+        lines.append("\n" + "=" * 50)
+        lines.append(f"📊 Проанализировано {len(sorted_temps)} точек фазовых переходов")
+
+        # Find temperature with most favorable ΔG
+        valid_temps = [(temp, effects) for temp, effects in transition_effects.items()
+                      if "error" not in effects and effects['gibbs_energy_kJ_per_mol'] is not None]
+
+        if valid_temps:
+            best_temp, best_effects = min(valid_temps, key=lambda x: x[1]['gibbs_energy_kJ_per_mol'])
+            lines.append(f"🎯 Наиболее благоприятная температура: {best_temp:.1f}K (ΔG = {best_effects['gibbs_energy_kJ_per_mol']:+.3f} кДж/моль)")
+
+        return "\n".join(lines)

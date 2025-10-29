@@ -880,6 +880,11 @@ class PhaseTransition(BaseModel):
     delta_H_transition: float = Field(0.0, description="Enthalpy of transition, kJ/mol")
     delta_S_transition: float = Field(0.0, description="Entropy of transition, J/(mol·K)")
 
+    # Этап 4: новые поля для надёжности и метода расчёта
+    reliability: float = Field(1.0, description="Reliability of transition data (0.0-1.0)", ge=0.0, le=1.0)
+    calculation_method: str = Field("unknown", description="Method used to calculate transition data ('database', 'calculated', 'heuristic')")
+    warning: Optional[str] = Field(None, description="Warning message about data quality or approximation")
+
     @model_validator(mode='before')
     @classmethod
     def determine_transition_type(cls, data):
@@ -903,15 +908,72 @@ class PhaseTransition(BaseModel):
 
         return data
 
+    @model_validator(mode='after')
+    def validate_thermodynamics(self) -> 'PhaseTransition':
+        """Validate thermodynamic consistency of transition data."""
+        # Автоматический расчёт энтропии перехода
+        if self.delta_S_transition == 0 and self.delta_H_transition != 0 and self.temperature > 0:
+            self.delta_S_transition = (self.delta_H_transition * 1000) / self.temperature
+
+        # Валидация: энтальпии переходов должны быть положительными (эндотермические)
+        if self.delta_H_transition < 0:
+            raise ValueError(
+                f"Энтальпия перехода {self.transition_type.value} отрицательна: "
+                f"{self.delta_H_transition:.3f} кДж/моль. Это физически некорректно - "
+                f"фазовые переходы должны быть эндотермическими."
+            )
+
+        # Валидация: энтропия перехода должна быть положительной
+        if self.delta_S_transition < 0:
+            raise ValueError(
+                f"Энтропия перехода {self.transition_type.value} отрицательна: "
+                f"{self.delta_S_transition:.3f} Дж/(моль·K). Это физически некорректно - "
+                f"энтропия должна увеличиваться при фазовых переходах."
+            )
+
+        # Проверка правила Трутона для кипения
+        if self.transition_type == TransitionType.BOILING:
+            if not (75 < self.delta_S_transition < 95):
+                if self.calculation_method == "database":
+                    self.warning = (
+                        f"Энтропия кипения {self.delta_S_transition:.1f} Дж/(моль·K) "
+                        f"выходит за пределы правила Трутона (75-95). "
+                        f"Значение из БД может быть некорректным."
+                    )
+                elif self.calculation_method in ["calculated", "heuristic"]:
+                    self.reliability = min(0.7, self.reliability)
+                    self.warning = (
+                        f"Расчётная энтропия кипения {self.delta_S_transition:.1f} Дж/(моль·K) "
+                        f"значительно отличается от правила Трутона (75-95). "
+                        f"Понижена надёжность данных."
+                    )
+
+        # Проверка разумности для плавления
+        if self.transition_type == TransitionType.MELTING:
+            if not (8 < self.delta_S_transition < 35):
+                if self.calculation_method == "heuristic":
+                    self.warning = (
+                        f"Энтропия плавления {self.delta_S_transition:.1f} Дж/(моль·K) "
+                        f"выходит за типичные диапазоны (8-35). "
+                        f"Эвристическая оценка может быть неточной."
+                    )
+
+        return self
+
     def to_dict(self) -> dict:
         """Serialize for logging."""
-        return {
+        result = {
             "T": self.temperature,
             "transition": f"{self.from_phase}→{self.to_phase}",
             "type": self.transition_type.value,
             "ΔH": self.delta_H_transition,
             "ΔS": self.delta_S_transition,
+            "method": self.calculation_method,
+            "reliability": self.reliability,
         }
+        if self.warning:
+            result["warning"] = self.warning
+        return result
 
 
 class MultiPhaseProperties(BaseModel):
