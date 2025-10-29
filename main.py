@@ -109,7 +109,7 @@ async def main_test():
     print("=" * 80)
 
     # Тестовый запрос
-    test_query = "Реагирует ли сероводород с оксидом железа(III) при температуре 500–700 °C?"
+    test_query = "Реагирует ли сероводород с оксидом железа(II) при температуре 500–700 °C?"
 
     # Создаем SessionLogger для тестового запроса
     with SessionLogger() as session_logger:

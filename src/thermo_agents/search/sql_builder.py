@@ -247,6 +247,58 @@ class SQLBuilder:
             "total_build_time_ms": self._total_build_time * 1000,
         }
 
+    def _is_simple_formula(self, formula: str) -> bool:
+        """
+        Determine if a chemical formula is simple (binary/simple) or complex.
+
+        Simple formulas should NOT use containment search to avoid false positives.
+        Complex formulas may use containment search as last resort.
+
+        Simple formulas include:
+        - Single elements: Fe, O, H, C, N, S, P, etc.
+        - Binary compounds: FeS, FeO, H2O, CO2, NH3, CH4, HCl, etc.
+        - Simple oxides/salts: CaO, NaCl, KCl, MgO, etc.
+
+        Complex formulas include:
+        - Multi-element compounds: FeSiO3, H2SO4, CaCO3, Al2O3, etc.
+        - Complex organic molecules
+        - Compounds with 3+ different elements
+
+        Args:
+            formula: Chemical formula (e.g., "FeS", "FeSiO3", "H2SO4")
+
+        Returns:
+            True if formula is simple (avoid containment search),
+            False if formula is complex (containment search acceptable)
+        """
+        # Remove whitespace and standardize
+        clean_formula = formula.strip()
+
+        # Single element patterns (Fe, O, H, C, etc., with optional numbers)
+        if re.match(r"^[A-Z][a-z]?[0-9]*$", clean_formula):
+            return True
+
+        # Binary compound patterns (two different elements)
+        # Pattern: Element1 + optional number + Element2 + optional number
+        # Examples: FeS, FeO, H2O, CO2, NH3, CH4, HCl, NaCl, KCl, CaO, MgO
+        binary_pattern = r"^[A-Z][a-z]?[0-9]*[A-Z][a-z]?[0-9]*$"
+        if re.match(binary_pattern, clean_formula):
+            # Additional check: ensure exactly 2 different elements
+            elements = re.findall(r"[A-Z][a-z]?", clean_formula)
+            if len(elements) == 2:
+                return True
+
+        # Simple halides and similar (HCl, HBr, HF, etc.)
+        if re.match(r"^H[A-Z][a-z]?$", clean_formula):
+            return True
+
+        # Simple diatomic molecules (O2, N2, H2, Cl2, etc.)
+        if re.match(r"^[A-Z][a-z]?2$", clean_formula):
+            return True
+
+        # If none of the simple patterns match, it's complex
+        return False
+
     def _build_formula_condition(
         self, formula: str, compound_names: Optional[List[str]] = None
     ) -> str:
@@ -281,17 +333,18 @@ class SQLBuilder:
                 return common_condition
 
         # ПРИОРИТЕТ 2: Обычная логика для остальных веществ
-        # Build comprehensive search condition
+        # Build comprehensive search condition with formula-specific strategy
         conditions = [
             f"TRIM(Formula) = '{self._escape_sql(clean_formula)}'",
             f"Formula LIKE '{self._escape_sql(clean_formula)}(%'",  # Formula with phase in parentheses
-            f"Formula LIKE '{self._escape_sql(clean_formula)}%'",  # Prefix search for compounds like HCl
         ]
 
-        # For complex formulas, also include containment search
-        if not re.match(r"^[A-Z][a-z]?[0-9]*$", clean_formula):
-            # Non-simple formula, add containment search
-            conditions.append(f"Formula LIKE '%{self._escape_sql(clean_formula)}%'")
+        # For simple formulas, DON'T use prefix search to avoid false positives
+        # For complex formulas, use prefix search and containment search
+        if not self._is_simple_formula(clean_formula):
+            # Complex formula, add prefix search and containment search
+            conditions.append(f"Formula LIKE '{self._escape_sql(clean_formula)}%'")  # Prefix search
+            conditions.append(f"Formula LIKE '%{self._escape_sql(clean_formula)}%'")  # Containment search
 
         # Add name-based search if compound names are provided
         if compound_names:
@@ -336,10 +389,12 @@ class SQLBuilder:
         - 74.66% of records have ReliabilityClass = 1 (highest quality)
         - All records have complete thermodynamic data (H298, S298, f1-f6)
         - 100% have phase transition data (MeltingPoint, BoilingPoint)
+        - Exact formula matches should be prioritized over prefix matches
         """
         conditions = []
 
-        # Primary: ReliabilityClass (1 = highest priority)
+        
+        # Secondary: ReliabilityClass (1 = highest priority)
         reliability_case = "CASE ReliabilityClass "
         for i, rel_class in enumerate(self.priorities.reliability_classes):
             reliability_case += f"WHEN {rel_class} THEN {i} "
@@ -492,37 +547,26 @@ class SQLBuilder:
             "recommendations": [],
         }
 
-        # Analyze formula complexity
+        # Analyze formula complexity using improved classification
         clean_formula = formula.strip()
 
-        # Simple formula (e.g., H2O, Fe, NaCl)
-        if re.match(r"^[A-Z][a-z]?[0-9]*$", clean_formula):
+        # Use improved formula classification
+        if self._is_simple_formula(clean_formula):
+            # Simple formula (e.g., Fe, FeS, H2O, CO2, NH3, NaCl)
             suggestions["search_strategies"].extend(
                 ["exact_match", "phase_in_parentheses", "prefix_search"]
             )
             suggestions["estimated_difficulty"] = "easy"
-
-        # Compound with complex pattern (e.g., HCl, CO2, NH3, CH4)
-        elif re.match(r"^[A-Z][a-z]?[0-9]*[A-Z].*$", clean_formula):
-            suggestions["search_strategies"].extend(
-                ["exact_match", "prefix_search", "containment_search"]
-            )
-            suggestions["estimated_difficulty"] = "medium"
-            suggestions["recommendations"].append(
-                "Many compounds with this pattern require prefix search"
-            )
-
-        # Very complex formula
         else:
+            # Complex formula (e.g., FeSiO3, H2SO4, CaCO3)
             suggestions["search_strategies"].extend(
                 ["exact_match", "prefix_search", "containment_search"]
             )
-            suggestions["estimated_difficulty"] = "hard"
+            suggestions["estimated_difficulty"] = "hard"  # Changed from medium to hard since these are complex
             suggestions["recommendations"].extend(
                 [
-                    "Consider alternative formula notations",
-                    "Check for ionized forms (+, - charges)",
-                    "Verify compound exists in database",
+                    "Complex formula may benefit from containment search",
+                    "Consider manual verification of results"
                 ]
             )
 
