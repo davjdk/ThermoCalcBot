@@ -1,9 +1,9 @@
 """
-Stage 02: Phase Segment Building Stage
+Phase Segment Filter Stage
 
-This module implements the PhaseSegmentBuildingStage which integrates
-phase segment building into the FilterPipeline for Stage 2 of the
-multi-phase thermodynamic calculation system.
+This module implements the PhaseSegmentStage which integrates
+phase segment building into the FilterPipeline for multi-phase
+thermodynamic calculations.
 
 Key features:
 - Integrates PhaseSegmentBuilder into FilterPipeline
@@ -13,8 +13,8 @@ Key features:
 - Provides detailed statistics and logging
 
 Technical description:
-PhaseSegmentBuildingStage реализует интеграцию PhaseSegmentBuilder в конвейер
-фильтрации для Этапа 2 многофазных термодинамических расчётов.
+PhaseSegmentStage реализует интеграцию PhaseSegmentBuilder в конвейер
+фильтрации для многофазных термодинамических расчётов.
 
 Стадия выполняет следующие функции:
 1. Получает отфильтрованные записи от предыдущих стадий
@@ -25,7 +25,7 @@ PhaseSegmentBuildingStage реализует интеграцию PhaseSegmentBu
 
 Интеграция в FilterPipeline:
 - Добавляется после температурной фильтрации
-- Работает с расширенным температурным диапазоном из Этапа 1
+- Работает с расширенным температурным диапазоном
 - Сохраняет MultiPhaseProperties в context.additional_params
 - Обеспечивает совместимость с существующими стадиями
 
@@ -39,11 +39,11 @@ PhaseSegmentBuildingStage реализует интеграцию PhaseSegmentBu
                 .with_reliability_priority()
                 .build())
 
-    # Выполнение с контекстом Этапа 1
-    context = pipeline.create_stage1_context(
+    # Выполнение с контекстом
+    context = FilterContext(
         compound_formula="FeO",
-        user_temperature_range=(773, 973),
-        full_calculation_range=(298, 5000)  # Этап 1 расширенный диапазон
+        temperature_range=(773, 973),
+        full_calculation_range=(298, 5000)  # Расширенный диапазон
     )
 
     result = pipeline.execute(records, context)
@@ -64,12 +64,11 @@ from .constants import (
 )
 
 
-class PhaseSegmentBuildingStage(FilterStage):
+class PhaseSegmentStage(FilterStage):
     """
     Filter stage for building phase segments from database records.
 
-    This stage implements the core logic of Stage 2 by integrating
-    PhaseSegmentBuilder into the FilterPipeline and creating
+    This stage integrates PhaseSegmentBuilder into the FilterPipeline and creates
     MultiPhaseProperties for subsequent thermodynamic calculations.
     """
 
@@ -100,8 +99,8 @@ class PhaseSegmentBuildingStage(FilterStage):
         """
         Build phase segments from filtered records.
 
-        This method performs the core Stage 2 logic:
-        1. Extract temperature range from context (supports Stage 1)
+        This method performs the core logic:
+        1. Extract temperature range from context
         2. Build phase segments using PhaseSegmentBuilder
         3. Optimize record selection if enabled
         4. Store MultiPhaseProperties in context
@@ -120,11 +119,11 @@ class PhaseSegmentBuildingStage(FilterStage):
             self._update_stats([], context, 0.0)
             return records
 
-        # Extract temperature range (supports Stage 1 enhanced ranges)
+        # Extract temperature range
         temperature_range = context.effective_temperature_range
         compound_formula = context.compound_formula
 
-        self.logger.info(f"🔄 Stage 2: Построение фазовых сегментов для {compound_formula}")
+        self.logger.info(f"🔄 Построение фазовых сегментов для {compound_formula}")
         self.logger.info(f"   Температурный диапазон: {temperature_range[0]:.0f}-{temperature_range[1]:.0f}K")
         self.logger.info(f"   Входные записи: {len(records)}")
 
@@ -153,7 +152,7 @@ class PhaseSegmentBuildingStage(FilterStage):
         # Step 3: Store results in context for subsequent stages
         context.additional_params = context.additional_params or {}
         context.additional_params["multi_phase_properties"] = multi_phase_properties
-        context.additional_params["stage2_processed"] = True
+        context.additional_params["phase_segments_processed"] = True
         context.additional_params["segment_analysis"] = {
             "total_segments": len(multi_phase_properties.segments),
             "phase_transitions": len(multi_phase_properties.phase_transitions),
@@ -281,7 +280,7 @@ class PhaseSegmentBuildingStage(FilterStage):
             "execution_time_ms": execution_time,
             "temperature_range": context.effective_temperature_range,
             "compound_formula": context.compound_formula,
-            "stage2_enabled": context.additional_params.get("stage2_processed", False)
+            "phase_segments_enabled": context.additional_params.get("phase_segments_processed", False)
         }
 
     def _log_completion(
@@ -296,7 +295,7 @@ class PhaseSegmentBuildingStage(FilterStage):
             multi_phase_properties: Resulting multi-phase properties
             execution_time: Execution time in milliseconds
         """
-        self.logger.info(f"✅ Stage 2 завершена за {execution_time:.1f}мс")
+        self.logger.info(f"✅ Построение фазовых сегментов завершено за {execution_time:.1f}мс")
 
         # Log segment information
         if multi_phase_properties.segments:
@@ -325,7 +324,7 @@ class PhaseSegmentBuildingStage(FilterStage):
 
     def get_stage_name(self) -> str:
         """Get the stage name for logging and statistics."""
-        return "Построение фазовых сегментов (Stage 2)"
+        return "Построение фазовых сегментов"
 
     def get_multi_phase_properties(
         self,
@@ -342,19 +341,19 @@ class PhaseSegmentBuildingStage(FilterStage):
         """
         return context.additional_params.get("multi_phase_properties") if context.additional_params else None
 
-    def is_stage2_processed(self, context: FilterContext) -> bool:
+    def is_phase_segments_processed(self, context: FilterContext) -> bool:
         """
-        Check if Stage 2 processing was completed.
+        Check if phase segments processing was completed.
 
         Args:
             context: Filter context
 
         Returns:
-            True if Stage 2 was processed, False otherwise
+            True if processing was completed, False otherwise
         """
         return bool(
             context.additional_params and
-            context.additional_params.get("stage2_processed", False)
+            context.additional_params.get("phase_segments_processed", False)
         )
 
     def get_segment_analysis(
@@ -375,3 +374,7 @@ class PhaseSegmentBuildingStage(FilterStage):
             if context.additional_params
             else {}
         )
+
+
+# Backward compatibility alias
+PhaseSegmentBuildingStage = PhaseSegmentStage

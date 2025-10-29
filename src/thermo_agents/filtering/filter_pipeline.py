@@ -1129,10 +1129,10 @@ class FilterPipelineBuilder:
         return self
 
     def with_phase_segment_building(self, **kwargs) -> "FilterPipelineBuilder":
-        """Добавить стадию построения фазовых сегментов (Stage 2)."""
-        from .stage_02_phase_segments import PhaseSegmentBuildingStage
+        """Добавить стадию построения фазовых сегментов."""
+        from .phase_segment_stage import PhaseSegmentStage
 
-        self.pipeline.add_stage(PhaseSegmentBuildingStage(**kwargs))
+        self.pipeline.add_stage(PhaseSegmentStage(**kwargs))
         return self
 
     def with_phase_selection(self, phase_resolver, **kwargs) -> "FilterPipelineBuilder":

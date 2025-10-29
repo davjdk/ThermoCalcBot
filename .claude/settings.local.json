@@ -41,7 +41,8 @@
       "Bash(set:*)",
       "Bash(dir logssessions)",
       "Bash(dir:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
