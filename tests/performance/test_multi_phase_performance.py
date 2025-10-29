@@ -1,53 +1,376 @@
 """
-Performance тесты многофазных термодинамических расчётов.
+Тесты производительности многофазной термодинамической системы.
 
-Проверяют соответствие целевым метрикам производительности.
+Проверяет соответствие требованиям производительности:
+- Время отклика ≤3 секунд для простых запросов
+- Использование памяти ≤200MB
+- Производительность многофазных расчётов
+- Эффективность кэширования
+- Масштабируемость системы
 """
 
 import pytest
+import asyncio
+import sys
 import time
-import tempfile
+import psutil
+import gc
+import os
 from pathlib import Path
 
-from thermo_agents.orchestrator_multi_phase import MultiPhaseOrchestrator, MultiPhaseOrchestratorConfig
+# Добавляем src в путь для тестов
+src_path = Path(__file__).parent.parent.parent / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
+from thermo_agents.orchestrator_multi_phase import (
+    MultiPhaseOrchestrator,
+    MultiPhaseOrchestratorConfig
+)
+from thermo_agents.session_logger import SessionLogger
 
 
 @pytest.fixture
-def temp_cache_dir():
-    """Временная директория для YAML кэша."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        yield Path(temp_dir)
+def test_db_path():
+    """Путь к тестовой базе данных."""
+    return "data/thermo_data.db"
 
 
 @pytest.fixture
-def performance_orchestrator(temp_cache_dir):
-    """Оркестратор для performance тестов."""
+async def multi_phase_orchestrator(test_db_path):
+    """Создает многофазный оркестратор для тестов."""
+
     config = MultiPhaseOrchestratorConfig(
-        db_path="tests/fixtures/test_thermo.db",
-        static_cache_dir=str(temp_cache_dir / "static_compounds"),
-        integration_points=200,  # Уменьшаем для скорости
-        llm_api_key=""
+        db_path=test_db_path,
+        llm_api_key="test_key",
+        llm_base_url="https://api.openai.com/v1",
+        llm_model="gpt-4o-mini",
+        static_cache_dir="data/static_compounds",
+        integration_points=100,
     )
-    return MultiPhaseOrchestrator(config)
+
+    orchestrator = MultiPhaseOrchestrator(config)
+    yield orchestrator
 
 
 class TestMultiPhasePerformance:
-    """Performance тесты многофазных расчётов."""
+    """Тесты производительности многофазной системы."""
 
     @pytest.mark.asyncio
-    async def test_single_compound_search_performance(self, performance_orchestrator):
-        """Тест производительности поиска одного вещества."""
-        formula = "H2O"
-        max_temp = 500.0
+    async def test_simple_query_response_time(self, multi_phase_orchestrator):
+        """
+        Тест времени отклика для простых запросов.
 
-        start_time = time.time()
-        search_result = performance_orchestrator.compound_searcher.search_all_phases(
-            formula=formula,
-            max_temperature=max_temp
-        )
-        elapsed_time = (time.time() - start_time) * 1000  # мс
+        Требование: ≤3 секунд для запросов свойств одного вещества.
+        """
 
-        # Целевые метрики: < 100мс для поиска
+        simple_queries = [
+            "H2O свойства при 298K",
+            "CO2 термодинамика при 500K",
+            "FeO энтальпия образования",
+            "NH3 теплоёмкость",
+        ]
+
+        response_times = []
+
+        for query in simple_queries:
+            # Очистка кэша для чистого измерения
+            gc.collect()
+
+            start_time = time.time()
+            response = await multi_phase_orchestrator.process_query(query)
+            end_time = time.time()
+
+            execution_time = end_time - start_time
+            response_times.append(execution_time)
+
+            # Проверки
+            assert response is not None, f"Ответ не должен быть None для запроса: {query}"
+            assert len(response) > 0, f"Ответ не должен быть пустым для запроса: {query}"
+            assert execution_time < 3.0, f"Слишком медленный ответ для '{query}': {execution_time:.2f}s"
+
+        # Проверяем среднее время
+        avg_time = sum(response_times) / len(response_times)
+        assert avg_time < 2.0, f"Среднее время выполнения слишком велико: {avg_time:.2f}s"
+
+    @pytest.mark.asyncio
+    async def test_complex_reaction_calculation_speed(self, multi_phase_orchestrator):
+        """
+        Тест скорости расчёта сложных реакций.
+
+        Требование: ≤5 секунд для многофазных реакций с 4+ компонентами.
+        """
+
+        complex_queries = [
+            "FeO + H₂S → FeS + H₂O термодинамика при 773K",
+            "CO2 + NH3 → NH2COONH4 реакция при 400K",
+            "Fe + O2 → FeO2 + Fe3O4 равновесие при 1000K",
+            "TiO2 + Cl2 → TiCl4 + O2 расчёт при 800K",
+        ]
+
+        for query in complex_queries:
+            gc.collect()
+
+            start_time = time.time()
+            response = await multi_phase_orchestrator.process_query(query)
+            end_time = time.time()
+
+            execution_time = end_time - start_time
+
+            assert response is not None, f"Ответ не должен быть None для реакции: {query}"
+            assert len(response) > 0, f"Ответ не должен быть пустым для реакции: {query}"
+            assert execution_time < 5.0, f"Слишком медленный расчёт реакции '{query}': {execution_time:.2f}s"
+
+            # Проверяем наличие термодинамической информации
+            has_thermo_data = any(
+                indicator in response.lower()
+                for indicator in ["δh", "δg", "δs", "кдж", "дж", "энерг"]
+            )
+
+            # Если расчёт выполнен успешно, должна быть термодинамическая информация
+            if execution_time < 2.0 and len(response) > 100:
+                assert has_thermo_data, f"В успешном расчёте должна быть термодинамическая информация: {response[:200]}..."
+
+    def test_memory_usage_optimization(self, multi_phase_orchestrator):
+        """
+        Тест оптимизации использования памяти.
+
+        Требование: ≤200MB пикового использования памяти.
+        """
+
+        process = psutil.Process(os.getpid())
+
+        # Измеряем базовое использование памяти
+        gc.collect()
+        baseline_memory = process.memory_info().rss / 1024 / 1024  # MB
+
+        # Выполняем серию запросов для проверки утечек памяти
+        async def run_memory_test():
+            queries = [
+                "H2O свойства от 250K до 400K",
+                "FeO свойства от 298K до 4000K",
+                "CO2 + NH3 реакция при 500K",
+                "Fe + O2 → FeO термодинамика при 1000K",
+                "TiO2 + Cl2 → TiCl4 + O2 при 800K",
+            ]
+
+            peak_memory = baseline_memory
+
+            for i, query in enumerate(queries):
+                await multi_phase_orchestrator.process_query(query)
+
+                current_memory = process.memory_info().rss / 1024 / 1024
+                peak_memory = max(peak_memory, current_memory)
+
+                # Принудительная сборка мусора каждые 2 запроса
+                if i % 2 == 1:
+                    gc.collect()
+
+            return peak_memory
+
+        # Запускаем тест
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            peak_memory = loop.run_until_complete(run_memory_test())
+        finally:
+            loop.close()
+
+        # Проверяем требования
+        memory_increase = peak_memory - baseline_memory
+        total_memory = peak_memory
+
+        assert total_memory < 200, f"Превышено ограничение памяти: {total_memory:.1f}MB > 200MB"
+        assert memory_increase < 100, f"Слишком большой рост памяти: {memory_increase:.1f}MB"
+
+    @pytest.mark.asyncio
+    async def test_cache_effectiveness(self, multi_phase_orchestrator):
+        """
+        Тест эффективности кэширования.
+
+        Проверяет, что повторные запросы выполняются быстрее.
+        """
+
+        test_queries = [
+            "H2O свойства при 350K",
+            "FeO термодинамика при 1000K",
+            "CO2 свойства при 400K",
+        ]
+
+        cache_ratios = []
+
+        for query in test_queries:
+            # Первый запрос (без кэша)
+            gc.collect()
+            start_time = time.time()
+            response1 = await multi_phase_orchestrator.process_query(query)
+            first_time = time.time() - start_time
+
+            # Повторный запрос (с кэшем)
+            gc.collect()
+            start_time = time.time()
+            response2 = await multi_phase_orchestrator.process_query(query)
+            second_time = time.time() - start_time
+
+            # Проверяем идентичность ответов
+            assert response1 == response2, f"Ответы должны быть идентичны для повторных запросов"
+
+            # Проверяем ускорение
+            if first_time > 0.1:  # Только если первый запрос был достаточно долгим
+                speedup = first_time / second_time if second_time > 0 else float('inf')
+                cache_ratios.append(speedup)
+
+                # Кэш должен давать ускорение хотя бы в 1.5 раза
+                assert speedup > 1.5 or second_time < 0.1, \
+                    f"Кэш не обеспечивает достаточного ускорения: {speedup:.1f}x для '{query}'"
+
+        # Среднее ускорение должно быть значительным
+        if cache_ratios:
+            avg_speedup = sum(cache_ratios) / len(cache_ratios)
+            assert avg_speedup > 2.0, f"Среднее ускорение от кэша слишком мало: {avg_speedup:.1f}x"
+
+    @pytest.mark.asyncio
+    async def benchmark_vs_current_system_version(self, multi_phase_orchestrator):
+        """
+        Бенчмарк сравнения с текущей версией системы.
+
+        Проверяет, что производительность не ухудшилась.
+        """
+
+        # Бенчмарк запросы
+        benchmark_queries = [
+            ("Простой запрос", "H2O свойства при 298K"),
+            ("Фазовые переходы", "H2O свойства от 250K до 400K"),
+            ("Реакция", "FeO + H₂S → FeS + H₂O при 773K"),
+            ("Сложная реакция", "TiO2 + 2Cl2 → TiCl4 + O2 при 800K"),
+        ]
+
+        benchmark_results = {}
+
+        for name, query in benchmark_queries:
+            times = []
+
+            # Выполняем несколько измерений для статистики
+            for i in range(3):
+                gc.collect()
+                start_time = time.time()
+                response = await multi_phase_orchestrator.process_query(query)
+                end_time = time.time()
+
+                execution_time = end_time - start_time
+                times.append(execution_time)
+
+                # Проверяем корректность ответа
+                assert response is not None, f"Ответ не должен быть None для {name}"
+                assert len(response) > 0, f"Ответ не должен быть пустым для {name}"
+
+            # Статистика
+            avg_time = sum(times) / len(times)
+            min_time = min(times)
+            max_time = max(times)
+
+            benchmark_results[name] = {
+                'avg': avg_time,
+                'min': min_time,
+                'max': max_time,
+                'times': times
+            }
+
+            # Проверяем требования производительности
+            assert avg_time < 4.0, f"Слишком медленное выполнение {name}: {avg_time:.2f}s"
+            assert max_time < 6.0, f"Слишком медленное выполнение {name} (max): {max_time:.2f}s"
+
+        # Выводим результаты для документации
+        print(f"\n=== Бенчмарк производительности ===")
+        for name, results in benchmark_results.items():
+            print(f"{name}: {results['avg']:.2f}s (сред), {results['min']:.2f}s (мин), {results['max']:.2f}s (макс)")
+
+    @pytest.mark.asyncio
+    async def test_performance_requirements_compliance(self, multi_phase_orchestrator):
+        """
+        Комплексный тест соответствия требованиям производительности.
+
+        Проверяет все требования спецификации одновременно.
+        """
+
+        # Тестовые сценарии охватывающие все требования
+        test_scenarios = [
+            {
+                'name': 'Быстрый однофазный запрос',
+                'query': 'CO2 свойства при 298K',
+                'max_time': 2.0,
+                'min_response_length': 50
+            },
+            {
+                'name': 'Многофазный расчёт',
+                'query': 'H2O свойства от 250K до 400K',
+                'max_time': 3.0,
+                'min_response_length': 100
+            },
+            {
+                'name': 'Расчёт реакции',
+                'query': 'Fe + O2 → FeO термодинамика при 1000K',
+                'max_time': 4.0,
+                'min_response_length': 150
+            },
+            {
+                'name': 'Сложная реакция',
+                'query': 'TiO2 + 2Cl2 → TiCl4 + O2 при 800K',
+                'max_time': 5.0,
+                'min_response_length': 200
+            }
+        ]
+
+        compliance_results = []
+
+        for scenario in test_scenarios:
+            # Измерение производительности
+            gc.collect()
+            start_time = time.time()
+            response = await multi_phase_orchestrator.process_query(scenario['query'])
+            end_time = time.time()
+
+            execution_time = end_time - start_time
+            response_length = len(response) if response else 0
+
+            # Проверка соответствия требованиям
+            time_compliant = execution_time <= scenario['max_time']
+            length_compliant = response_length >= scenario['min_response_length']
+            response_valid = response is not None and response_length > 0
+
+            compliance_results.append({
+                'name': scenario['name'],
+                'time': execution_time,
+                'max_time': scenario['max_time'],
+                'time_compliant': time_compliant,
+                'length': response_length,
+                'min_length': scenario['min_response_length'],
+                'length_compliant': length_compliant,
+                'response_valid': response_valid,
+                'fully_compliant': time_compliant and length_compliant and response_valid
+            })
+
+            # Утверждения для каждого сценария
+            assert response_valid, f"Ответ должен быть валидным для {scenario['name']}"
+            assert time_compliant, f"Время выполнения превышено для {scenario['name']}: {execution_time:.2f}s > {scenario['max_time']}s"
+            assert length_compliant, f"Ответ слишком короткий для {scenario['name']}: {response_length} < {scenario['min_length']}"
+
+        # Проверяем общую соответствующую
+        compliant_scenarios = sum(1 for r in compliance_results if r['fully_compliant'])
+        total_scenarios = len(compliance_results)
+
+        compliance_rate = compliant_scenarios / total_scenarios
+        assert compliance_rate >= 0.9, f"Слишком низкий уровень соответствия требованиям: {compliance_rate:.1%}"
+
+        # Выводим детальные результаты
+        print(f"\n=== Результаты соответствия требованиям ===")
+        for result in compliance_results:
+            status = "✅" if result['fully_compliant'] else "❌"
+            print(f"{status} {result['name']}: {result['time']:.2f}s (≤{result['max_time']}s), {result['length']} символов (≥{result['min_length']})")
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "-s"])
         assert elapsed_time < 100, f"Поиск занял {elapsed_time:.1f}мс > 100мс"
         assert search_result is not None
 
