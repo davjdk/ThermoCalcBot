@@ -87,11 +87,11 @@
 - Тестировании фазовых переходов
 """
 
-from typing import Optional, Dict, Any, Set
+from typing import Optional, Dict, Any, Set, Tuple, List
 import re
 from dataclasses import dataclass
 
-from ..models.search import DatabaseRecord
+from ..models.search import DatabaseRecord, PhaseSegment, MultiPhaseProperties
 from .constants import (
     SOLID_PHASE_MAX_TEMP,
     LIQUID_PHASE_MIN_TEMP,
@@ -370,6 +370,245 @@ class PhaseResolver:
             'record_phase': record_phase,
             'transitions': self.get_phase_transitions(record)
         }
+
+    # Stage 2: Enhanced methods for phase segment support
+
+    def resolve_phase_at_temperature(
+        self,
+        compound_data: MultiPhaseProperties,
+        temperature: float
+    ) -> Tuple[str, PhaseSegment]:
+        """
+        Resolve phase and segment for temperature using multi-phase properties.
+
+        This is an enhanced Stage 2 method that works with phase segments
+        instead of individual database records.
+
+        Args:
+            compound_data: MultiPhaseProperties with segments and transitions
+            temperature: Target temperature in Kelvin
+
+        Returns:
+            Tuple of (phase, segment) for the temperature
+
+        Raises:
+            ValueError: If no segment covers the temperature
+        """
+        # Find segment that covers the temperature
+        segment = self._find_segment_for_temperature(compound_data.segments, temperature)
+
+        if not segment:
+            raise ValueError(f"No phase segment covers temperature {temperature:.1f}K")
+
+        # Determine phase from segment record or temperature
+        if segment.record:
+            phase = self.normalize_phase(segment.record.phase) or self._estimate_phase_by_temperature(segment.record, temperature)
+        else:
+            phase = self._estimate_phase_by_temperature_range(segment, temperature)
+
+        return phase, segment
+
+    def get_active_record(
+        self,
+        segment: PhaseSegment,
+        temperature: float
+    ) -> DatabaseRecord:
+        """
+        Get the active database record for a segment at specific temperature.
+
+        Args:
+            segment: Phase segment with assigned record
+            temperature: Target temperature
+
+        Returns:
+            Active database record for the temperature
+
+        Raises:
+            ValueError: If segment has no assigned record
+        """
+        if not segment.record:
+            raise ValueError("Phase segment has no assigned database record")
+
+        # Verify that the record covers the temperature
+        if not segment.record.covers_temperature(temperature):
+            # This shouldn't happen with proper segment construction,
+            # but we provide a graceful fallback
+            raise ValueError(
+                f"Segment record {segment.record.id} does not cover temperature {temperature:.1f}K "
+                f"(range: {segment.record.tmin:.1f}-{segment.record.tmax:.1f}K)"
+            )
+
+        return segment.record
+
+    def _find_segment_for_temperature(
+        self,
+        segments: List[PhaseSegment],
+        temperature: float
+    ) -> Optional[PhaseSegment]:
+        """
+        Find the phase segment that covers the specified temperature.
+
+        Args:
+            segments: List of phase segments
+            temperature: Target temperature
+
+        Returns:
+            PhaseSegment that covers the temperature, or None
+        """
+        for segment in segments:
+            if segment.T_start <= temperature <= segment.T_end:
+                return segment
+
+        return None
+
+    def _estimate_phase_by_temperature_range(
+        self,
+        segment: PhaseSegment,
+        temperature: float
+    ) -> str:
+        """
+        Estimate phase based on segment temperature range.
+
+        This method is used when segment record is not available
+        or doesn't have explicit phase information.
+
+        Args:
+            segment: Phase segment
+            temperature: Target temperature
+
+        Returns:
+            Estimated phase ('s', 'l', 'g')
+        """
+        # Use temperature-based heuristics
+        T_mid = (segment.T_start + segment.T_end) / 2
+
+        # Check for typical phase transition temperatures
+        if T_mid < 500:
+            return 's'  # Likely solid
+        elif T_mid > 2000:
+            return 'g'  # Likely gas
+        else:
+            return 'l'  # Likely liquid
+
+    def get_phase_sequence(
+        self,
+        compound_data: MultiPhaseProperties
+    ) -> List[Tuple[str, Tuple[float, float]]]:
+        """
+        Get the complete phase sequence from multi-phase properties.
+
+        Args:
+            compound_data: MultiPhaseProperties with segments
+
+        Returns:
+            List of (phase, temperature_range) tuples
+        """
+        phase_sequence = []
+
+        for segment in compound_data.segments:
+            if segment.record:
+                phase = self.normalize_phase(segment.record.phase) or 'unknown'
+            else:
+                # Estimate phase from temperature range
+                T_mid = (segment.T_start + segment.T_end) / 2
+                phase = self._estimate_phase_by_temperature_range(segment, T_mid)
+
+            temp_range = (segment.T_start, segment.T_end)
+            phase_sequence.append((phase, temp_range))
+
+        return phase_sequence
+
+    def validate_segment_continuity(
+        self,
+        compound_data: MultiPhaseProperties
+    ) -> Dict[str, Any]:
+        """
+        Validate continuity of phase segments.
+
+        Args:
+            compound_data: MultiPhaseProperties to validate
+
+        Returns:
+            Validation results with issues and recommendations
+        """
+        issues = []
+        recommendations = []
+
+        if not compound_data.segments:
+            return {
+                "is_continuous": False,
+                "issues": ["No segments found"],
+                "recommendations": ["Create segments from database records"]
+            }
+
+        # Sort segments by temperature
+        sorted_segments = sorted(compound_data.segments, key=lambda s: s.T_start)
+
+        # Check for gaps between segments
+        for i in range(len(sorted_segments) - 1):
+            current = sorted_segments[i]
+            next_segment = sorted_segments[i + 1]
+
+            if current.T_end < next_segment.T_start:
+                gap = next_segment.T_start - current.T_end
+                issues.append(f"Gap of {gap:.1f}K between segments {i} and {i+1}")
+                recommendations.append("Ensure complete temperature coverage")
+
+            elif current.T_end > next_segment.T_start:
+                overlap = current.T_end - next_segment.T_start
+                if overlap > TEMPERATURE_EXTENSION_MARGIN:
+                    issues.append(f"Overlap of {overlap:.1f}K between segments {i} and {i+1}")
+                    recommendations.append("Adjust segment boundaries to remove overlap")
+
+        # Check segment data quality
+        for i, segment in enumerate(sorted_segments):
+            if not segment.record:
+                issues.append(f"Segment {i} has no assigned database record")
+                recommendations.append("Assign appropriate records to all segments")
+
+            elif segment.record.h298 == 0 and segment.record.s298 == 0:
+                issues.append(f"Segment {i} record has H298=0 and S298=0")
+                recommendations.append(f"Find better data for segment {i}")
+
+        # Check phase transition consistency
+        if compound_data.phase_transitions:
+            for transition in compound_data.phase_transitions:
+                if not (transition.from_phase and transition.to_phase):
+                    issues.append(f"Invalid phase transition at {transition.temperature:.1f}K")
+                    recommendations.append("Verify phase transition data")
+
+        return {
+            "is_continuous": len(issues) == 0,
+            "issues": issues,
+            "recommendations": recommendations,
+            "total_segments": len(sorted_segments),
+            "phase_transitions": len(compound_data.phase_transitions)
+        }
+
+    def get_phase_at_temperature_enhanced(
+        self,
+        compound_data: MultiPhaseProperties,
+        temperature: float
+    ) -> Optional[str]:
+        """
+        Enhanced version of get_phase_at_temperature for Stage 2.
+
+        This method uses multi-phase properties instead of individual records
+        and provides better accuracy for segment-based calculations.
+
+        Args:
+            compound_data: MultiPhaseProperties with segments
+            temperature: Target temperature
+
+        Returns:
+            Phase at temperature or None if not covered
+        """
+        try:
+            phase, _ = self.resolve_phase_at_temperature(compound_data, temperature)
+            return phase
+        except ValueError:
+            # Temperature not covered by any segment
+            return None
 
     def clear_cache(self) -> None:
         """Очистить кэш результатов."""
