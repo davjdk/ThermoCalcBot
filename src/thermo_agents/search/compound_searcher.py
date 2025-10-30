@@ -941,8 +941,13 @@ class CompoundSearcher:
         Returns:
             MultiPhaseSearchResult
         """
-        # ШАГ 1: Фильтрация по температуре
-        relevant_records = [rec for rec in all_records if rec.tmin <= max_temperature]
+        # ШАГ 1: Фильтрация по температуре (согласно Этапу 8 - без ограничений)
+        if max_temperature is None:
+            # Без температурных ограничений - используем все записи
+            relevant_records = all_records
+        else:
+            # С ограничением по температуре (старая логика)
+            relevant_records = [rec for rec in all_records if rec.tmin <= max_temperature]
 
         # Сортировка по Tmin
         relevant_records.sort(key=lambda r: r.tmin)
@@ -958,9 +963,14 @@ class CompoundSearcher:
                 warnings=["Нет записей, покрывающих требуемый температурный диапазон"],
             )
 
-        # ШАГ 2: Определение покрытия
+        # ШАГ 2: Определение покрытия (согласно Этапу 8)
         coverage_start = relevant_records[0].tmin
-        coverage_end = min(relevant_records[-1].tmax, max_temperature)
+        if max_temperature is None:
+            # Без ограничений - используем максимальную температуру из записей
+            coverage_end = relevant_records[-1].tmax
+        else:
+            # С ограничением по температуре
+            coverage_end = min(relevant_records[-1].tmax, max_temperature)
         covers_298K = any(rec.covers_temperature(298.15) for rec in relevant_records)
 
         # ШАГ 3: Определение фазовых переходов

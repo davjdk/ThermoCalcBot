@@ -151,25 +151,18 @@ class ThermoOrchestrator:
         # 6. FilterPipeline с SessionLogger - строим полный 6-стадийный конвейер
         from .filtering.filter_pipeline import FilterPipeline
         from .filtering.filter_stages import (
-            DeduplicationStage, TemperatureFilterStage, PhaseSelectionStage,
+            DeduplicationStage, PhaseSelectionStage,
             ReliabilityPriorityStage, FormulaConsistencyStage
         )
-        from .filtering.phase_based_temperature_stage import PhaseBasedTemperatureStage
         from .filtering.phase_resolver import PhaseResolver
-        from .filtering.temperature_resolver import TemperatureResolver
 
-        # Stage 1: TemperatureRangeResolver for enhanced temperature range logic
-        self.temperature_range_resolver = TemperatureRangeResolver()
-        self.logger.info("✅ TemperatureRangeResolver (Stage 1) инициализирован")
-
+        
         # Stage 2: PhaseSegmentBuilder for building phase segments
         self.phase_segment_builder = PhaseSegmentBuilder()
         self.logger.info("✅ PhaseSegmentBuilder (Stage 2) инициализирован")
 
         # Stage 3: ReactionCalculator for reaction calculations
-        self.reaction_calculator = MultiPhaseReactionCalculator(
-            thermodynamic_calculator=self.calculator
-        )
+        self.reaction_calculator = MultiPhaseReactionCalculator()
         self.logger.info("✅ ReactionCalculator (Stage 3) инициализирован")
 
         # Создаем конвейер с SessionLogger
@@ -178,20 +171,14 @@ class ThermoOrchestrator:
         # Стадия 1: Удаление дубликатов
         self.filter_pipeline.add_stage(DeduplicationStage())
 
-        # Стадия 2: Температурная фильтрация
-        self.filter_pipeline.add_stage(TemperatureFilterStage())
-
-        # Стадия 3: Умная фазовая и температурная фильтрация
-        self.filter_pipeline.add_stage(PhaseBasedTemperatureStage())
-
-        # Стадия 4: Выбор фазы
+        # Стадия 2: Выбор фазы
         phase_resolver = PhaseResolver()
         self.filter_pipeline.add_stage(PhaseSelectionStage(phase_resolver))
 
-        # Стадия 5: Проверка согласованности формул
+        # Стадия 3: Проверка согласованности формул
         self.filter_pipeline.add_stage(FormulaConsistencyStage())
 
-        # Стадия 6: Приоритизация по надежности
+        # Стадия 4: Приоритизация по надежности
         self.filter_pipeline.add_stage(ReliabilityPriorityStage())
 
         # 7. ThermodynamicAgent (LLM)
@@ -468,9 +455,9 @@ class ThermoOrchestrator:
 
         # Создаем контекст фильтрации
         context = FilterContext(
-            temperature_range=temperature_range,
             compound_formula=compound_formula,
-            user_query=compound_formula
+            user_query=compound_formula,
+            additional_params={"temperature_range": temperature_range}
         )
 
         # Применяем конвейер фильтрации (содержащий только DeduplicationStage)
@@ -510,7 +497,10 @@ class ThermoOrchestrator:
             return "❌ Не указано вещество для поиска"
 
         formula = params.all_compounds[0]
-        T_max = params.temperature_range_k[1]  # Используем максимальную температуру
+        # Автоопределение максимальной температуры из всех записей (согласно Этапу 8)
+        # Вместо: T_max = params.temperature_range_k[1]  # СТАРАЯ ЛОГИКА - ИСПРАВЛЕНО
+        # Теперь используем полную базу данных без ограничений
+        T_max = None  # Полный поиск без ограничений
 
         self.logger.info(f"Многофазный поиск для {formula} до {T_max}K")
 
@@ -529,12 +519,13 @@ class ThermoOrchestrator:
             f"{search_result.phase_count} фаз"
         )
 
-        # Шаг 2: Дедупликация записей
-        temperature_range = params.temperature_range_k
+        # Шаг 2: Дедупликация записей (БЕЗ температурных ограничений согласно Этапу 8)
+        # Старая логика: temperature_range = params.temperature_range_k
+        # Новая логика: используем все записи без фильтрации по температуре
         deduplicated_records = self._apply_deduplication(
             records=search_result.records,
             compound_formula=formula,
-            temperature_range=temperature_range
+            temperature_range=None  # Без температурных ограничений
         )
 
         self.logger.info(
@@ -670,16 +661,12 @@ class ThermoOrchestrator:
         if not search_result.records_found:
             return f"❌ Вещество {formula} не найдено в БД"
 
-        # Step 2: Determine optimal calculation range using TemperatureRangeResolver
-        compounds_data = {formula: search_result.records_found}
-        range_analysis = self.temperature_range_resolver.determine_calculation_range(
-            compounds_data=compounds_data,
-            user_range=user_range
-        )
+        # Step 2: Use user temperature range as calculation range
+        calculation_range = user_range
 
         # Update search result with Stage 1 information
         search_result.set_stage1_ranges(
-            full_calculation_range=range_analysis.calculation_range,
+            full_calculation_range=calculation_range,
             original_user_range=user_range
         )
 
@@ -689,15 +676,12 @@ class ThermoOrchestrator:
 
         # Build the same 6-stage pipeline but with Stage 1 context
         from .filtering.filter_stages import (
-            DeduplicationStage, TemperatureFilterStage, PhaseSelectionStage,
+            DeduplicationStage, PhaseSelectionStage,
             ReliabilityPriorityStage, FormulaConsistencyStage
         )
-        from .filtering.phase_based_temperature_stage import PhaseBasedTemperatureStage
         from .filtering.phase_resolver import PhaseResolver
 
         stage1_pipeline.add_stage(DeduplicationStage())
-        stage1_pipeline.add_stage(TemperatureFilterStage())
-        stage1_pipeline.add_stage(PhaseBasedTemperatureStage())
 
         phase_resolver = PhaseResolver()
         stage1_pipeline.add_stage(PhaseSelectionStage(phase_resolver))
@@ -708,7 +692,7 @@ class ThermoOrchestrator:
         stage1_context = stage1_pipeline.create_stage1_context(
             compound_formula=formula,
             user_temperature_range=user_range,
-            full_calculation_range=range_analysis.calculation_range,
+            full_calculation_range=calculation_range,
             reaction_params=params
         )
 
@@ -721,7 +705,7 @@ class ThermoOrchestrator:
         )
 
         # Step 4: Multi-phase calculation with full range
-        T_calc_max = range_analysis.calculation_range[1]
+        T_calc_max = calculation_range[1]
         mp_result = self.calculator.calculate_multi_phase_properties(
             records=filtered_records,
             trajectory=[T_calc_max]
@@ -738,7 +722,7 @@ class ThermoOrchestrator:
         )
 
         # Step 6: Build enhanced properties table
-        T_min, T_max = range_analysis.calculation_range
+        T_min, T_max = calculation_range
         step_k = params.temperature_step_k
 
         # Include temperatures from user range plus phase transitions
@@ -786,9 +770,9 @@ class ThermoOrchestrator:
         metadata_lines.append("")
         metadata_lines.append("📈 Метаданные расчёта (Stage 1):")
         metadata_lines.append(f"  - Запрошенный диапазон: {user_range[0]:.0f}-{user_range[1]:.0f}K")
-        metadata_lines.append(f"  - Расчётный диапазон: {range_analysis.calculation_range[0]:.0f}-{range_analysis.calculation_range[1]:.0f}K")
+        metadata_lines.append(f"  - Расчётный диапазон: {calculation_range[0]:.0f}-{calculation_range[1]:.0f}K")
 
-        if range_analysis.includes_298K:
+        if calculation_range[0] <= 298 <= calculation_range[1]:
             metadata_lines.append(f"  - ✅ Включает стандартные условия (298K)")
         else:
             metadata_lines.append(f"  - ⚠️  Не включает 298K")
@@ -805,13 +789,7 @@ class ThermoOrchestrator:
             metadata_lines.append(f"    Записей в запрошенном диапазоне: {expansion_info.get('records_in_original_range', 0)}")
             metadata_lines.append(f"    Записей в полном диапазоне: {expansion_info.get('records_in_full_range', 0)}")
 
-        # Add recommendations from TemperatureRangeResolver
-        if range_analysis.recommendations:
-            metadata_lines.append("")
-            metadata_lines.append("💡 Рекомендации:")
-            for rec in range_analysis.recommendations:
-                metadata_lines.append(f"  - {rec}")
-
+        
         # Add warnings
         if search_result.warnings:
             metadata_lines.append("")
@@ -826,7 +804,7 @@ class ThermoOrchestrator:
             self.session_logger.log_info("")
             self.session_logger.log_info(f"✅ Stage 1 завершён для {formula}")
             self.session_logger.log_info(f"   Найдено записей: {len(search_result.records_found)}")
-            self.session_logger.log_info(f"   Расчётный диапазон: {range_analysis.calculation_range[0]:.0f}-{range_analysis.calculation_range[1]:.0f}K")
+            self.session_logger.log_info(f"   Расчётный диапазон: {calculation_range[0]:.0f}-{calculation_range[1]:.0f}K")
             separator = "═" * 70
             self.session_logger.log_info(separator)
 
@@ -908,12 +886,13 @@ class ThermoOrchestrator:
                 f"(из {original_count} оригинальных)"
             )
 
-        # Временно используем существующий форматтер
+        # Используем традиционный форматтер для реакции
+        # format_multi_phase_reaction требует reaction_data, которого здесь нет
         return self.reaction_formatter.format_response(
             params=params,
             reactants=reactant_results,
             products=product_results,
-            step_k=params.temperature_step_k
+            step_k=params.temperature_step_k or 100
         )
 
     def _fallback_processing(self, user_query: str) -> str:
