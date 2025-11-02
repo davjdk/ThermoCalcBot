@@ -7,6 +7,7 @@
 
 import pandas as pd
 from typing import List, Optional, Dict, Any
+from tabulate import tabulate
 
 
 class CompoundInfoFormatter:
@@ -154,3 +155,67 @@ class CompoundInfoFormatter:
             return "🔍 Источник: База данных (стадия 2: только формула)"
         else:
             return "🔍 Источник: База данных"
+
+    @staticmethod
+    def format_compound_data_table(
+        formula: str,
+        records_used: List[pd.Series],
+        compound_names: List[str]
+    ) -> str:
+        """
+        Форматирует таблицу данных о веществе согласно ТЗ.
+
+        Структура:
+        === Данные вещества: Al2O3 (Aluminium oxide) ===
+
+        | Formula | FirstName       | Phase | Tmin   | Tmax   | H298     | S298  |
+        | ------- | --------------- | ----- | ------ | ------ | -------- | ----- |
+        | Al2O3   | Aluminium oxide | s     | 298.15 | 2327.0 | -1675840 | 50.92 |
+        | Al2O3   | Aluminium oxide | l     | 2327.0 | 3000.0 | -1580000 | 125.5 |
+
+        Args:
+            formula: Химическая формула
+            records_used: Список использованных записей
+            compound_names: Список имен из LLM response
+
+        Returns:
+            Отформатированный раздел с таблицей данных вещества
+        """
+        if not records_used:
+            return ""
+
+        lines = []
+
+        # Заголовок раздела
+        name = compound_names[0] if compound_names else records_used[0].get('FirstName', 'Unknown')
+        lines.append(f"=== Данные вещества: {formula} ({name}) ===")
+        lines.append("")
+
+        # Подготавливаем данные для таблицы
+        table_data = []
+        headers = ["Formula", "FirstName", "Phase", "Tmin", "Tmax", "H298", "S298"]
+
+        for record in records_used:
+            table_data.append([
+                record.get('Formula', formula),
+                record.get('FirstName', name),
+                record.get('Phase', 'unknown'),
+                f"{record.get('Tmin', 0):.1f}",
+                f"{record.get('Tmax', 0):.1f}",
+                f"{record.get('H298', 0):.0f}",
+                f"{record.get('S298', 0):.2f}"
+            ])
+
+        # Форматируем таблицу
+        formatted_table = tabulate(
+            table_data,
+            headers=headers,
+            tablefmt="grid",
+            stralign="center",
+            numalign="decimal"
+        )
+
+        lines.append(formatted_table)
+        lines.append("")
+
+        return "\n".join(lines)

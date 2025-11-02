@@ -107,11 +107,26 @@ class UnifiedReactionFormatter:
         lines.append("")
 
         # Данные веществ
-        lines.append("Данные веществ:")
-        lines.append("")
-
         all_compounds = params.all_compounds
         compound_names = getattr(params, 'compound_names', {})
+
+        for formula in all_compounds:
+            names = compound_names.get(formula, []) if compound_names else []
+            metadata = compounds_metadata.get(formula, {})
+
+            # Добавляем таблицу данных вещества
+            compound_table = self.compound_info.format_compound_data_table(
+                formula=formula,
+                records_used=metadata.get('records_used', []),
+                compound_names=names
+            )
+
+            if compound_table:
+                lines.append(compound_table)
+
+        # Добавляем информацию о веществах в текстовом формате
+        lines.append("Данные веществ:")
+        lines.append("")
 
         for formula in all_compounds:
             names = compound_names.get(formula, []) if compound_names else []

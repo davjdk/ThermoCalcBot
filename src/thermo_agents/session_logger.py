@@ -626,3 +626,19 @@ class SessionLogger:
             if issue_count > 0:
                 self._write(f"Validation completed with {issue_count} issue(s) detected")
         self._write("")
+
+    def log_console_output(self, output: str) -> None:
+        """
+        Логирование консольного вывода в файл сессии.
+
+        Args:
+            output: Текст, выводимый в консоль
+        """
+        separator = "=" * 80
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+
+        self._write(separator)
+        self._write(f"[CONSOLE OUTPUT] {timestamp}")
+        self._write(separator)
+        self._write(output)
+        self._write("")

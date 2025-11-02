@@ -127,6 +127,12 @@ async def main_test():
             response_clean = response_clean.replace("→", "->")
             response_clean = response_clean.replace("°", " deg ")
 
+            # Формируем полный консольный вывод для логирования
+            console_output = f"\n[РЕЗУЛЬТАТ]\n{response_clean}\n\n{'=' * 80}\n[ТЕСТ ЗАВЕРШЁН УСПЕШНО]\n{'=' * 80}"
+
+            # Логируем консольный вывод в сессию
+            session_logger.log_console_output(console_output)
+
             print("\n[РЕЗУЛЬТАТ]")
             print(response_clean)
             print("\n" + "=" * 80)

@@ -1,25 +1,19 @@
 """
-Форматирование таблиц результатов расчета с использованием rich.
+Форматирование таблиц результатов расчета с использованием tabulate.
 
 Создает красивые таблицы с результатами термодинамических расчетов,
-включая отметки фазовых переходов и интерпретацию спонтанности.
+включая информацию о фазовых переходах.
 """
 
 import pandas as pd
 from typing import Dict, List, Tuple, Optional, Any
-from rich.console import Console
-from rich.table import Table
-from rich.style import Style
-from rich.text import Text
+from tabulate import tabulate
 
 
 class TableFormatter:
     """
     Форматирование таблиц с результатами.
     """
-
-    def __init__(self):
-        self.console = Console()
 
     @staticmethod
     def determine_spontaneity(delta_g: float) -> str:
@@ -72,6 +66,32 @@ class TableFormatter:
 
         return "; ".join(comments)
 
+    @staticmethod
+    def format_phase_transitions_for_range(
+        temperature: float,
+        phase_transitions: Dict[str, List[Tuple[float, str, str]]]
+    ) -> str:
+        """
+        Форматирует информацию о фазовых переходах для температурного диапазона [T, T+100].
+
+        Args:
+            temperature: Начальная температура диапазона
+            phase_transitions: Словарь фазовых переходов {formula: [(T, phase_from, phase_to)]}
+
+        Returns:
+            Отформатированная строка с переходами через запятую или пустая строка
+        """
+        transitions_in_range = []
+
+        for formula, transitions in phase_transitions.items():
+            for T, phase_from, phase_to in transitions:
+                # Если температура перехода попадает в диапазон [temperature, temperature + 100]
+                if temperature <= T <= temperature + 100:
+                    transition_str = f"{formula}: {phase_from} → {phase_to}"
+                    transitions_in_range.append(transition_str)
+
+        return ", ".join(transitions_in_range)
+
     def format_reaction_table(
         self,
         df_result: pd.DataFrame,
@@ -85,16 +105,13 @@ class TableFormatter:
         - ΔH° (кДж/моль): Энтальпия реакции
         - ΔS° (Дж/(К·моль)): Энтропия реакции
         - ΔG° (кДж/моль): Энергия Гиббса
-        - Комментарий: Интерпретация (спонтанность, фазовые переходы)
+        - Фазовые переходы: Информация о фазовых переходах веществ
 
         Фазовые переходы:
-        - Отмечаются в строках, где T попадает в диапазон перехода
-        - Формат: "⚠ {formula}: {transition_type} ({phase_from} → {phase_to}) при {T}K"
-
-        Интерпретация ΔG:
-        - ΔG < 0: "Экзергоническая (⇑ спонтанная)"
-        - ΔG > 0: "Эндергоническая (⇓ несп.)"
-        - ΔG ≈ 0 (|ΔG| < 1): "Равновесие"
+        - Для каждого диапазона [T, T+100] проверяются все вещества
+        - Формат: "Al2O3: s → l", "C: s → g" и т.д.
+        - Если переходов несколько, перечисляются через запятую
+        - Если переходов нет, ячейка пустая
 
         Args:
             df_result: DataFrame с колонками [T, delta_H, delta_S, delta_G, ln_K, K]
@@ -103,14 +120,12 @@ class TableFormatter:
         Returns:
             Отформатированная таблица
         """
-        from tabulate import tabulate
-
         if phase_transitions is None:
             phase_transitions = {}
 
         # Подготавливаем данные для таблицы
         table_data = []
-        headers = ["T(K)", "ΔH° (кДж/моль)", "ΔS° (Дж/(К·моль))", "ΔG° (кДж/моль)", "Комментарий"]
+        headers = ["T(K)", "ΔH° (кДж/моль)", "ΔS° (Дж/(К·моль))", "ΔG° (кДж/моль)", "Фазовые переходы"]
 
         for _, row in df_result.iterrows():
             T = row['T']
@@ -118,24 +133,15 @@ class TableFormatter:
             delta_S = row['delta_S']
             delta_G = row['delta_G'] / 1000  # Конвертируем в кДж/моль
 
-            # Определяем спонтанность
-            spontaneity = self.determine_spontaneity(row['delta_G'])
-
-            # Форматируем комментарий о фазовых переходах
-            phase_comment = self.format_phase_transition_comment(T, phase_transitions)
-
-            # Объединяем комментарии
-            if phase_comment:
-                comment = f"{spontaneity} | {phase_comment}"
-            else:
-                comment = spontaneity
+            # Определяем фазовые переходы для температурного диапазона [T, T+100]
+            phase_transitions_in_range = self.format_phase_transitions_for_range(T, phase_transitions)
 
             table_data.append([
                 f"{T:.0f}",
                 f"{delta_H:+.2f}",
                 f"{delta_S:+.2f}",
                 f"{delta_G:+.2f}",
-                comment
+                phase_transitions_in_range
             ])
 
         # Форматируем таблицу с tabulate
@@ -210,18 +216,8 @@ class TableFormatter:
         Returns:
             Таблица сравнения
         """
-        table = Table(
-            title="Сравнение с референсными данными",
-            show_header=True,
-            header_style="bold cyan",
-            border_style="blue"
-        )
-
-        table.add_column("T(K)", justify="right", style="white", width=6)
-        table.add_column("ΔG° (расч.)", justify="right", style="green", width=12)
-        table.add_column("ΔG° (реф.)", justify="right", style="blue", width=12)
-        table.add_column("Отклонение", justify="right", style="yellow", width=12)
-        table.add_column("Статус", justify="center", width=10)
+        table_data = []
+        headers = ["T(K)", "ΔG° (расч.)", "ΔG° (реф.)", "Отклонение", "Статус"]
 
         # Сравниваем данные
         for _, row in df_original.iterrows():
@@ -236,33 +232,33 @@ class TableFormatter:
 
                 if rel_error <= tolerance:
                     status = "✅ OK"
-                    status_style = "green"
                 elif rel_error <= tolerance * 10:
                     status = "⚠️ ПОХОЖЕ"
-                    status_style = "yellow"
                 else:
                     status = "❌ РАЗЛИЧИЕ"
-                    status_style = "red"
 
                 error_text = f"{rel_error:.2%}"
 
-                table.add_row(
+                table_data.append([
                     f"{T:.0f}",
                     f"{delta_G_calc:+.4f}",
                     f"{delta_G_ref:+.4f}",
                     error_text,
-                    Text(status, style=status_style)
-                )
+                    status
+                ])
             else:
-                table.add_row(
+                table_data.append([
                     f"{T:.0f}",
                     f"{delta_G_calc:+.4f}",
                     "—",
                     "—",
-                    Text("❓ НЕТ ДАННЫХ", style="dim")
-                )
+                    "❓ НЕТ ДАННЫХ"
+                ])
 
-        with self.console.capture() as capture:
-            self.console.print(table)
-
-        return capture.get()
+        return tabulate(
+            table_data,
+            headers=headers,
+            tablefmt="grid",
+            stralign="center",
+            numalign="decimal"
+        )

@@ -339,17 +339,32 @@ class ReactionEngine:
                 self.logger.error(f"⚠ {formula}: не удалось получить записи для диапазона")
                 raise ValueError(f"Не удалось получить записи для вещества {formula}")
 
-            # Собираем информацию о фазовых переходах
+            # Собираем информацию о фазовых переходах на основе данных Tmin/Tmax
             phase_transitions = []
-            for record in records:
-                record_Tmelt = record.get('Tmelt')
-                record_Tboil = record.get('Tboil')
-                phase = record.get('Phase')
 
-                if record_Tmelt is not None and phase == 's':
-                    phase_transitions.append((record_Tmelt, 's', 'l'))
-                if record_Tboil is not None and phase == 'l':
-                    phase_transitions.append((record_Tboil, 'l', 'g'))
+            # Сортируем записи по Tmin для определения последовательности фаз
+            sorted_records = sorted(records, key=lambda r: r.get('Tmin', float('inf')))
+
+            for i, record in enumerate(sorted_records):
+                current_phase = record.get('Phase', 'unknown')
+                current_Tmin = record.get('Tmin')
+                current_Tmax = record.get('Tmax')
+
+                # Пропускаем записи без температурных данных
+                if current_Tmin is None or current_Tmax is None:
+                    continue
+
+                # Ищем следующую запись с другой фазой
+                for next_record in sorted_records[i+1:]:
+                    next_phase = next_record.get('Phase', 'unknown')
+                    next_Tmin = next_record.get('Tmin')
+
+                    # Если фаза изменилась, фиксируем переход
+                    if next_phase != current_phase and next_Tmin is not None:
+                        # Переход происходит в начале следующей записи
+                        transition_T = next_Tmin
+                        phase_transitions.append((transition_T, current_phase, next_phase))
+                        break
 
             # Сохраняем метаданные
             compounds_metadata[formula] = {
