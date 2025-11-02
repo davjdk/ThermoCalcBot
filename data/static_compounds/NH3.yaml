@@ -1,0 +1,65 @@
+compound: NH3
+name: Ammonia
+melting_point: 195.41
+boiling_point: 392.47
+temperature_range:
+- 298
+- 2500
+records:
+- formula: NH3(l)
+  phase: l
+  tmin: 100.0
+  tmax: 300.0
+  reliability_class: 1
+  thermodynamic_data:
+    H298: -80.0579999008
+    S298: 26.3490019184
+    coefficients:
+      f1: 58.10751752
+      f2: 75.1523452544
+      f3: 0.0425522448304
+      f4: 0.0
+      f5: 0.0
+      f6: 0.0
+  metadata:
+    first_name: Ammonia
+    second_name: ''
+    source: Manual selection from thermo_data.db for atmospheric pressure
+- formula: NH3(g)
+  phase: g
+  tmin: 100.0
+  tmax: 1000.0
+  reliability_class: 1
+  thermodynamic_data:
+    H298: -45.94032
+    S298: 192.7778
+    coefficients:
+      f1: 24.90389082784
+      f2: 36.320638744
+      f3: 0.487128994816
+      f4: -4.60882177056
+      f5: 0.0
+      f6: 0.0
+  metadata:
+    first_name: Ammonia
+    second_name: ''
+    source: Manual selection from thermo_data.db for atmospheric pressure
+- formula: NH3(g)
+  phase: g
+  tmin: 1000.0
+  tmax: 6000.0
+  reliability_class: 1
+  thermodynamic_data:
+    H298: 0.0
+    S298: 0.0
+    coefficients:
+      f1: 65.0639819416
+      f2: 7.6441311808
+      f3: -165.8366056
+      f4: -0.850946484744
+      f5: 0.0
+      f6: 0.0
+  metadata:
+    first_name: Ammonia
+    second_name: ''
+    source: Manual selection from thermo_data.db for atmospheric pressure
