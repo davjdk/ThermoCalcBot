@@ -1,0 +1,120 @@
+================================================================================
+SESSION START: 2025-11-02 17:43:10
+SESSION ID: 0009da
+LOG FILE: logs\sessions\session_20251102_174310_0009da.log
+================================================================================
+
+Symbols legend:
+  ✓ - Success / Data OK
+  ○ - Not specified / Optional
+  ⚠ - Warning / Potential issue
+  ❌ - Error / Critical problem
+
+================================================================================
+[LLM REQUEST] 2025-11-02 17:43:11.088
+================================================================================
+User query:
+Возможна ли реакция между оксидом алюминия и углеродом при 2000 °C?
+
+Query length: 67 characters
+Query type: text
+
+================================================================================
+[LLM RESPONSE] 2025-11-02 17:43:31.652 (duration: 20.562s)
+================================================================================
+Model: unknown
+Temperature: 0.0
+Max tokens: 1000
+
+Raw response (JSON):
+{
+  "query_type": "reaction_calculation",
+  "balanced_equation": "2Al2O3 + 3C → 4Al + 3CO2",
+  "all_compounds": [
+    "Al2O3",
+    "C",
+    "Al",
+    "CO2"
+  ],
+  "reactants": [
+    "Al2O3",
+    "C"
+  ],
+  "products": [
+    "Al",
+    "CO2"
+  ],
+  "temperature_range_k": [
+    2273.0,
+    2373.0
+  ],
+  "extraction_confidence": 0.95,
+  "missing_fields": [],
+  "compound_names": {
+    "Al2O3": [
+      "Aluminium oxide",
+      "Alumina",
+      "Corundum"
+    ],
+    "C": [
+      "Carbon"
+    ],
+    "Al": [
+      "Aluminium"
+    ],
+    "CO2": [
+      "Carbon dioxide"
+    ]
+  },
+  "temperature_step_k": 100,
+  "use_multi_phase": true,
+  "full_data_search": true,
+  "user_preferences": {},
+  "stoichiometry": {}
+}
+
+Extracted parameters:
+  ✓ query_type: reaction_calculation
+  ✓ balanced_equation: 2Al2O3 + 3C → 4Al + 3CO2
+  ✓ all_compounds: ['Al2O3', 'C', 'Al', 'CO2']
+  ✓ reactants: ['Al2O3', 'C']
+  ✓ products: ['Al', 'CO2']
+  ✓ temperature_range_k: (2273.0, 2373.0)
+  ✓ extraction_confidence: 0.95
+  ○ missing_fields: not specified
+  ✓ compound_names: {'Al2O3': ['Aluminium oxide', 'Alumina', 'Corundum'], 'C': ['Carbon'], 'Al': ['Aluminium'], 'CO2': ['Carbon dioxide']}
+  ✓ temperature_step_k: 100
+  ✓ use_multi_phase: True
+  ✓ full_data_search: True
+  ○ user_preferences: not specified
+  ○ stoichiometry: not specified
+
+Status: SUCCESS
+
+[LLM ERROR] 2025-11-02 17:43:31.942
+Error type: str
+Error message: Integers to negative integer powers are not allowed.
+
+Traceback:
+Traceback (most recent call last):
+  File "c:\IDE\repository\agents_for_david\src\thermo_agents\orchestrator.py", line 181, in process_query
+    df_result = self.reaction_engine.calculate_reaction(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\IDE\repository\agents_for_david\src\thermo_agents\core_logic\reaction_engine.py", line 164, in calculate_reaction
+    properties = self.thermo_engine.calculate_properties(suitable_record, T)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\IDE\repository\agents_for_david\src\thermo_agents\core_logic\thermodynamic_engine.py", line 90, in calculate_properties
+    cp = cp_function(T)
+         ^^^^^^^^^^^^^^
+  File "c:\IDE\repository\agents_for_david\src\thermo_agents\core_logic\thermodynamic_engine.py", line 84, in cp_function
+    f1 + f2 * temp / 1000 + f3 * (temp**-2 if temp != 0 else 0) * 100_000 +
+                                  ~~~~^^~~
+ValueError: Integers to negative integer powers are not allowed.
+
+
+
+================================================================================
+SESSION END: 2025-11-02 17:43:31
+TOTAL DURATION: 21.2s
+STATUS: SUCCESS
+================================================================================

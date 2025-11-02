@@ -29,6 +29,7 @@ class YAMLPhaseRecord(BaseModel):
     first_name: Optional[str] = Field(None, description="First name of compound")
     reliability_class: int = Field(1, description="Reliability class")
     molecular_weight: Optional[float] = Field(None, description="Molecular weight")
+    db_rowid: Optional[int] = Field(None, description="Original database row ID")
 
     @field_validator("tmax")
     @classmethod
