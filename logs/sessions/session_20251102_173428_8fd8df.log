@@ -1,0 +1,102 @@
+================================================================================
+SESSION START: 2025-11-02 17:34:28
+SESSION ID: 8fd8df
+LOG FILE: logs\sessions\session_20251102_173428_8fd8df.log
+================================================================================
+
+Symbols legend:
+  ✓ - Success / Data OK
+  ○ - Not specified / Optional
+  ⚠ - Warning / Potential issue
+  ❌ - Error / Critical problem
+
+================================================================================
+[LLM REQUEST] 2025-11-02 17:34:28.403
+================================================================================
+User query:
+Возможна ли реакция между оксидом алюминия и углеродом при 2000 °C?
+
+Query length: 67 characters
+Query type: text
+
+================================================================================
+[LLM RESPONSE] 2025-11-02 17:34:42.193 (duration: 13.787s)
+================================================================================
+Model: unknown
+Temperature: 0.0
+Max tokens: 1000
+
+Raw response (JSON):
+{
+  "query_type": "reaction_calculation",
+  "balanced_equation": "2Al2O3 + 3C → 4Al + 3CO2",
+  "all_compounds": [
+    "Al2O3",
+    "C",
+    "Al",
+    "CO2"
+  ],
+  "reactants": [
+    "Al2O3",
+    "C"
+  ],
+  "products": [
+    "Al",
+    "CO2"
+  ],
+  "temperature_range_k": [
+    2250.0,
+    2300.0
+  ],
+  "extraction_confidence": 0.85,
+  "missing_fields": [],
+  "compound_names": {
+    "Al2O3": [
+      "Aluminium oxide",
+      "Alumina",
+      "Corundum"
+    ],
+    "C": [
+      "Carbon",
+      "Graphite",
+      "Diamond"
+    ],
+    "Al": [
+      "Aluminium",
+      "Aluminum"
+    ],
+    "CO2": [
+      "Carbon dioxide"
+    ]
+  },
+  "temperature_step_k": 100,
+  "use_multi_phase": true,
+  "full_data_search": true,
+  "user_preferences": {},
+  "stoichiometry": {}
+}
+
+Extracted parameters:
+  ✓ query_type: reaction_calculation
+  ✓ balanced_equation: 2Al2O3 + 3C → 4Al + 3CO2
+  ✓ all_compounds: ['Al2O3', 'C', 'Al', 'CO2']
+  ✓ reactants: ['Al2O3', 'C']
+  ✓ products: ['Al', 'CO2']
+  ✓ temperature_range_k: (2250.0, 2300.0)
+  ✓ extraction_confidence: 0.85
+  ○ missing_fields: not specified
+  ✓ compound_names: {'Al2O3': ['Aluminium oxide', 'Alumina', 'Corundum'], 'C': ['Carbon', 'Graphite', 'Diamond'], 'Al': ['Aluminium', 'Aluminum'], 'CO2': ['Carbon dioxide']}
+  ✓ temperature_step_k: 100
+  ✓ use_multi_phase: True
+  ✓ full_data_search: True
+  ○ user_preferences: not specified
+  ○ stoichiometry: not specified
+
+Status: SUCCESS
+
+
+================================================================================
+SESSION END: 2025-11-02 17:34:42
+TOTAL DURATION: 14.1s
+STATUS: SUCCESS
+================================================================================

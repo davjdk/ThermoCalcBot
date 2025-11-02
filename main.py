@@ -35,20 +35,17 @@ def create_orchestrator(db_path: str = "data/thermo_data.db", session_logger: Op
     Создание и настройка термодинамического оркестратора системы.
 
     Args:
-        db_path: Путь к файлу базы данных
+        db_path: Путь к файлу базы данных (не используется на этапе 1)
         session_logger: Логгер сессии (опционально)
 
     Returns:
-        Настроенный ThermoOrchestrator с поддержкой многофазных расчётов
+        Настроенный ThermoOrchestrator (Этап 1: только парсинг LLM)
     """
-    # Конфигурация термодинамического оркестратора
+    # Конфигурация термодинамического оркестратора (Этап 1)
     config = ThermoOrchestratorConfig(
-        db_path=db_path,
         llm_api_key=os.getenv("OPENROUTER_API_KEY", ""),
         llm_base_url=os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1"),
         llm_model=os.getenv("LLM_DEFAULT_MODEL", "openai/gpt-4o"),
-        static_cache_dir="data/static_compounds",
-        integration_points=100,  # Точность численного интегрирования
     )
 
     # Создание оркестратора с SessionLogger
