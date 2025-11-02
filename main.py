@@ -109,7 +109,7 @@ async def main_test():
     print("=" * 80)
 
     # Тестовый запрос
-    test_query = "Происходит ли реакция между оксидом магния и диоксидом серы при 900 °C?"
+    test_query = "Возможна ли реакция между оксидом алюминия и углеродом при 2000 °C?"
 
     # Создаем SessionLogger для тестового запроса
     with SessionLogger() as session_logger:
