@@ -190,6 +190,12 @@ class DatabaseRecord(BaseModel):
     molecular_weight: Optional[float] = Field(None, description="Molecular weight")
     cas_number: Optional[str] = Field(None, description="CAS registry number")
 
+    # YAML cache specific fields
+    is_h298_s298_reference: bool = Field(
+        False,
+        description="Marked as H298/S298 reference source from YAML cache"
+    )
+
     @field_validator("reliability_class")
     @classmethod
     def validate_reliability_class(cls, v):
@@ -293,21 +299,36 @@ class DatabaseRecord(BaseModel):
         Base records have their own thermodynamic values at 298K.
         Records with H298=0 and S298=0 require accumulation from previous segments.
 
+        Records marked as H298/S298 reference are always considered base records
+        regardless of their H298/S298 values.
+
         Returns:
-            True if H298≠0 or S298≠0
+            True if H298≠0 or S298≠0 or marked as H298/S298 reference
         """
-        return abs(self.h298) > 1e-6 or abs(self.s298) > 1e-6
+        return (
+            self.is_h298_s298_reference or
+            abs(self.h298) > 1e-6 or
+            abs(self.s298) > 1e-6
+        )
 
     def covers_temperature(self, T: float) -> bool:
         """
         Check if this record covers the specified temperature.
 
+        For H298/S298 reference records, allow coverage at 298K even if
+        the record's temperature range doesn't include 298K. This ensures
+        that calculations start from the reference record.
+
         Args:
             T: Temperature in Kelvin
 
         Returns:
-            True if Tmin ≤ T ≤ Tmax
+            True if Tmin ≤ T ≤ Tmax or if this is an H298/S298 reference at 298K
         """
+        # Special case: H298/S298 reference records always cover 298K
+        if self.is_h298_s298_reference and abs(T - 298.15) < 1e-6:
+            return True
+
         return self.tmin <= T <= self.tmax
 
     def has_phase_transition_at(self, T: float, tolerance: float = 1e-3) -> Optional[str]:

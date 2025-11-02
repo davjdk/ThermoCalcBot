@@ -448,6 +448,8 @@ class PhaseResolver:
         """
         Find the phase segment that covers the specified temperature.
 
+        For temperature 298K, prioritize segments with H298/S298 reference records.
+
         Args:
             segments: List of phase segments
             temperature: Target temperature
@@ -455,6 +457,14 @@ class PhaseResolver:
         Returns:
             PhaseSegment that covers the temperature, or None
         """
+        # Special case: prioritize H298/S298 reference segments for 298K
+        if abs(temperature - 298.15) < 1e-6:
+            for segment in segments:
+                if (segment.record and
+                    segment.record.is_h298_s298_reference):
+                    return segment
+
+        # Normal temperature coverage check
         for segment in segments:
             if segment.T_start <= temperature <= segment.T_end:
                 return segment

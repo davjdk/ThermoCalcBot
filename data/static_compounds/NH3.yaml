@@ -1,65 +1,94 @@
-compound: NH3
-name: Ammonia
-melting_point: 195.41
-boiling_point: 392.47
-temperature_range:
-- 298
-- 2500
-records:
-- formula: NH3(l)
-  phase: l
-  tmin: 100.0
-  tmax: 300.0
-  reliability_class: 1
-  thermodynamic_data:
-    H298: -80.0579999008
-    S298: 26.3490019184
-    coefficients:
+# NH3 - Ammonia (аммиак)
+
+compound:
+  formula: "NH3"
+  common_names:
+    - "Ammonia"
+    - "Аммиак"
+    - "Азотистоводород"
+  description: "Ammonia - colorless gas with characteristic pungent smell, widely used in industry"
+
+  h298_s298_source:
+    phase: "l"
+    tmin_reference: 195.41
+    description: "Use liquid phase record starting from melting point for standard H298/S298 values"
+
+  phases:
+    # Жидкая фаза (низкие температуры)
+    # DB rowid: extracted from thermo_data.db
+    - phase: "l"
+      tmin: 195.41
+      tmax: 398.3
+      h298: -80.0579999008  # J/mol (стандартная энтальпия образования)
+      s298: 26.3490019184   # J/(mol·K)
       f1: 58.10751752
       f2: 75.1523452544
       f3: 0.0425522448304
       f4: 0.0
       f5: 0.0
       f6: 0.0
-  metadata:
-    first_name: Ammonia
-    second_name: ''
-    source: Manual selection from thermo_data.db for atmospheric pressure
-- formula: NH3(g)
-  phase: g
-  tmin: 100.0
-  tmax: 1000.0
-  reliability_class: 1
-  thermodynamic_data:
-    H298: -45.94032
-    S298: 192.7778
-    coefficients:
+      tmelt: 195.41
+      tboil: 398.3
+      first_name: "Ammonia"
+      reliability_class: 1
+      molecular_weight: 17.03052
+
+    # Газообразная фаза, сегмент 1 (низкие температуры)
+    # DB rowid: extracted from thermo_data.db
+    - phase: "g"
+      tmin: 298.15
+      tmax: 1000.0
+      h298: -45.94032     # J/mol (газ имеет другую энтальпию!)
+      s298: 192.7778      # J/(mol·K)
       f1: 24.90389082784
       f2: 36.320638744
       f3: 0.487128994816
       f4: -4.60882177056
       f5: 0.0
       f6: 0.0
-  metadata:
-    first_name: Ammonia
-    second_name: ''
-    source: Manual selection from thermo_data.db for atmospheric pressure
-- formula: NH3(g)
-  phase: g
-  tmin: 1000.0
-  tmax: 6000.0
-  reliability_class: 1
-  thermodynamic_data:
-    H298: 0.0
-    S298: 0.0
-    coefficients:
+      tmelt: 195.41
+      tboil: 398.3
+      first_name: "Ammonia"
+      reliability_class: 1
+      molecular_weight: 17.03052
+
+    # Газообразная фаза, сегмент 2 (высокие температуры)
+    # DB rowid: extracted from thermo_data.db
+    - phase: "g"
+      tmin: 1000.0
+      tmax: 6000.0
+      h298: 0.0           # Продолжение сегмента
+      s298: 0.0           # Продолжение сегмента
       f1: 65.0639819416
       f2: 7.6441311808
       f3: -165.8366056
       f4: -0.850946484744
       f5: 0.0
       f6: 0.0
+      tmelt: 195.41
+      tboil: 398.3
+      first_name: "Ammonia"
+      reliability_class: 1
+      molecular_weight: 17.03052
+
+  phase_transitions:
+    melting:
+      temperature: 195.41
+      enthalpy: 5.653    # kJ/mol
+      entropy: 28.93     # J/(mol·K)
+    vaporization:
+      temperature: 398.3
+      enthalpy: 23.351   # kJ/mol
+      entropy: 58.62     # J/(mol·K)
+
   metadata:
-    first_name: Ammonia
-    second_name: ''
-    source: Manual selection from thermo_data.db for atmospheric pressure
+    source_database: "thermo_data.db"
+    extracted_date: "2025-11-02"
+    version: "1.0"
+    notes: |
+      Данные для аммиака (NH3).
+      Жидкая фаза существует при T < 398.3K и высоком давлении.
+      Газообразная фаза стабильна при атмосферном давлении.
+      Температурный диапазон: 195.41K - 6000K.
+      Multi-segment representation для разных температурных диапазонов.
+      Важное соединение для химической промышленности и удобрений.

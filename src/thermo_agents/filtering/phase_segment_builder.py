@@ -235,15 +235,30 @@ class PhaseSegmentBuilder:
             # Liquid segment - find liquid records
             liquid_records = [r for r in records if r.phase == 'l']
             if liquid_records and t_end > tmelt and t_start < tboil:
-                liquid_start = max(tmelt, t_start)
-                liquid_end = min(tboil, t_end)
-                if liquid_start < liquid_end:
-                    best_liquid = liquid_records[0]  # Usually only one liquid record
-                    liquid_segment = PhaseSegment.from_database_record(best_liquid)
-                    liquid_segment.T_start = liquid_start
-                    liquid_segment.T_end = liquid_end
-                    liquid_segment.is_transition_boundary = (liquid_end >= tboil)
-                    segments.append(liquid_segment)
+                # Check for H298/S298 reference liquid record
+                reference_liquid = next((r for r in liquid_records if r.is_h298_s298_reference), None)
+
+                if reference_liquid:
+                    # Use H298/S298 reference record with its full temperature range
+                    liquid_start = max(reference_liquid.tmin, t_start)
+                    liquid_end = min(reference_liquid.tmax, t_end)
+                    if liquid_start < liquid_end:
+                        liquid_segment = PhaseSegment.from_database_record(reference_liquid)
+                        liquid_segment.T_start = liquid_start
+                        liquid_segment.T_end = liquid_end
+                        liquid_segment.is_transition_boundary = (liquid_end >= tboil)
+                        segments.append(liquid_segment)
+                else:
+                    # Normal liquid segment creation
+                    liquid_start = max(tmelt, t_start)
+                    liquid_end = min(tboil, t_end)
+                    if liquid_start < liquid_end:
+                        best_liquid = liquid_records[0]  # Usually only one liquid record
+                        liquid_segment = PhaseSegment.from_database_record(best_liquid)
+                        liquid_segment.T_start = liquid_start
+                        liquid_segment.T_end = liquid_end
+                        liquid_segment.is_transition_boundary = (liquid_end >= tboil)
+                        segments.append(liquid_segment)
 
             # Gas segment - find gas records
             gas_records = [r for r in records if r.phase == 'g']
@@ -294,17 +309,30 @@ class PhaseSegmentBuilder:
 
             # Find compatible records
             compatible_records = []
+
+            # First, check for H298/S298 reference records for segments near 298K
+            if abs(segment.T_start - 298.15) < 1.0:  # Segment starts near 298K
+                reference_records = [r for r in records if r.is_h298_s298_reference]
+                if reference_records:
+                    compatible_records.extend(reference_records)
+
+            # Then add phase-specific records
             if expected_phase in records_by_phase:
-                compatible_records = records_by_phase[expected_phase]
+                compatible_records.extend(records_by_phase[expected_phase])
             else:
                 # Fallback: find records that cover the segment temperature range
-                compatible_records = [
+                coverage_records = [
                     r for r in records
                     if r.tmin <= segment.T_end and r.tmax >= segment.T_start
                 ]
+                compatible_records.extend(coverage_records)
 
-            # Sort by temperature range coverage and reliability
+            # Remove duplicates
+            compatible_records = list({r.id: r for r in compatible_records if hasattr(r, 'id')}.values())
+
+            # Sort by H298/S298 reference priority, then temperature coverage and reliability
             compatible_records.sort(key=lambda r: (
+                -1000 if r.is_h298_s298_reference else 0,  # H298/S298 reference gets highest priority
                 -(min(r.tmax, segment.T_end) - max(r.tmin, segment.T_start)),  # Coverage
                 r.reliability_class if r.reliability_class else 999  # Reliability
             ))

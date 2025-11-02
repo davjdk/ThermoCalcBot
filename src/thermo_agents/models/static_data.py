@@ -48,6 +48,15 @@ class YAMLPhaseTransition(BaseModel):
     entropy: float = Field(..., description="Transition entropy, J/(mol·K)")
 
 
+class YamlH298S298Source(BaseModel):
+    """Явное указание источника H298/S298."""
+
+    phase: str = Field(..., description="Фаза для использования (s/l/g/aq)")
+    tmin_reference: float = Field(..., description="Tmin целевой записи")
+    db_rowid: Optional[int] = Field(None, description="ID записи в БД для ссылки")
+    description: Optional[str] = Field(None, description="Пояснение выбора источника")
+
+
 class YAMLMetadata(BaseModel):
     """Metadata for YAML file."""
 
@@ -69,6 +78,11 @@ class YAMLCompoundData(BaseModel):
     phase_transitions: Optional[Dict[str, YAMLPhaseTransition]] = Field(
         None,
         description="Phase transitions (melting, vaporization, sublimation)"
+    )
+
+    h298_s298_source: Optional[YamlH298S298Source] = Field(
+        None,
+        description="Явное указание источника H298/S298 для исключительных случаев"
     )
 
     metadata: YAMLMetadata = Field(..., description="File metadata")

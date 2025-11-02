@@ -160,9 +160,47 @@ class StaticDataManager:
                 tmelt=phase_data.tmelt,
                 tboil=phase_data.tboil,
                 reliability_class=phase_data.reliability_class,
-                molecular_weight=phase_data.molecular_weight
+                molecular_weight=phase_data.molecular_weight,
+                is_h298_s298_reference=False  # Default value
             )
             records.append(record)
+
+        # Mark H298/S298 reference record if specified
+        if compound_data.h298_s298_source:
+            records = self._mark_h298_s298_reference(records, compound_data.h298_s298_source)
+
+        return records
+
+    def _mark_h298_s298_reference(
+        self,
+        records: List[DatabaseRecord],
+        source_spec: "YamlH298S298Source"
+    ) -> List[DatabaseRecord]:
+        """
+        Mark the record that should be used as H298/S298 reference.
+
+        Args:
+            records: List of DatabaseRecord objects
+            source_spec: H298/S298 source specification from YAML
+
+        Returns:
+            Updated list with reference record marked
+        """
+        for record in records:
+            if (record.phase == source_spec.phase and
+                abs(record.tmin - source_spec.tmin_reference) < 1e-6):
+                record.is_h298_s298_reference = True
+                self.logger.info(
+                    f"✅ Marked H298/S298 reference: {record.formula} "
+                    f"{record.phase} phase at Tmin={record.tmin:.3f}K"
+                )
+                break
+        else:
+            self.logger.warning(
+                f"⚠️ Could not find H298/S298 reference record for "
+                f"{records[0].formula if records else 'unknown'} "
+                f"(phase={source_spec.phase}, Tmin={source_spec.tmin_reference})"
+            )
 
         return records
 
