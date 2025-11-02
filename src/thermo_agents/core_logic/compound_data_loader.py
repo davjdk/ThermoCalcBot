@@ -87,10 +87,14 @@ class CompoundDataLoader:
 
         return df
 
-    def _convert_yaml_to_dataframe(self, yaml_data: YAMLCompoundData) -> pd.DataFrame:
+    def _convert_yaml_to_dataframe(self, yaml_data: Optional[YAMLCompoundData]) -> pd.DataFrame:
         """
         Конвертирует YAML данные в DataFrame с той же структурой, что и БД.
         """
+        if yaml_data is None:
+            self.logger.warning("YAML данные отсутствуют, возвращаем пустой DataFrame")
+            return pd.DataFrame()
+
         rows = []
         for phase_record in yaml_data.phases:
             row = {
@@ -243,6 +247,25 @@ class CompoundDataLoader:
         if self.static_manager.is_available(formula):
             self.logger.info(f"⚡ {formula}: найдено в YAML-кэше")
             yaml_data = self.static_manager.load_compound(formula)
+            if yaml_data is None:
+                self.logger.warning(f"⚠ {formula}: YAML-кэш не загрузился, переход к БД")
+                # Переходим к стадиям БД если YAML не загрузился
+                if compound_names and len(compound_names) > 0:
+                    first_name = compound_names[0]
+                    df = self._search_db_with_name(formula, first_name)
+                    if not df.empty:
+                        self.logger.info(
+                            f"✓ {formula} (стадия 1: формула + '{first_name}'): "
+                            f"найдено {len(df)} записей"
+                        )
+                        return df, False, 1
+                df = self._search_db_formula_only(formula)
+                if not df.empty:
+                    self.logger.info(f"✓ {formula} (стадия 2: только формула): найдено {len(df)} записей")
+                    return df, False, 2
+                else:
+                    self.logger.warning(f"⚠ {formula}: не найдено записей (все стадии)")
+                    return pd.DataFrame(), False, None
             df = self._convert_yaml_to_dataframe(yaml_data)
             return df, True, None
 
