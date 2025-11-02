@@ -218,3 +218,53 @@ class CompoundDataLoader:
         df_sorted = df.sort_values('_priority').drop(columns=['_reliability_score', '_phase_score', '_priority'])
 
         return df_sorted.reset_index(drop=True)
+
+    def get_raw_compound_data_with_metadata(
+        self,
+        formula: str,
+        compound_names: Optional[List[str]] = None
+    ) -> tuple[pd.DataFrame, bool, Optional[int]]:
+        """
+        Трехстадийный поиск вещества с возвратом метаданных об источнике.
+
+        Возвращает:
+            - DataFrame с найденными записями
+            - is_yaml_cache: bool (истинно, если данные из YAML-кэша)
+            - search_stage: Optional[int] (1 или 2 для поиска в БД, None для YAML)
+
+        Args:
+            formula: Химическая формула (например, "SO2", "H2O")
+            compound_names: Список имен из LLM response (опционально)
+
+        Returns:
+            (df, is_yaml_cache, search_stage)
+        """
+        # Стадия 0: YAML-кэш (для H2O, CO2, O2, NH3, Cl2, HCl, NaCl, FeO, C, CO)
+        if self.static_manager.is_available(formula):
+            self.logger.info(f"⚡ {formula}: найдено в YAML-кэше")
+            yaml_data = self.static_manager.load_compound(formula)
+            df = self._convert_yaml_to_dataframe(yaml_data)
+            return df, True, None
+
+        # Стадия 1: БД с формулой + именем
+        if compound_names and len(compound_names) > 0:
+            first_name = compound_names[0]
+            df = self._search_db_with_name(formula, first_name)
+            if not df.empty:
+                self.logger.info(
+                    f"✓ {formula} (стадия 1: формула + '{first_name}'): "
+                    f"найдено {len(df)} записей"
+                )
+                return df, False, 1
+            else:
+                self.logger.info(f"⚠ {formula}: стадия 1 не дала результатов, переход к стадии 2")
+
+        # Стадия 2: БД только формула
+        df = self._search_db_formula_only(formula)
+        if not df.empty:
+            self.logger.info(f"✓ {formula} (стадия 2: только формула): найдено {len(df)} записей")
+            return df, False, 2
+        else:
+            self.logger.warning(f"⚠ {formula}: не найдено записей (все стадии)")
+
+        return df, False, None

@@ -9,7 +9,7 @@ import logging
 import numpy as np
 import pandas as pd
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 from .compound_data_loader import CompoundDataLoader
 from .phase_transition_detector import PhaseTransitionDetector
@@ -275,3 +275,158 @@ class ReactionEngine:
                 reaction_coeffs[compound] = coeff
 
         return reaction_coeffs
+
+    def calculate_reaction_with_metadata(
+        self,
+        params: ExtractedReactionParameters,
+        temperature_range: List[float]
+    ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+        """
+        Расчет реакции с возвратом метаданных об отобранных записях.
+
+        Returns:
+            (df_result, compounds_metadata)
+
+            compounds_metadata = {
+                formula: {
+                    'records_used': [список pd.Series],
+                    'melting_point': float,
+                    'boiling_point': float,
+                    'phase_transitions': [(T, phase_from, phase_to), ...],
+                    'is_yaml_cache': bool,
+                    'search_stage': int
+                }
+            }
+        """
+        # Парсим уравнение реакции
+        equation = params.balanced_equation
+        all_compounds = params.all_compounds
+
+        try:
+            reaction_coeffs = self.parse_reaction_equation(equation, all_compounds)
+        except Exception as e:
+            self.logger.error(f"Ошибка парсинга уравнения '{equation}': {e}")
+            raise ValueError(f"Ошибка парсинга уравнения: {e}")
+
+        self.logger.info(f"═══ РАСЧЕТ РЕАКЦИИ: {equation}")
+        self.logger.info(f"Стехиометрия: {reaction_coeffs}")
+
+        # Подготовка данных для каждого вещества и сбор метаданных
+        compound_data = {}
+        compounds_metadata = {}
+
+        for formula in all_compounds:
+            # Получаем имена из compound_names если есть
+            compound_names = params.compound_names.get(formula) if hasattr(params, 'compound_names') and params.compound_names else None
+
+            # Загружаем данные из БД
+            df, is_yaml_cache, search_stage = self.compound_loader.get_raw_compound_data_with_metadata(formula, compound_names)
+
+            if df.empty:
+                self.logger.error(f"⚠ {formula}: нет данных в БД")
+                raise ValueError(f"Не найдены данные для вещества {formula}")
+
+            # Определяем точки фазовых переходов
+            melting, boiling = self.phase_detector.get_most_common_melting_boiling_points(df)
+
+            # Получаем записи для полного диапазона
+            t_range_full = [temperature_range[0], temperature_range[1]]
+            records = self.range_builder.get_compound_records_for_range(
+                df, t_range_full, melting, boiling
+            )
+
+            if not records:
+                self.logger.error(f"⚠ {formula}: не удалось получить записи для диапазона")
+                raise ValueError(f"Не удалось получить записи для вещества {formula}")
+
+            # Собираем информацию о фазовых переходах
+            phase_transitions = []
+            for record in records:
+                record_Tmelt = record.get('Tmelt')
+                record_Tboil = record.get('Tboil')
+                phase = record.get('Phase')
+
+                if record_Tmelt is not None and phase == 's':
+                    phase_transitions.append((record_Tmelt, 's', 'l'))
+                if record_Tboil is not None and phase == 'l':
+                    phase_transitions.append((record_Tboil, 'l', 'g'))
+
+            # Сохраняем метаданные
+            compounds_metadata[formula] = {
+                'records_used': records,
+                'melting_point': melting,
+                'boiling_point': boiling,
+                'phase_transitions': phase_transitions,
+                'is_yaml_cache': is_yaml_cache,
+                'search_stage': search_stage
+            }
+
+            compound_data[formula] = {
+                'records': records,
+                'melting': melting,
+                'boiling': boiling,
+                'coeff': reaction_coeffs.get(formula, 0)
+            }
+
+            source_info = "YAML-кэш" if is_yaml_cache else f"БД (стадия {search_stage})"
+            self.logger.info(
+                f"✓ {formula}: подготовлено {len(records)} записей, coeff={reaction_coeffs.get(formula, 0)} ({source_info})"
+            )
+
+        # Расчет для каждой температуры (остальная логика без изменений)
+        results = []
+        T_start, T_end, T_step = temperature_range
+        temperatures = np.arange(T_start, T_end + T_step, T_step)
+
+        for T in temperatures:
+            delta_H = 0.0
+            delta_S = 0.0
+
+            for formula, data in compound_data.items():
+                coeff = data['coeff']
+                records = data['records']
+
+                # Находим подходящую запись для текущей температуры
+                suitable_record = None
+                for record in records:
+                    if record['Tmin'] <= T <= record['Tmax']:
+                        suitable_record = record
+                        break
+
+                # Временное решение для этапа 2: если нет точного совпадения,
+                # используем первую запись (даже если T вне диапазона)
+                if suitable_record is None and records:
+                    suitable_record = records[0]
+                    self.logger.debug(f"⚠ T={T}K: использована первая запись для {formula} (Tmin={records[0]['Tmin']}K)")
+
+                if suitable_record is None:
+                    self.logger.warning(f"⚠ T={T}K: нет подходящей записи для {formula}")
+                    continue
+
+                # Рассчитываем термодинамические свойства
+                properties = self.thermo_engine.calculate_properties(suitable_record, T)
+
+                # Добавляем вклад в реакцию (с учетом стехиометрии)
+                delta_H += coeff * properties['enthalpy']
+                delta_S += coeff * properties['entropy']
+
+            # Вычисляем ΔG и константу равновесия
+            delta_G = delta_H - T * delta_S
+
+            # ln(K) = -ΔG / (R * T)
+            ln_K = -delta_G / (self.R * T) if T > 0 else 0
+            K = np.exp(ln_K) if abs(ln_K) < 700 else (np.inf if ln_K > 0 else 0)  # Избегаем overflow
+
+            results.append({
+                'T': T,
+                'delta_H': delta_H,
+                'delta_S': delta_S,
+                'delta_G': delta_G,
+                'ln_K': ln_K,
+                'K': K
+            })
+
+        df_result = pd.DataFrame(results)
+        self.logger.info(f"✓ Расчет завершен: {len(df_result)} температурных точек")
+
+        return df_result, compounds_metadata

@@ -24,6 +24,12 @@ from .core_logic import (
     ThermodynamicEngine,
     ReactionEngine
 )
+from .formatting import (
+    UnifiedReactionFormatter,
+    CompoundInfoFormatter,
+    TableFormatter,
+    InterpretationFormatter
+)
 
 
 @dataclass
@@ -128,11 +134,25 @@ class ThermoOrchestrator:
                     self.logger
                 )
                 self.logger.info("✅ Core-логика компоненты инициализированы")
+
+                # Новые форматтеры (Этап 3)
+                self.compound_info_formatter = CompoundInfoFormatter()
+                self.table_formatter = TableFormatter()
+                self.interpretation_formatter = InterpretationFormatter()
+                self.unified_formatter = UnifiedReactionFormatter(
+                    self.compound_info_formatter,
+                    self.table_formatter,
+                    self.interpretation_formatter
+                )
+                self.logger.info("✅ Новые форматтеры инициализированы (Этап 3)")
+
             except Exception as e:
                 self.logger.error(f"❌ Ошибка инициализации core-логики: {e}")
                 self.reaction_engine = None
+                self.unified_formatter = None
         else:
             self.reaction_engine = None
+            self.unified_formatter = None
             self.logger.warning("⚠️ Core-логика не инициализирована (проблемы с БД или StaticDataManager)")
 
     async def process_query(self, user_query: str) -> str:
@@ -178,12 +198,25 @@ class ThermoOrchestrator:
                 temperature_range = [298, 2500, 100]  # Фиксированный диапазон
 
                 try:
-                    df_result = self.reaction_engine.calculate_reaction(
+                    # Используем новый метод с метаданными для форматтера
+                    df_result, compounds_metadata = self.reaction_engine.calculate_reaction_with_metadata(
                         params, temperature_range
                     )
 
-                    # 5. Временное форматирование (будет улучшено на этапе 3)
-                    return self._format_temporary_result(df_result, params)
+                    # 5. НОВОЕ: Форматирование через UnifiedReactionFormatter
+                    if self.unified_formatter:
+                        formatted_result = self.unified_formatter.format_reaction_result(
+                            params, df_result, compounds_metadata
+                        )
+                    else:
+                        # Fallback на временный форматтер если новые не инициализированы
+                        formatted_result = self._format_temporary_result(df_result, params)
+
+                    # 6. Логирование результата
+                    if self.session_logger:
+                        self.session_logger.log_info(f"Расчет завершен: {len(df_result)} температурных точек")
+
+                    return formatted_result
 
                 except Exception as e:
                     self.logger.error(f"Ошибка расчета реакции: {e}")

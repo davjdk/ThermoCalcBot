@@ -26,6 +26,7 @@ dependencies = [
     { name = "psutil" },
     { name = "pydantic-ai" },
     { name = "python-dotenv" },
+    { name = "rich" },
     { name = "scipy" },
     { name = "tabulate" },
 ]
@@ -44,6 +45,7 @@ requires-dist = [
     { name = "psutil", specifier = ">=5.9.0" },
     { name = "pydantic-ai", specifier = "==1.0.8" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "rich", specifier = ">=14.1.0" },
     { name = "scipy", specifier = ">=1.16.2" },
     { name = "tabulate", specifier = ">=0.9.0" },
 ]
