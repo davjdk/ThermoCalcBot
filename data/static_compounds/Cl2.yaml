@@ -9,27 +9,7 @@ compound:
     - "Диоксид хлора"
   description: "Chlorine - yellow-green toxic gas, essential for water purification and chemical industry"
 
-  phases:
-    # Газообразная фаза, сегмент 1 (базовая запись с S298)
-    # DB rowid: 38805
-    - phase: "g"
-      tmin: 100.0
-      tmax: 298.15
-      h298: 0.0         # Элемент в стандартном состоянии
-      s298: 223.078988  # J/(mol·K)
-      f1: 23.273939
-      f2: 51.222310
-      f3: 0.143763
-      f4: -53.558652
-      f5: 0.0
-      f6: 0.0
-      tmelt: 171.7
-      tboil: 239.11
-      first_name: "Dichlorine"
-      reliability_class: 1
-      molecular_weight: 70.906
-      db_rowid: 38805
-
+  phases:    
     # Газообразная фаза, сегмент 2 (стандартные условия)
     # DB rowid: 38806
     - phase: "g"

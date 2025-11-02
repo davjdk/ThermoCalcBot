@@ -10,26 +10,6 @@ compound:
   description: "Sodium chloride - common table salt, essential for life and industrial processes"
 
   phases:
-    # Твердая фаза, сегмент 1 (низкие температуры, базовая запись)
-    # DB rowid: 48396
-    - phase: "s"
-      tmin: 100.0
-      tmax: 298.15
-      h298: -411.119817  # J/mol (стандартная энтальпия образования)
-      s298: 72.132160   # J/(mol·K)
-      f1: 45.690000
-      f2: 18.710000
-      f3: -0.800000
-      f4: 0.000000
-      f5: 0.0
-      f6: 0.0
-      tmelt: 1074.0
-      tboil: 1686.0
-      first_name: "Sodium chloride"
-      reliability_class: 1
-      molecular_weight: 58.4428
-      db_rowid: 48396
-
     # Твердая фаза, сегмент 2 (комнатные температуры)
     # DB rowid: 297771
     - phase: "s"
@@ -49,66 +29,6 @@ compound:
       reliability_class: 1
       molecular_weight: 58.4428
       db_rowid: 297771
-
-    # Твердая фаза, сегмент 3 (продолжение)
-    # DB rowid: 48397
-    - phase: "s"
-      tmin: 298.15
-      tmax: 1074.0
-      h298: 0.0          # Продолжение сегмента
-      s298: 0.0          # Продолжение сегмента
-      f1: 49.658913
-      f2: 9.625617
-      f3: -0.688901
-      f4: 0.000000
-      f5: 0.0
-      f6: 0.0
-      tmelt: 1074.0
-      tboil: 1686.0
-      first_name: "Sodium chloride"
-      reliability_class: 1
-      molecular_weight: 58.4428
-      db_rowid: 48397
-
-    # Жидкая фаза, сегмент 1 (расплав)
-    # DB rowid: 249125
-    - phase: "l"
-      tmin: 1073.80
-      tmax: 1500.0
-      h298: 28.158288   # J/mol (относительно твердой фазы)
-      s298: 26.216909   # J/(mol·K)
-      f1: 66.904000
-      f2: 0.000000
-      f3: 0.000000
-      f4: 0.000000
-      f5: 0.0
-      f6: 0.0
-      tmelt: 1074.0
-      tboil: 1686.0
-      first_name: "Sodium chloride"
-      reliability_class: 1
-      molecular_weight: 58.4428
-      db_rowid: 249125
-
-    # Жидкая фаза, сегмент 2 (высокие температуры)
-    # DB rowid: 297772
-    - phase: "l"
-      tmin: 1073.95
-      tmax: 1500.0
-      h298: 28.158289   # J/mol
-      s298: 26.216915   # J/(mol·K)
-      f1: 66.904000
-      f2: 0.000000
-      f3: 0.000000
-      f4: 0.000000
-      f5: 0.0
-      f6: 0.0
-      tmelt: 1074.0
-      tboil: 1686.0
-      first_name: "Sodium chloride"
-      reliability_class: 1
-      molecular_weight: 58.4428
-      db_rowid: 297772
 
     # Жидкая фаза, сегмент 3 (очень высокие температуры)
     # DB rowid: 48398

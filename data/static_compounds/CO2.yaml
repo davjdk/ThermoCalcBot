@@ -10,26 +10,6 @@ compound:
   description: "Carbon dioxide - colorless, odorless gas, greenhouse gas"
 
   phases:
-    # Газообразная фаза, сегмент 1 (низкие температуры)
-    # DB rowid: 37259
-    - phase: "g"
-      tmin: 50.0
-      tmax: 298.15
-      h298: -393.505181  # J/mol (стандартная энтальпия образования)
-      s298: 213.768908   # J/(mol·K)
-      f1: 24.997
-      f2: 55.186
-      f3: -33.691
-      f4: 7.948
-      f5: -0.136
-      f6: -0.403
-      tmelt: 0.0       # CO2 не плавится при атмосферном давлении
-      tboil: 194.68    # Сублимация
-      first_name: "Carbon dioxide"
-      reliability_class: 1
-      molecular_weight: 44.0095
-      db_rowid: 37259
-
     # Газообразная фаза, сегмент 3 (высокие температуры)
     # DB rowid: 37261
     - phase: "g"

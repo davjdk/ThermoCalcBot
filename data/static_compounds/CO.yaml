@@ -10,26 +10,6 @@ compound:
   description: "Carbon monoxide - colorless, odorless, toxic gas from incomplete combustion"
 
   phases:
-    # Газообразная фаза, сегмент 1 (низкие температуры)
-    # DB rowid: 292152
-    - phase: "g"
-      tmin: 0.00015
-      tmax: 700.0
-      h298: -110.541161  # J/mol (стандартная энтальпия образования)
-      s298: 197.660309   # J/(mol·K)
-      f1: 29.304180
-      f2: -2.905080
-      f3: 0.0
-      f4: 7.924785
-      f5: 0.0
-      f6: 0.0
-      tmelt: 68.0
-      tboil: 81.7
-      first_name: "Carbon monoxide"
-      reliability_class: 1
-      molecular_weight: 28.0101
-      db_rowid: 292152
-
     # Газообразная фаза, сегмент 2 (комнатные температуры)
     # DB rowid: 202544
     - phase: "g"

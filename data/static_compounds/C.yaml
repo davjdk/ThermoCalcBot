@@ -10,45 +10,6 @@ compound:
   description: "Carbon (graphite) - standard state of elemental carbon, used in electrodes and lubricants"
 
   phases:
-    # Твердая фаза, сегмент 1 (низкие температуры)
-    # DB rowid: 2766
-    - phase: "s"
-      tmin: 20.0
-      tmax: 100.0
-      h298: 0.0         # Элемент в стандартном состоянии
-      s298: 5.740448    # J/(mol·K)
-      f1: -0.299407
-      f2: 11.490940
-      f3: 0.000502
-      f4: 0.0
-      f5: 0.0
-      f6: 0.0
-      tmelt: 3915.0     # Графит сублимирует
-      tboil: 3915.0
-      first_name: "Carbon"
-      reliability_class: 1
-      molecular_weight: 12.0107
-      db_rowid: 2766
-
-    # Твердая фаза, сегмент 2 (комнатные температуры, стандартная энтропия = 0)
-    # DB rowid: 2767
-    - phase: "s"
-      tmin: 100.0
-      tmax: 298.15
-      h298: 0.0         # Элемент в стандартном состоянии
-      s298: 0.0         # Нормальная энтропия для продолжения сегмента
-      f1: 8.517505
-      f2: 0.041070
-      f3: -0.548730
-      f4: 0.000000
-      f5: 0.0
-      f6: 0.0
-      tmelt: 3915.0
-      tboil: 3915.0
-      first_name: "Carbon"
-      reliability_class: 1
-      molecular_weight: 12.0107
-      db_rowid: 2767
 
     # Твердая фаза, сегмент 3 (средние температуры, с ненулевой энтропией)
     # DB rowid: 284025
@@ -109,26 +70,6 @@ compound:
       reliability_class: 1
       molecular_weight: 12.0107
       db_rowid: 2770
-
-    # Твердая фаза, сегмент 6 (сублимация)
-    # DB rowid: 2771
-    - phase: "s"
-      tmin: 3900.0
-      tmax: 4400.0
-      h298: 0.0         # Продолжение сегмента
-      s298: 0.0         # Продолжение сегмента
-      f1: 25.570190
-      f2: -2.226870
-      f3: -18.241200
-      f4: 3.499210
-      f5: 0.000000
-      f6: 0.000000
-      tmelt: 3915.0
-      tboil: 3915.0
-      first_name: "Carbon"
-      reliability_class: 1
-      molecular_weight: 12.0107
-      db_rowid: 2771
 
   phase_transitions:
     sublimation:  # Графит сублимирует (переход s → g)

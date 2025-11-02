@@ -9,27 +9,7 @@ compound:
     - "Соляная кислота (газ)"
   description: "Hydrogen chloride - colorless gas, forms hydrochloric acid when dissolved in water"
 
-  phases:
-    # Газообразная фаза, сегмент 1 (низкие температуры)
-    # DB rowid: 42768
-    - phase: "g"
-      tmin: 50.0
-      tmax: 298.15
-      h298: -92.311592   # J/mol (стандартная энтальпия образования)
-      s298: 186.895096   # J/(mol·K)
-      f1: 29.150120
-      f2: -0.364850
-      f3: -0.000370
-      f4: 1.098600
-      f5: 0.0
-      f6: 0.0
-      tmelt: 158.97
-      tboil: 188.0
-      first_name: "Hydrogen chloride"
-      reliability_class: 1
-      molecular_weight: 36.4609
-      db_rowid: 42768
-
+  phases:    
     # Газообразная фаза, сегмент 2 (комнатные температуры и выше)
     # DB rowid: 310262
     - phase: "g"
@@ -49,46 +29,6 @@ compound:
       reliability_class: 1
       molecular_weight: 36.4609
       db_rowid: 310262
-
-    # Газообразная фаза, сегмент 3 (высокие температуры)
-    # DB rowid: 42770
-    - phase: "g"
-      tmin: 800.0
-      tmax: 2400.0
-      h298: 0.0          # Продолжение сегмента
-      s298: 0.0          # Продолжение сегмента
-      f1: 30.640091
-      f2: -0.736332
-      f3: -1.280424
-      f4: 2.796816
-      f5: 0.0
-      f6: 0.0
-      tmelt: 158.97
-      tboil: 188.0
-      first_name: "Hydrogen chloride"
-      reliability_class: 1
-      molecular_weight: 36.4609
-      db_rowid: 42770
-
-    # Газообразная фаза, сегмент 4 (очень высокие температуры)
-    # DB rowid: 42771
-    - phase: "g"
-      tmin: 2400.0
-      tmax: 6000.0
-      h298: 0.0          # Продолжение сегмента
-      s298: 0.0          # Продолжение сегмента
-      f1: 36.225830
-      f2: -7.898413
-      f3: -0.342193
-      f4: 0.000000
-      f5: 0.0
-      f6: 0.0
-      tmelt: 158.97
-      tboil: 188.0
-      first_name: "Hydrogen chloride"
-      reliability_class: 1
-      molecular_weight: 36.4609
-      db_rowid: 42771
 
   phase_transitions:
     melting:

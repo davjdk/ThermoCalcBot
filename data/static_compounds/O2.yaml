@@ -10,26 +10,6 @@ compound:
   description: "Oxygen - colorless, odorless gas essential for respiration and combustion"
 
   phases:
-    # Газообразная фаза, сегмент 1 (низкие температуры)
-    # DB rowid: 298584
-    - phase: "g"
-      tmin: 50.0
-      tmax: 298.15
-      h298: 0.0         # Элемент в стандартном состоянии
-      s298: 205.145477  # J/(mol·K)
-      f1: 29.430962
-      f2: -4.015250
-      f3: -0.004076
-      f4: 12.820244
-      f5: 0.0
-      f6: 0.0
-      tmelt: 54.36
-      tboil: 90.2
-      first_name: "Oxygen"
-      reliability_class: 1
-      molecular_weight: 31.998
-      db_rowid: 298584
-
     # Газообразная фаза, сегмент 2 (комнатные температуры)
     # DB rowid: 49767
     - phase: "g"
