@@ -191,6 +191,17 @@ class ExtractedReactionParameters(BaseModel):
         description="Стехиометрические коэффициенты веществ (Stage 5)"
     )
 
+    is_elemental: Optional[bool] = Field(
+        default=None,
+        description=(
+            "Является ли вещество простым (состоит из одного элемента). "
+            "True для O2, N2, H2, C, Fe, Cl2 и т.п. "
+            "False для H2O, CO2, NH3, NaCl и других сложных веществ. "
+            "Только для query_type='compound_data' (одно вещество). "
+            "Для простых веществ H₂₉₈ = 0.0 кДж/моль по определению."
+        )
+    )
+
     @field_validator('all_compounds')
     @classmethod
     def validate_compounds_count(cls, v):
@@ -263,6 +274,26 @@ class ExtractedReactionParameters(BaseModel):
             raise ValueError(f"Tmax должен быть больше Tmin: {tmax} <= {tmin}")
         if tmax > 150000:
             raise ValueError(f"Tmax слишком высокая: {tmax} > 150000K")
+        return v
+
+    @field_validator('is_elemental')
+    @classmethod
+    def validate_is_elemental(cls, v, info):
+        """Проверка корректности флага is_elemental."""
+        query_type = info.data.get('query_type')
+        all_compounds = info.data.get('all_compounds', [])
+
+        # is_elemental применим только для compound_data (одно вещество)
+        if v is not None and query_type != 'compound_data':
+            raise ValueError(
+                "Поле is_elemental применимо только для query_type='compound_data'"
+            )
+
+        if v is not None and len(all_compounds) > 1:
+            raise ValueError(
+                "Поле is_elemental применимо только для запросов с одним веществом"
+            )
+
         return v
 
     def is_complete(self) -> bool:

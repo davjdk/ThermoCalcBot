@@ -136,6 +136,32 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
 - Для каждого вещества укажи официальное IUPAC название и возможные тривиальные названия
 - Шаг температуры: 25-250K, по умолчанию 100K, кратный 25K рекомендуется
 
+## Определение типа вещества (is_elemental)
+
+Если запрос касается ОДНОГО вещества (query_type="compound_data"), определи:
+
+**Простое вещество (is_elemental=True):**
+- Состоит из ОДНОГО химического элемента
+- Примеры: O2, N2, H2, Cl2, Br2, I2 (двухатомные газы)
+- C (графит), S (ромбическая), P (белый фосфор)
+- Fe, Cu, Al, Au, Ag, Zn (металлы)
+
+**Сложное вещество (is_elemental=False):**
+- Состоит из ДВУХ и более химических элементов
+- Примеры: H2O, CO2, NH3, NaCl, CaCO3, H2SO4
+
+**Для запросов с несколькими веществами (query_type="reaction_calculation"):**
+- Установи is_elemental=null
+
+**Важно:** Для простых веществ в стандартном состоянии (298.15 K):
+- H₂₉₈ = 0.0 кДж/моль (энтальпия образования из элементов)
+- S₂₉₈ ≠ 0.0 Дж/(моль·K) (энтропия может быть ненулевой)
+
+Примеры:
+- "Покажи данные для кислорода O2" → is_elemental=True
+- "Найди свойства воды H2O" → is_elemental=False
+- "Реакция 2H2 + O2 → 2H2O" → is_elemental=null (реакция)
+
 # Примеры:
 
 ## Пример 1: compound_data
@@ -153,7 +179,8 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
   "missing_fields": [],
   "compound_names": {{
     "H2O": ["Water", "вода"]
-  }}
+  }},
+  "is_elemental": false  # H2O - сложное вещество (H + O)
 }}
 
 ## Пример 2: reaction_calculation
@@ -213,7 +240,27 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
   "missing_fields": [],
   "compound_names": {{
     "WCl6": ["Tungsten hexachloride", "Вольфрам гексахлорид"]
-  }}
+  }},
+  "is_elemental": false  # WCl6 - сложное вещество (W + Cl)
+}}
+
+## Пример 5: compound_data (простое вещество)
+Запрос: "Данные для кислорода O2 от 300 до 2000 K"
+Ответ:
+{{
+  "query_type": "compound_data",
+  "temperature_step_k": 100,
+  "balanced_equation": "",
+  "all_compounds": ["O2"],
+  "reactants": [],
+  "products": [],
+  "temperature_range_k": [300, 2000],
+  "extraction_confidence": 1.0,
+  "missing_fields": [],
+  "compound_names": {{
+    "O2": ["Oxygen", "кислород"]
+  }},
+  "is_elemental": true  # O2 - простое вещество (только O)
 }}
 
 # Твой ответ (JSON):

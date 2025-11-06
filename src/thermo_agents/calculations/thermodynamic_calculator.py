@@ -164,7 +164,9 @@ class ThermodynamicCalculator:
     def calculate_properties(
         self,
         record: DatabaseRecord,
-        T: float
+        T: float,
+        reference_record: Optional[DatabaseRecord] = None,
+        is_elemental: Optional[bool] = None
     ) -> ThermodynamicProperties:
         """
         Расчёт всех термодинамических свойств при температуре T.
@@ -175,14 +177,30 @@ class ThermodynamicCalculator:
         - G(T) = H(T) - T*S(T)
 
         Args:
-            record: Запись из базы данных
+            record: Запись из базы данных с коэффициентами для расчёта Cp(T)
             T: Температура, K
+            reference_record: Опциональная запись-источник для h298/s298.
+                              Если None, используются значения из record.
+                              Используется для многофазных расчётов, где референсные
+                              значения могут отличаться от коэффициентов текущей записи.
+            is_elemental: True если вещество простое (O2, N2, Fe, C...).
+                          Для простых веществ H298 принудительно устанавливается в 0.0.
+                          False для сложных веществ (H2O, CO2, NH3...).
+                          None если тип неизвестен (legacy поведение).
 
         Returns:
             ThermodynamicProperties при температуре T
 
         Raises:
             ValueError: Если температура вне допустимого диапазона
+
+        Examples:
+            >>> # Сложное вещество (вода)
+            >>> props = calculator.calculate_properties(h2o_record, 500.0, is_elemental=False)
+
+            >>> # Простое вещество (кислород)
+            >>> props = calculator.calculate_properties(o2_record, 500.0, is_elemental=True)
+            >>> assert props.H == 0.0  # H298 = 0 для простых веществ
         """
         # Валидация температурного диапазона
         tmin = getattr(record, 'tmin', None)
@@ -202,8 +220,19 @@ class ThermodynamicCalculator:
             )
 
         # Базовые значения при 298.15K
-        h298 = getattr(record, 'h298', 0.0)
-        s298 = getattr(record, 's298', 0.0)
+        # Если передана референсная запись, берём h298/s298 из неё
+        if reference_record is not None:
+            h298 = getattr(reference_record, 'h298', 0.0)
+            s298 = getattr(reference_record, 's298', 0.0)
+        else:
+            # Legacy behaviour: используем текущую запись
+            h298 = getattr(record, 'h298', 0.0)
+            s298 = getattr(record, 's298', 0.0)
+
+        # Применяем правило для простых веществ
+        if is_elemental is True:
+            h298 = 0.0  # Для простых веществ H298 всегда 0 по определению
+
         H298 = h298 * 1000.0  # кДж/моль → Дж/моль
         S298 = s298  # Дж/(моль·K)
 
@@ -589,6 +618,77 @@ class ThermodynamicCalculator:
 
     # Stage 3: Multi-record calculation methods
 
+    def _select_reference_record(
+        self,
+        records: List[DatabaseRecord],
+        current_index: int,
+        is_elemental: Optional[bool] = None
+    ) -> DatabaseRecord:
+        """
+        Выбор референсной записи для расчёта H(T) и S(T) в многофазных системах.
+
+        Алгоритм (из calc_example.ipynb):
+        0. Простое вещество (is_elemental=True) → H298=0.0 принудительно
+        1. Первая запись (idx=0) → использует саму себя
+        2. Смена фазы + валидные h298/s298 (не нули) → новая запись
+        3. Смена фазы + нулевые h298/s298 → первая запись предыдущей фазы
+        4. Та же фаза → первая запись текущей фазы
+
+        Args:
+            records: Список записей, отсортированный по tmin
+            current_index: Индекс текущей записи
+            is_elemental: True если вещество простое (H298=0 по определению)
+
+        Returns:
+            DatabaseRecord, который следует использовать как источник h298/s298
+
+        Examples:
+            >>> # NH4Cl: запись 0 (s, 298-457K), запись 1 (s, 457-800K)
+            >>> ref0 = calc._select_reference_record([rec0, rec1], 0)  # rec0
+            >>> ref1 = calc._select_reference_record([rec0, rec1], 1)  # rec0 (та же фаза)
+
+            >>> # CeCl3: запись 0 (s, 298-1080K), запись 1 (l, 1080-1300K, h298=0)
+            >>> ref1 = calc._select_reference_record([rec0, rec1], 1)  # rec0 (нулевые значения)
+
+            >>> # O2: простое вещество
+            >>> ref0 = calc._select_reference_record([rec0], 0, is_elemental=True)  # rec0
+            >>> # H298 будет принудительно 0.0 в calculate_properties()
+        """
+        current = records[current_index]
+
+        # Правило 0: Для простых веществ H298 всегда 0
+        # (применяется на уровне calculate_properties через параметр is_elemental)
+
+        # Правило 1: первая запись использует саму себя
+        if current_index == 0:
+            return current
+
+        previous = records[current_index - 1]
+        phase_changed = current.phase != previous.phase
+
+        # Правило 2 и 3: смена фазы
+        if phase_changed:
+            # Проверяем, есть ли валидные данные в текущей записи
+            has_valid_h298 = abs(getattr(current, 'h298', 0.0)) > 1e-6
+            has_valid_s298 = abs(getattr(current, 's298', 0.0)) > 1e-6
+
+            if has_valid_h298 or has_valid_s298:
+                # Правило 2: есть валидные данные → используем текущую запись
+                return current
+            else:
+                # Правило 3: нулевые значения → ищем первую запись предыдущей фазы
+                for i in range(current_index - 1, -1, -1):
+                    if i == 0 or records[i].phase != records[i - 1].phase:
+                        return records[i]
+
+        # Правило 4: та же фаза → находим первую запись текущей фазы
+        for i in range(current_index, -1, -1):
+            if i == 0 or records[i].phase != records[i - 1].phase:
+                return records[i]
+
+        # Fallback (не должно сюда дойти)
+        return current
+
     def calculate_properties_multi_record(
         self,
         compound_data: MultiPhaseCompoundData,
@@ -614,8 +714,37 @@ class ThermodynamicCalculator:
         # Get the appropriate record for this temperature
         active_record = compound_data.get_record_at_temperature(temperature)
 
+        # Извлекаем is_elemental из метаданных (если есть)
+        is_elemental = getattr(compound_data, 'is_elemental', None)
+
+        # Определяем референсную запись для многофазных расчётов
+        all_records = compound_data.records
+        if len(all_records) > 1:
+            # Находим индекс активной записи
+            try:
+                active_index = next(
+                    i for i, rec in enumerate(all_records)
+                    if rec.id == active_record.id
+                )
+                reference_record = self._select_reference_record(
+                    all_records,
+                    active_index,
+                    is_elemental=is_elemental  # ← Передаём флаг
+                )
+            except (StopIteration, AttributeError):
+                # Fallback: используем активную запись
+                reference_record = active_record
+        else:
+            # Одна запись → использует саму себя
+            reference_record = None  # None означает текущую запись
+
         # Calculate base properties using the selected record
-        base_properties = self.calculate_properties(active_record, temperature)
+        base_properties = self.calculate_properties(
+            active_record,
+            temperature,
+            reference_record=reference_record,
+            is_elemental=is_elemental  # ← Передаём флаг
+        )
 
         # Check if we need transition corrections
         # For now, return base properties (transitions will be handled in more complex scenarios)

@@ -106,7 +106,7 @@ async def main_test():
     print("=" * 80)
 
     # Тестовый запрос
-    test_query = "Реагирует ли гидроксид натрия с диоксидом серы"
+    test_query = "Вступает ли пероксид водорода в реакцию с оксидом марганца(IV) при нагревании?"
 
     # Создаем SessionLogger для тестового запроса
     with SessionLogger() as session_logger:
