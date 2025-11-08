@@ -5,8 +5,9 @@
 фазовых переходах и использованных записях из БД.
 """
 
+from typing import Any, Dict, List, Optional, Tuple
+
 import pandas as pd
-from typing import List, Optional, Dict, Any, Tuple
 from tabulate import tabulate
 
 
@@ -34,7 +35,7 @@ class CompoundInfoFormatter:
         records_used: List[pd.Series],
         melting_point: Optional[float],
         boiling_point: Optional[float],
-        compound_names: List[str]
+        compound_names: List[str],
     ) -> str:
         """
         Форматирует информацию об одном веществе.
@@ -70,51 +71,61 @@ class CompoundInfoFormatter:
         first_record = records_used[0]
 
         # Имя вещества
-        name = first_record.get('FirstName') or compound_names[0] if compound_names else "Неизвестное вещество"
+        name = (
+            first_record.get("FirstName") or compound_names[0]
+            if compound_names
+            else "Неизвестное вещество"
+        )
         lines.append(f"{formula_subscript} — {name}")
 
         # Собираем информацию по фазам
         phases = {}
-        min_temp = float('inf')
-        max_temp = float('-inf')
+        min_temp = float("inf")
+        max_temp = float("-inf")
 
         for record in records_used:
-            phase = record.get('Phase', 'unknown')
+            phase = record.get("Phase", "unknown")
             if phase not in phases:
                 phases[phase] = []
             phases[phase].append(record)
 
-            tmin = record.get('Tmin', 0)
-            tmax = record.get('Tmax', 0)
+            tmin = record.get("Tmin", 0)
+            tmax = record.get("Tmax", 0)
             min_temp = min(min_temp, tmin)
             max_temp = max(max_temp, tmax)
 
         # Фазы и температурный диапазон
         phase_list = ", ".join(sorted(phases.keys()))
-        lines.append(f"  Фаза: {phase_list} | T_применимости: {min_temp:.0f}-{max_temp:.0f} K")
+        lines.append(
+            f"  Фаза: {phase_list} | T_применимости: {min_temp:.0f}-{max_temp:.0f} K"
+        )
 
         # H298 и S298 из первой записи
-        h298 = first_record.get('H298', 0)
-        s298 = first_record.get('S298', 0)
-        lines.append(f"  H₂₉₈: {h298/1000:.3f} кДж/моль | S₂₉₈: {s298:.3f} Дж/(моль·K)")
+        h298 = first_record.get("H298", 0)
+        s298 = first_record.get("S298", 0)
+        lines.append(
+            f"  H₂₉₈: {h298 / 1000:.3f} кДж/моль | S₂₉₈: {s298:.3f} Дж/(моль·K)"
+        )
 
         # Cp коэффициенты
         cp_coeffs = []
         for i in range(1, 7):
-            coeff = first_record.get(f'f{i}', 0)
+            coeff = first_record.get(f"f{i}", 0)
             cp_coeffs.append(f"{coeff:.6f}")
         lines.append(f"  Cp коэффициенты: [{', '.join(cp_coeffs)}]")
 
         # Источник данных
-        reference = first_record.get('Reference', 'Неизвестно')
-        reliability = first_record.get('ReliabilityClass', 0)
+        reference = first_record.get("Reference", "Неизвестно")
+        reliability = first_record.get("ReliabilityClass", 0)
         lines.append(f"  Источник: {reference} (ReliabilityClass: {reliability})")
 
         # Информация о фазовых переходах
         transition_lines = []
 
         if melting_point is not None:
-            transition_lines.append(f"    • Плавление при {melting_point:.0f} K (s → l)")
+            transition_lines.append(
+                f"    • Плавление при {melting_point:.0f} K (s → l)"
+            )
 
         if boiling_point is not None:
             transition_lines.append(f"    • Кипение при {boiling_point:.0f} K (l → g)")
@@ -131,12 +142,16 @@ class CompoundInfoFormatter:
         for phase, phase_records in phases.items():
             phase_stats.append(f"{phase}: {len(phase_records)}")
 
-        lines.append(f"  Использовано записей: {total_records} ({', '.join(phase_stats)})")
+        lines.append(
+            f"  Использовано записей: {total_records} ({', '.join(phase_stats)})"
+        )
 
         return "\n".join(lines)
 
     @staticmethod
-    def format_source_info(is_yaml_cache: bool, search_stage: Optional[int] = None) -> str:
+    def format_source_info(
+        is_yaml_cache: bool, search_stage: Optional[int] = None
+    ) -> str:
         """
         Форматирует информацию об источнике данных.
 
@@ -158,9 +173,7 @@ class CompoundInfoFormatter:
 
     @staticmethod
     def format_compound_data_table(
-        formula: str,
-        records_used: List[pd.Series],
-        compound_names: List[str]
+        formula: str, records_used: List[pd.Series], compound_names: List[str]
     ) -> str:
         """
         Форматирует таблицу данных о веществе согласно ТЗ.
@@ -187,30 +200,50 @@ class CompoundInfoFormatter:
         lines = []
 
         # Заголовок раздела
-        name = compound_names[0] if compound_names else records_used[0].get('FirstName', 'Unknown')
+        name = (
+            compound_names[0]
+            if compound_names
+            else records_used[0].get("FirstName", "Unknown")
+        )
         lines.append(f"=== Данные вещества: {formula} ({name}) ===")
         lines.append("")
 
         # Подготавливаем данные для таблицы
         table_data = []
-        headers = ["Formula", "FirstName", "Phase", "Tmin", "Tmax", "H298", "S298", "f1", "f2", "f3", "f4", "f5", "f6"]
+        headers = [
+            "Formula",
+            "FirstName",
+            "Phase",
+            "Tmin",
+            "Tmax",
+            "H298",
+            "S298",
+            "f1",
+            "f2",
+            "f3",
+            "f4",
+            "f5",
+            "f6",
+        ]
 
         for record in records_used:
-            table_data.append([
-                record.get('Formula', formula),
-                record.get('FirstName', name),
-                record.get('Phase', 'unknown'),
-                f"{record.get('Tmin', 0):.1f}",
-                f"{record.get('Tmax', 0):.1f}",
-                f"{record.get('H298', 0):.0f}",
-                f"{record.get('S298', 0):.2f}",
-                f"{record.get('f1', 0):.6f}",
-                f"{record.get('f2', 0):.6f}",
-                f"{record.get('f3', 0):.6f}",
-                f"{record.get('f4', 0):.6f}",
-                f"{record.get('f5', 0):.6f}",
-                f"{record.get('f6', 0):.6f}"
-            ])
+            table_data.append(
+                [
+                    record.get("Formula", formula),
+                    record.get("FirstName", name),
+                    record.get("Phase", "unknown"),
+                    f"{record.get('Tmin', 0):.1f}",
+                    f"{record.get('Tmax', 0):.1f}",
+                    f"{record.get('H298', 0):.0f}",
+                    f"{record.get('S298', 0):.2f}",
+                    f"{record.get('f1', 0):.6f}",
+                    f"{record.get('f2', 0):.6f}",
+                    f"{record.get('f3', 0):.6f}",
+                    f"{record.get('f4', 0):.6f}",
+                    f"{record.get('f5', 0):.6f}",
+                    f"{record.get('f6', 0):.6f}",
+                ]
+            )
 
         # Форматируем таблицу
         formatted_table = tabulate(
@@ -218,7 +251,7 @@ class CompoundInfoFormatter:
             headers=headers,
             tablefmt="grid",
             stralign="center",
-            numalign="decimal"
+            numalign="decimal",
         )
 
         lines.append(formatted_table)
@@ -232,7 +265,7 @@ class CompoundInfoFormatter:
         records_used: List[pd.Series],
         temperature_range_k: Tuple[float, float],
         temperature_step_k: float,
-        compound_names: List[str]
+        compound_names: List[str],
     ) -> str:
         """
         Форматирует таблицу термодинамических свойств вещества (ΔH, ΔS, ΔG vs T).
@@ -262,9 +295,11 @@ class CompoundInfoFormatter:
         if not records_used:
             return ""
 
-        import numpy as np
-        from ..core_logic.thermodynamic_engine import ThermodynamicEngine
         import logging
+
+        import numpy as np
+
+        from ..core_logic.thermodynamic_engine import ThermodynamicEngine
 
         # Создаем временный логгер для движка
         logger = logging.getLogger(__name__)
@@ -273,7 +308,11 @@ class CompoundInfoFormatter:
         lines = []
 
         # Заголовок раздела
-        name = compound_names[0] if compound_names else records_used[0].get('FirstName', 'Unknown')
+        name = (
+            compound_names[0]
+            if compound_names
+            else records_used[0].get("FirstName", "Unknown")
+        )
         lines.append(f"=== Термодинамические свойства: {formula} ===")
         lines.append("")
 
@@ -282,7 +321,13 @@ class CompoundInfoFormatter:
 
         # Подготавливаем данные для таблицы
         table_data = []
-        headers = ["T(K)", "ΔH (кДж/моль)", "ΔS (Дж/(моль·K))", "ΔG (кДж/моль)", "Смена записи"]
+        headers = [
+            "T(K)",
+            "ΔH (кДж/моль)",
+            "ΔS (Дж/(моль·K))",
+            "ΔG (кДж/моль)",
+            "Смена записи",
+        ]
 
         for i, T in enumerate(temperatures):
             # Находим подходящую запись для текущей температуры
@@ -290,37 +335,62 @@ class CompoundInfoFormatter:
             record_index = 0
 
             for j, record in enumerate(records_used):
-                tmin = record.get('Tmin', float('-inf'))
-                tmax = record.get('Tmax', float('inf'))
+                tmin = record.get("Tmin", float("-inf"))
+                tmax = record.get("Tmax", float("inf"))
                 if tmin <= T <= tmax:
                     current_record = record
                     record_index = j + 1  # Нумерация с 1 для пользователя
                     break
 
+            # Если запись не найдена, ищем последнюю запись с максимальным Tmax
+            # и используем экстраполяцию
+            use_extrapolation = False
+            T_max_available = None
+
             if current_record is None:
-                # Если не найдена подходящая запись, используем последнюю
-                current_record = records_used[-1]
-                record_index = len(records_used)
+                # Находим запись с максимальным Tmax
+                max_record = max(records_used, key=lambda r: r.get("Tmax", 0))
+                T_max_available = max_record.get("Tmax", 0)
+
+                if T > T_max_available:
+                    # Экстраполяция: используем последнюю запись
+                    current_record = max_record
+                    record_index = records_used.index(max_record) + 1
+                    use_extrapolation = True
+                else:
+                    # Температура ниже минимума - используем первую запись
+                    current_record = records_used[0]
+                    record_index = 1
 
             # Рассчитываем свойства для этой температуры
             try:
-                properties = thermodynamic_engine.calculate_properties(current_record, T)
-                delta_H = properties['enthalpy'] / 1000  # Конвертируем в кДж/моль
-                delta_S = properties['entropy']
-                delta_G = properties['gibbs_energy'] / 1000  # Конвертируем в кДж/моль
+                if use_extrapolation and T_max_available:
+                    # Используем экстраполяцию
+                    properties = (
+                        thermodynamic_engine.calculate_properties_with_extrapolation(
+                            current_record, T, T_max_available
+                        )
+                    )
+                else:
+                    properties = thermodynamic_engine.calculate_properties(
+                        current_record, T
+                    )
+                delta_H = properties["enthalpy"] / 1000  # Конвертируем в кДж/моль
+                delta_S = properties["entropy"]
+                delta_G = properties["gibbs_energy"] / 1000  # Конвертируем в кДж/моль
 
                 # Определяем, нужно ли показывать смену записи
                 record_change = f"запись {record_index}"
 
                 # Проверяем, изменилась ли запись по сравнению с предыдущим шагом
                 if i > 0:
-                    prev_T = temperatures[i-1]
+                    prev_T = temperatures[i - 1]
                     prev_record = None
                     prev_record_index = 0
 
                     for j, record in enumerate(records_used):
-                        tmin = record.get('Tmin', float('-inf'))
-                        tmax = record.get('Tmax', float('inf'))
+                        tmin = record.get("Tmin", float("-inf"))
+                        tmax = record.get("Tmax", float("inf"))
                         if tmin <= prev_T <= tmax:
                             prev_record = record
                             prev_record_index = j + 1
@@ -334,23 +404,19 @@ class CompoundInfoFormatter:
                     if prev_record_index == record_index:
                         record_change = ""
 
-                table_data.append([
-                    f"{T:.0f}",
-                    f"{delta_H:+.2f}",
-                    f"{delta_S:+.2f}",
-                    f"{delta_G:+.2f}",
-                    record_change
-                ])
+                table_data.append(
+                    [
+                        f"{T:.0f}",
+                        f"{delta_H:+.2f}",
+                        f"{delta_S:+.2f}",
+                        f"{delta_G:+.2f}",
+                        record_change,
+                    ]
+                )
 
             except Exception as e:
                 # В случае ошибки расчета, добавляем строку с прочерками
-                table_data.append([
-                    f"{T:.0f}",
-                    "—",
-                    "—",
-                    "—",
-                    f"запись {record_index}"
-                ])
+                table_data.append([f"{T:.0f}", "—", "—", "—", f"запись {record_index}"])
 
         # Форматируем таблицу
         formatted_table = tabulate(
@@ -358,7 +424,7 @@ class CompoundInfoFormatter:
             headers=headers,
             tablefmt="grid",
             stralign="center",
-            numalign="decimal"
+            numalign="decimal",
         )
 
         lines.append(formatted_table)

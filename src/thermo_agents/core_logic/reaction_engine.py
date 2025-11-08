@@ -171,22 +171,46 @@ class ReactionEngine:
                         suitable_record = record
                         break
 
-                # Временное решение для этапа 2: если нет точного совпадения,
-                # используем первую запись (даже если T вне диапазона)
+                # Если не найдена запись в диапазоне, используем экстраполяцию
                 if suitable_record is None and records:
-                    suitable_record = records[0]
-                    self.logger.debug(
-                        f"⚠ T={T}K: использована первая запись для {formula} (Tmin={records[0]['Tmin']}K)"
-                    )
+                    # Находим запись с максимальным Tmax
+                    max_record = max(records, key=lambda r: r.get("Tmax", 0))
+                    T_max_available = max_record.get("Tmax", 0)
 
-                if suitable_record is None:
-                    self.logger.warning(
-                        f"⚠ T={T}K: нет подходящей записи для {formula}"
-                    )
-                    continue
+                    if T > T_max_available:
+                        # Экстраполяция с постоянной теплоёмкостью
+                        suitable_record = max_record
+                        self.logger.debug(
+                            f"🔼 T={T}K: экстраполяция для {formula} "
+                            f"(T_max={T_max_available}K, используем Cp(T_max))"
+                        )
 
-                # Рассчитываем термодинамические свойства
-                properties = self.thermo_engine.calculate_properties(suitable_record, T)
+                        # Рассчитываем свойства с экстраполяцией
+                        properties = (
+                            self.thermo_engine.calculate_properties_with_extrapolation(
+                                suitable_record, T, T_max_available
+                            )
+                        )
+                    else:
+                        # Температура ниже минимума - используем первую запись
+                        suitable_record = records[0]
+                        self.logger.debug(
+                            f"⚠ T={T}K: использована первая запись для {formula} "
+                            f"(Tmin={records[0]['Tmin']}K)"
+                        )
+                        properties = self.thermo_engine.calculate_properties(
+                            suitable_record, T
+                        )
+                else:
+                    # Обычный расчёт в пределах диапазона
+                    if suitable_record is None:
+                        self.logger.warning(
+                            f"⚠ T={T}K: нет подходящей записи для {formula}"
+                        )
+                        continue
+                    properties = self.thermo_engine.calculate_properties(
+                        suitable_record, T
+                    )
 
                 # Добавляем вклад в реакцию (с учетом стехиометрии)
                 delta_H += coeff * properties["enthalpy"]
@@ -449,22 +473,46 @@ class ReactionEngine:
                         suitable_record = record
                         break
 
-                # Временное решение для этапа 2: если нет точного совпадения,
-                # используем первую запись (даже если T вне диапазона)
+                # Если не найдена запись в диапазоне, используем экстраполяцию
                 if suitable_record is None and records:
-                    suitable_record = records[0]
-                    self.logger.debug(
-                        f"⚠ T={T}K: использована первая запись для {formula} (Tmin={records[0]['Tmin']}K)"
-                    )
+                    # Находим запись с максимальным Tmax
+                    max_record = max(records, key=lambda r: r.get("Tmax", 0))
+                    T_max_available = max_record.get("Tmax", 0)
 
-                if suitable_record is None:
-                    self.logger.warning(
-                        f"⚠ T={T}K: нет подходящей записи для {formula}"
-                    )
-                    continue
+                    if T > T_max_available:
+                        # Экстраполяция с постоянной теплоёмкостью
+                        suitable_record = max_record
+                        self.logger.debug(
+                            f"🔼 T={T}K: экстраполяция для {formula} "
+                            f"(T_max={T_max_available}K, используем Cp(T_max))"
+                        )
 
-                # Рассчитываем термодинамические свойства
-                properties = self.thermo_engine.calculate_properties(suitable_record, T)
+                        # Рассчитываем свойства с экстраполяцией
+                        properties = (
+                            self.thermo_engine.calculate_properties_with_extrapolation(
+                                suitable_record, T, T_max_available
+                            )
+                        )
+                    else:
+                        # Температура ниже минимума - используем первую запись
+                        suitable_record = records[0]
+                        self.logger.debug(
+                            f"⚠ T={T}K: использована первая запись для {formula} "
+                            f"(Tmin={records[0]['Tmin']}K)"
+                        )
+                        properties = self.thermo_engine.calculate_properties(
+                            suitable_record, T
+                        )
+                else:
+                    # Обычный расчёт в пределах диапазона
+                    if suitable_record is None:
+                        self.logger.warning(
+                            f"⚠ T={T}K: нет подходящей записи для {formula}"
+                        )
+                        continue
+                    properties = self.thermo_engine.calculate_properties(
+                        suitable_record, T
+                    )
 
                 # Добавляем вклад в реакцию (с учетом стехиометрии)
                 delta_H += coeff * properties["enthalpy"]

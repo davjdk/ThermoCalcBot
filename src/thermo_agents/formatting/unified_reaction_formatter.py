@@ -5,13 +5,14 @@
 красиво отформатированный вывод с использованием Unicode символов.
 """
 
-import pandas as pd
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from .compound_info_formatter import CompoundInfoFormatter
-from .table_formatter import TableFormatter
-from .interpretation_formatter import InterpretationFormatter
+import pandas as pd
+
 from ..models.extraction import ExtractedReactionParameters
+from .compound_info_formatter import CompoundInfoFormatter
+from .interpretation_formatter import InterpretationFormatter
+from .table_formatter import TableFormatter
 
 
 class UnifiedReactionFormatter:
@@ -23,7 +24,7 @@ class UnifiedReactionFormatter:
         self,
         compound_info_formatter: CompoundInfoFormatter,
         table_formatter: TableFormatter,
-        interpretation_formatter: InterpretationFormatter
+        interpretation_formatter: InterpretationFormatter,
     ):
         self.compound_info = compound_info_formatter
         self.table_formatter = table_formatter
@@ -41,7 +42,7 @@ class UnifiedReactionFormatter:
         self,
         params: ExtractedReactionParameters,
         df_result: pd.DataFrame,
-        compounds_metadata: Dict[str, Any]
+        compounds_metadata: Dict[str, Any],
     ) -> str:
         """
         Форматирует полный результат расчета реакции.
@@ -91,9 +92,13 @@ class UnifiedReactionFormatter:
         lines = []
 
         # Заголовок
-        lines.append("══════════════════════════════════════════════════════════════════")
+        lines.append(
+            "══════════════════════════════════════════════════════════════════"
+        )
         lines.append("⚗️ Термодинамический расчёт реакции")
-        lines.append("══════════════════════════════════════════════════════════════════")
+        lines.append(
+            "══════════════════════════════════════════════════════════════════"
+        )
         lines.append("")
 
         # Уравнение реакции
@@ -108,7 +113,7 @@ class UnifiedReactionFormatter:
 
         # Данные веществ
         all_compounds = params.all_compounds
-        compound_names = getattr(params, 'compound_names', {})
+        compound_names = getattr(params, "compound_names", {})
 
         for formula in all_compounds:
             names = compound_names.get(formula, []) if compound_names else []
@@ -117,20 +122,23 @@ class UnifiedReactionFormatter:
             # Добавляем таблицу данных вещества
             compound_table = self.compound_info.format_compound_data_table(
                 formula=formula,
-                records_used=metadata.get('records_used', []),
-                compound_names=names
+                records_used=metadata.get("records_used", []),
+                compound_names=names,
             )
 
             if compound_table:
                 lines.append(compound_table)
 
             # Добавляем таблицу термодинамических свойств вещества
-            thermodynamic_table = self.compound_info.format_compound_thermodynamic_table(
-                formula=formula,
-                records_used=metadata.get('records_used', []),
-                temperature_range_k=params.temperature_range_k,
-                temperature_step_k=params.temperature_step_k,
-                compound_names=names
+            # Используем расширенный диапазон 298-2500K для полноты картины
+            thermodynamic_table = (
+                self.compound_info.format_compound_thermodynamic_table(
+                    formula=formula,
+                    records_used=metadata.get("records_used", []),
+                    temperature_range_k=(298.0, 2500.0),
+                    temperature_step_k=params.temperature_step_k,
+                    compound_names=names,
+                )
             )
 
             if thermodynamic_table:
@@ -147,20 +155,19 @@ class UnifiedReactionFormatter:
             # Форматируем информацию о веществе
             compound_info = self.compound_info.format_compound(
                 formula=formula,
-                records_used=metadata.get('records_used', []),
-                melting_point=metadata.get('melting_point'),
-                boiling_point=metadata.get('boiling_point'),
-                compound_names=names
+                records_used=metadata.get("records_used", []),
+                melting_point=metadata.get("melting_point"),
+                boiling_point=metadata.get("boiling_point"),
+                compound_names=names,
             )
 
             # Добавляем информацию об источнике данных
             source_info = self.compound_info.format_source_info(
-                is_yaml_cache=metadata.get('is_yaml_cache', False),
-                search_stage=metadata.get('search_stage')
+                is_yaml_cache=metadata.get("is_yaml_cache", False),
+                search_stage=metadata.get("search_stage"),
             )
             compound_info = compound_info.replace(
-                "  Источник:",
-                f"  {source_info}\n  Источник:"
+                "  Источник:", f"  {source_info}\n  Источник:"
             )
 
             lines.append(compound_info)
@@ -173,12 +180,14 @@ class UnifiedReactionFormatter:
         # Собираем информацию о фазовых переходах
         phase_transitions = {}
         for formula, metadata in compounds_metadata.items():
-            transitions = metadata.get('phase_transitions', [])
+            transitions = metadata.get("phase_transitions", [])
             if transitions:
                 phase_transitions[formula] = transitions
 
         # Форматируем таблицу результатов
-        table_output = self.table_formatter.format_reaction_table(df_result, phase_transitions)
+        table_output = self.table_formatter.format_reaction_table(
+            df_result, phase_transitions
+        )
         lines.append(table_output)
         lines.append("")
 
@@ -190,16 +199,22 @@ class UnifiedReactionFormatter:
         lines.append("")
 
         # Интерпретация результатов
-        interpretation_output = self.interpretation.format_interpretation(df_result, params)
+        interpretation_output = self.interpretation.format_interpretation(
+            df_result, params
+        )
         lines.append(interpretation_output)
         lines.append("")
 
         # Технические рекомендации
-        tech_recommendations = self.interpretation.format_technical_recommendations(df_result, params)
+        tech_recommendations = self.interpretation.format_technical_recommendations(
+            df_result, params
+        )
         lines.append(tech_recommendations)
 
         # Финальная линия
-        lines.append("══════════════════════════════════════════════════════════════════")
+        lines.append(
+            "══════════════════════════════════════════════════════════════════"
+        )
 
         return "\n".join(lines)
 
@@ -215,9 +230,7 @@ class UnifiedReactionFormatter:
         """
         # Заменяем стрелки на Unicode символы
         formatted = (
-            equation.replace("->", " → ")
-                   .replace("=>", " ⇌ ")
-                   .replace("=", " → ")
+            equation.replace("->", " → ").replace("=>", " ⇌ ").replace("=", " → ")
         )
 
         # Конвертируем цифры в подстрочные индексы
@@ -244,7 +257,7 @@ class UnifiedReactionFormatter:
         self,
         params: ExtractedReactionParameters,
         df_result: pd.DataFrame,
-        compounds_metadata: Dict[str, Any]
+        compounds_metadata: Dict[str, Any],
     ) -> str:
         """
         Форматирует краткий результат расчета (ключевые точки только).
@@ -273,12 +286,14 @@ class UnifiedReactionFormatter:
         lines.append("Ключевые точки:")
 
         for T, data in key_temps[:3]:  # Только первые 3 точки
-            delta_G = data['delta_G'] / 1000  # кДж/моль
-            K = data['K']
+            delta_G = data["delta_G"] / 1000  # кДж/моль
+            K = data["K"]
             K_formatted = self.interpretation.format_equilibrium_constant(K)
 
             spontaneity = "спонтанная" if delta_G < 0 else "неспонтанная"
-            lines.append(f"  {T:.0f}K: ΔG° = {delta_G:+.2f} кДж/моль, K = {K_formatted} ({spontaneity})")
+            lines.append(
+                f"  {T:.0f}K: ΔG° = {delta_G:+.2f} кДж/моль, K = {K_formatted} ({spontaneity})"
+            )
 
         # Температура инверсии
         T_inversion = self.interpretation.find_inversion_temperature(df_result)
@@ -289,8 +304,8 @@ class UnifiedReactionFormatter:
 
         # Практическая рекомендация
         ranges = self.interpretation.analyze_spontaneity_ranges(df_result)
-        if 'spontaneous' in ranges:
-            T_min, _ = ranges['spontaneous']
+        if "spontaneous" in ranges:
+            T_min, _ = ranges["spontaneous"]
             lines.append(f"✅ Рекомендуемая температура: выше {T_min:.0f}K")
         else:
             lines.append("❌ Реакция термодинамически невыгодна во всем диапазоне")
@@ -320,7 +335,7 @@ class UnifiedReactionFormatter:
             "  • Проверьте баланс атомов в уравнении реакции",
             "",
             "Если проблема persists, обратитесь к документации или системе поддержки.",
-            "══════════════════════════════════════════════════════════════════"
+            "══════════════════════════════════════════════════════════════════",
         ]
 
         return "\n".join(lines)
