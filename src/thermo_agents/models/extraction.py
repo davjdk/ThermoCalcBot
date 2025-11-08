@@ -109,86 +109,73 @@ ExtractedReactionParameters:
 - Валидации пользовательских запросов
 """
 
+from typing import Dict, List, Literal, Optional, Tuple
+
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Tuple, Optional, Dict, Literal
 
 
 class ExtractedReactionParameters(BaseModel):
     """Параметры реакции, извлечённые из запроса пользователя."""
 
     query_type: Literal["compound_data", "reaction_calculation"] = Field(
-        ...,
-        description="Тип запроса: данные по веществу или расчёт реакции"
+        ..., description="Тип запроса: данные по веществу или расчёт реакции"
     )
 
     balanced_equation: str = Field(
         ...,
-        description="Уравненное уравнение реакции, например: 'TiO2 + 2HCl → TiCl4 + H2O'"
+        description="Уравненное уравнение реакции, например: 'TiO2 + 2HCl → TiCl4 + H2O'",
     )
 
     all_compounds: List[str] = Field(
-        ...,
-        max_length=10,
-        description="Все вещества в реакции (до 10 веществ)"
+        ..., max_length=10, description="Все вещества в реакции (до 10 веществ)"
     )
 
     reactants: List[str] = Field(
-        ...,
-        description="Список реагентов (левая часть уравнения)"
+        ..., description="Список реагентов (левая часть уравнения)"
     )
 
     products: List[str] = Field(
-        ...,
-        description="Список продуктов (правая часть уравнения)"
+        ..., description="Список продуктов (правая часть уравнения)"
     )
 
     temperature_range_k: Tuple[float, float] = Field(
-        ...,
-        description="Температурный диапазон в Кельвинах (tmin, tmax)"
+        ..., description="Температурный диапазон в Кельвинах (tmin, tmax)"
     )
 
     extraction_confidence: float = Field(
-        ...,
-        ge=0.0,
-        le=1.0,
-        description="Уверенность извлечения (0.0-1.0)"
+        ..., ge=0.0, le=1.0, description="Уверенность извлечения (0.0-1.0)"
     )
 
     missing_fields: List[str] = Field(
-        default_factory=list,
-        description="Список полей, которые не удалось извлечь"
+        default_factory=list, description="Список полей, которые не удалось извлечь"
     )
 
     compound_names: Dict[str, List[str]] = Field(
         default_factory=dict,
-        description="Названия веществ: {формула: [IUPAC name, trivial names...]}"
+        description="Названия веществ: {формула: [IUPAC name, trivial names...]}",
     )
 
     temperature_step_k: int = Field(
-        default=100,
-        ge=25,
-        le=250,
-        description="Шаг температуры для таблиц, K (25-250)"
+        default=100, ge=25, le=250, description="Шаг температуры для таблиц, K (25-250)"
     )
 
     use_multi_phase: bool = Field(
-        default=True,
-        description="Использовать многофазные расчёты (Stage 5)"
+        default=True, description="Использовать многофазные расчёты (Stage 5)"
     )
 
     full_data_search: bool = Field(
         default=True,
-        description="Игнорировать температурные ограничения при поиске (Stage 5)"
+        description="Игнорировать температурные ограничения при поиске (Stage 5)",
     )
 
     user_preferences: Dict[str, object] = Field(
         default_factory=dict,
-        description="Пользовательские предпочтения для расчётов (Stage 5)"
+        description="Пользовательские предпочтения для расчётов (Stage 5)",
     )
 
     stoichiometry: Dict[str, float] = Field(
         default_factory=dict,
-        description="Стехиометрические коэффициенты веществ (Stage 5)"
+        description="Стехиометрические коэффициенты веществ (Stage 5)",
     )
 
     is_elemental: Optional[bool] = Field(
@@ -199,18 +186,32 @@ class ExtractedReactionParameters(BaseModel):
             "False для H2O, CO2, NH3, NaCl и других сложных веществ. "
             "Только для query_type='compound_data' (одно вещество). "
             "Для простых веществ H₂₉₈ = 0.0 кДж/моль по определению."
-        )
+        ),
     )
 
-    @field_validator('all_compounds')
+    compound_types: Dict[str, bool] = Field(
+        default_factory=dict,
+        description=(
+            "Классификация каждого вещества в реакции: {formula: is_elemental}. "
+            "True = простое вещество (O2, N2, Fe, C...), False = сложное (H2O, CO2, NH3...). "
+            "Для reaction_calculation: содержит все вещества из all_compounds. "
+            "Для compound_data: одно вещество (опционально, может быть пустым если используется is_elemental). "
+            "Для простых веществ допустимо H₂₉₈=0, S₂₉₈≠0. "
+            "Для сложных веществ приоритет отдаётся записям с H₂₉₈≠0, S₂₉₈≠0 при 298K."
+        ),
+    )
+
+    @field_validator("all_compounds")
     @classmethod
     def validate_compounds_count(cls, v):
         """Проверка максимального количества веществ."""
         if len(v) > 10:
-            raise ValueError(f"Превышено максимальное количество веществ: {len(v)} > 10")
+            raise ValueError(
+                f"Превышено максимальное количество веществ: {len(v)} > 10"
+            )
         return v
 
-    @field_validator('reactants', 'products')
+    @field_validator("reactants", "products")
     @classmethod
     def validate_reactants_products_consistency(cls, v, info):
         """Валидация согласованности реагентов и продуктов."""
@@ -229,9 +230,7 @@ class ExtractedReactionParameters(BaseModel):
                 )
             # Реагенты и продукты должны быть пустыми
             if self.reactants or self.products:
-                raise ValueError(
-                    "compound_data не должен содержать reactants/products"
-                )
+                raise ValueError("compound_data не должен содержать reactants/products")
 
         elif self.query_type == "reaction_calculation":
             # Для reaction_calculation должна быть реакция
@@ -242,11 +241,9 @@ class ExtractedReactionParameters(BaseModel):
                 )
             # Должно быть уравнение реакции
             if not self.balanced_equation or self.balanced_equation == "N/A":
-                raise ValueError(
-                    "reaction_calculation требует balanced_equation"
-                )
+                raise ValueError("reaction_calculation требует balanced_equation")
 
-    @field_validator('temperature_step_k')
+    @field_validator("temperature_step_k")
     @classmethod
     def validate_temperature_step(cls, v):
         """Проверка шага температуры."""
@@ -257,13 +254,14 @@ class ExtractedReactionParameters(BaseModel):
         # Рекомендация: шаг должен быть кратен 25
         if v % 25 != 0:
             import warnings
+
             warnings.warn(
                 f"Рекомендуется использовать шаг кратный 25K "
                 f"(25, 50, 100, 150, 200, 250), получено: {v}K"
             )
         return v
 
-    @field_validator('temperature_range_k')
+    @field_validator("temperature_range_k")
     @classmethod
     def validate_temperature_range(cls, v):
         """Проверка корректности температурного диапазона."""
@@ -276,15 +274,15 @@ class ExtractedReactionParameters(BaseModel):
             raise ValueError(f"Tmax слишком высокая: {tmax} > 150000K")
         return v
 
-    @field_validator('is_elemental')
+    @field_validator("is_elemental")
     @classmethod
     def validate_is_elemental(cls, v, info):
         """Проверка корректности флага is_elemental."""
-        query_type = info.data.get('query_type')
-        all_compounds = info.data.get('all_compounds', [])
+        query_type = info.data.get("query_type")
+        all_compounds = info.data.get("all_compounds", [])
 
         # is_elemental применим только для compound_data (одно вещество)
-        if v is not None and query_type != 'compound_data':
+        if v is not None and query_type != "compound_data":
             raise ValueError(
                 "Поле is_elemental применимо только для query_type='compound_data'"
             )
@@ -300,15 +298,15 @@ class ExtractedReactionParameters(BaseModel):
         """Проверка полноты извлечённых данных."""
         if self.query_type == "compound_data":
             # Для compound_data обязательны только all_compounds и temperature_range_k
-            required_fields = ['all_compounds', 'temperature_range_k']
+            required_fields = ["all_compounds", "temperature_range_k"]
         else:  # reaction_calculation
             # Для reaction_calculation обязательны все поля реакции
             required_fields = [
-                'balanced_equation',
-                'reactants',
-                'products',
-                'all_compounds',
-                'temperature_range_k'
+                "balanced_equation",
+                "reactants",
+                "products",
+                "all_compounds",
+                "temperature_range_k",
             ]
 
         return len(self.missing_fields) == 0 and all(

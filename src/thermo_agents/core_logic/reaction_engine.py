@@ -6,16 +6,17 @@ including parsing reaction equations and calculating ΔH, ΔS, ΔG, K.
 """
 
 import logging
+import re
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-import re
-from typing import Dict, List, Optional, Tuple, Any
 
+from ..models.extraction import ExtractedReactionParameters
 from .compound_data_loader import CompoundDataLoader
 from .phase_transition_detector import PhaseTransitionDetector
 from .record_range_builder import RecordRangeBuilder
 from .thermodynamic_engine import ThermodynamicEngine
-from ..models.extraction import ExtractedReactionParameters
 
 
 class ReactionEngine:
@@ -29,7 +30,7 @@ class ReactionEngine:
         phase_detector: PhaseTransitionDetector,
         range_builder: RecordRangeBuilder,
         thermo_engine: ThermodynamicEngine,
-        logger: logging.Logger
+        logger: logging.Logger,
     ):
         self.compound_loader = compound_loader
         self.phase_detector = phase_detector
@@ -41,7 +42,7 @@ class ReactionEngine:
     def calculate_reaction(
         self,
         params: ExtractedReactionParameters,
-        temperature_range: List[float]  # [T_start, T_end, step]
+        temperature_range: List[float],  # [T_start, T_end, step]
     ) -> pd.DataFrame:
         """
         Рассчитывает термодинамику реакции для диапазона температур.
@@ -103,7 +104,11 @@ class ReactionEngine:
 
         for formula in all_compounds:
             # Получаем имена из compound_names если есть
-            compound_names = params.compound_names.get(formula) if hasattr(params, 'compound_names') and params.compound_names else None
+            compound_names = (
+                params.compound_names.get(formula)
+                if hasattr(params, "compound_names") and params.compound_names
+                else None
+            )
 
             # Загружаем данные из БД
             df = self.compound_loader.get_raw_compound_data(formula, compound_names)
@@ -113,23 +118,33 @@ class ReactionEngine:
                 raise ValueError(f"Не найдены данные для вещества {formula}")
 
             # Определяем точки фазовых переходов
-            melting, boiling = self.phase_detector.get_most_common_melting_boiling_points(df)
+            melting, boiling = (
+                self.phase_detector.get_most_common_melting_boiling_points(df)
+            )
 
             # Получаем записи для полного диапазона
             t_range_full = [temperature_range[0], temperature_range[1]]
+
+            # Определяем is_elemental для текущего вещества (метод calculate_reaction)
+            is_elemental = (
+                params.compound_types.get(formula) if params.compound_types else None
+            )
+
             records = self.range_builder.get_compound_records_for_range(
-                df, t_range_full, melting, boiling
+                df, t_range_full, melting, boiling, is_elemental=is_elemental
             )
 
             if not records:
-                self.logger.error(f"⚠ {formula}: не удалось получить записи для диапазона")
+                self.logger.error(
+                    f"⚠ {formula}: не удалось получить записи для диапазона"
+                )
                 raise ValueError(f"Не удалось получить записи для вещества {formula}")
 
             compound_data[formula] = {
-                'records': records,
-                'melting': melting,
-                'boiling': boiling,
-                'coeff': reaction_coeffs.get(formula, 0)
+                "records": records,
+                "melting": melting,
+                "boiling": boiling,
+                "coeff": reaction_coeffs.get(formula, 0),
             }
 
             self.logger.info(
@@ -146,13 +161,13 @@ class ReactionEngine:
             delta_S = 0.0
 
             for formula, data in compound_data.items():
-                coeff = data['coeff']
-                records = data['records']
+                coeff = data["coeff"]
+                records = data["records"]
 
                 # Находим подходящую запись для текущей температуры
                 suitable_record = None
                 for record in records:
-                    if record['Tmin'] <= T <= record['Tmax']:
+                    if record["Tmin"] <= T <= record["Tmax"]:
                         suitable_record = record
                         break
 
@@ -160,34 +175,42 @@ class ReactionEngine:
                 # используем первую запись (даже если T вне диапазона)
                 if suitable_record is None and records:
                     suitable_record = records[0]
-                    self.logger.debug(f"⚠ T={T}K: использована первая запись для {formula} (Tmin={records[0]['Tmin']}K)")
+                    self.logger.debug(
+                        f"⚠ T={T}K: использована первая запись для {formula} (Tmin={records[0]['Tmin']}K)"
+                    )
 
                 if suitable_record is None:
-                    self.logger.warning(f"⚠ T={T}K: нет подходящей записи для {formula}")
+                    self.logger.warning(
+                        f"⚠ T={T}K: нет подходящей записи для {formula}"
+                    )
                     continue
 
                 # Рассчитываем термодинамические свойства
                 properties = self.thermo_engine.calculate_properties(suitable_record, T)
 
                 # Добавляем вклад в реакцию (с учетом стехиометрии)
-                delta_H += coeff * properties['enthalpy']
-                delta_S += coeff * properties['entropy']
+                delta_H += coeff * properties["enthalpy"]
+                delta_S += coeff * properties["entropy"]
 
             # Вычисляем ΔG и константу равновесия
             delta_G = delta_H - T * delta_S
 
             # ln(K) = -ΔG / (R * T)
             ln_K = -delta_G / (self.R * T) if T > 0 else 0
-            K = np.exp(ln_K) if abs(ln_K) < 700 else (np.inf if ln_K > 0 else 0)  # Избегаем overflow
+            K = (
+                np.exp(ln_K) if abs(ln_K) < 700 else (np.inf if ln_K > 0 else 0)
+            )  # Избегаем overflow
 
-            results.append({
-                'T': T,
-                'delta_H': delta_H,
-                'delta_S': delta_S,
-                'delta_G': delta_G,
-                'ln_K': ln_K,
-                'K': K
-            })
+            results.append(
+                {
+                    "T": T,
+                    "delta_H": delta_H,
+                    "delta_S": delta_S,
+                    "delta_G": delta_G,
+                    "ln_K": ln_K,
+                    "K": K,
+                }
+            )
 
         df_result = pd.DataFrame(results)
         self.logger.info(f"✓ Расчет завершен: {len(df_result)} температурных точек")
@@ -195,9 +218,7 @@ class ReactionEngine:
         return df_result
 
     def parse_reaction_equation(
-        self,
-        equation: str,
-        all_compounds: List[str]
+        self, equation: str, all_compounds: List[str]
     ) -> Dict[str, float]:
         """
         Парсит уравнение реакции и извлекает стехиометрические коэффициенты.
@@ -221,14 +242,16 @@ class ReactionEngine:
             → {'H2': -2.0, 'O2': -1.0, 'H2O': 2.0}
         """
         # Разделяем на левую и правую части
-        if '=' in equation:
-            left, right = equation.split('=')
-        elif '→' in equation:
-            left, right = equation.split('→')
-        elif '->' in equation:
-            left, right = equation.split('->')
+        if "=" in equation:
+            left, right = equation.split("=")
+        elif "→" in equation:
+            left, right = equation.split("→")
+        elif "->" in equation:
+            left, right = equation.split("->")
         else:
-            raise ValueError(f"Уравнение должно содержать '=', '→' или '->': {equation}")
+            raise ValueError(
+                f"Уравнение должно содержать '=', '→' или '->': {equation}"
+            )
 
         def parse_side(side_str: str, all_compounds: List[str]) -> Dict[str, float]:
             """Парсит одну сторону уравнения."""
@@ -243,7 +266,7 @@ class ReactionEngine:
                 # Экранируем спецсимволы в формуле
                 escaped_compound = re.escape(compound)
                 # Паттерн: опциональный коэффициент + формула + граница слова
-                pattern = r'(\d*\.?\d*)\s*' + escaped_compound + r'(?:\s|$|\+)'
+                pattern = r"(\d*\.?\d*)\s*" + escaped_compound + r"(?:\s|$|\+)"
 
                 matches = re.finditer(pattern, side_str)
 
@@ -277,9 +300,7 @@ class ReactionEngine:
         return reaction_coeffs
 
     def calculate_reaction_with_metadata(
-        self,
-        params: ExtractedReactionParameters,
-        temperature_range: List[float]
+        self, params: ExtractedReactionParameters, temperature_range: List[float]
     ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """
         Расчет реакции с возвратом метаданных об отобранных записях.
@@ -317,70 +338,90 @@ class ReactionEngine:
 
         for formula in all_compounds:
             # Получаем имена из compound_names если есть
-            compound_names = params.compound_names.get(formula) if hasattr(params, 'compound_names') and params.compound_names else None
+            compound_names = (
+                params.compound_names.get(formula)
+                if hasattr(params, "compound_names") and params.compound_names
+                else None
+            )
 
             # Загружаем данные из БД
-            df, is_yaml_cache, search_stage = self.compound_loader.get_raw_compound_data_with_metadata(formula, compound_names)
+            df, is_yaml_cache, search_stage = (
+                self.compound_loader.get_raw_compound_data_with_metadata(
+                    formula, compound_names
+                )
+            )
 
             if df.empty:
                 self.logger.error(f"⚠ {formula}: нет данных в БД")
                 raise ValueError(f"Не найдены данные для вещества {formula}")
 
             # Определяем точки фазовых переходов
-            melting, boiling = self.phase_detector.get_most_common_melting_boiling_points(df)
+            melting, boiling = (
+                self.phase_detector.get_most_common_melting_boiling_points(df)
+            )
 
             # Получаем записи для полного диапазона
             t_range_full = [temperature_range[0], temperature_range[1]]
+
+            # Определяем is_elemental для текущего вещества (метод calculate_reaction_with_metadata)
+            is_elemental = (
+                params.compound_types.get(formula) if params.compound_types else None
+            )
+
             records = self.range_builder.get_compound_records_for_range(
-                df, t_range_full, melting, boiling
+                df, t_range_full, melting, boiling, is_elemental=is_elemental
             )
 
             if not records:
-                self.logger.error(f"⚠ {formula}: не удалось получить записи для диапазона")
+                self.logger.error(
+                    f"⚠ {formula}: не удалось получить записи для диапазона"
+                )
                 raise ValueError(f"Не удалось получить записи для вещества {formula}")
 
             # Собираем информацию о фазовых переходах на основе данных Tmin/Tmax
             phase_transitions = []
 
             # Сортируем записи по Tmin для определения последовательности фаз
-            sorted_records = sorted(records, key=lambda r: r.get('Tmin', float('inf')))
+            sorted_records = sorted(records, key=lambda r: r.get("Tmin", float("inf")))
 
             for i, record in enumerate(sorted_records):
-                current_phase = record.get('Phase', 'unknown')
-                current_Tmin = record.get('Tmin')
-                current_Tmax = record.get('Tmax')
+                current_phase = record.get("Phase", "unknown")
+                current_Tmin = record.get("Tmin")
+                current_Tmax = record.get("Tmax")
 
                 # Пропускаем записи без температурных данных
                 if current_Tmin is None or current_Tmax is None:
                     continue
 
                 # Ищем следующую запись с другой фазой
-                for next_record in sorted_records[i+1:]:
-                    next_phase = next_record.get('Phase', 'unknown')
-                    next_Tmin = next_record.get('Tmin')
+                for next_record in sorted_records[i + 1 :]:
+                    next_phase = next_record.get("Phase", "unknown")
+                    next_Tmin = next_record.get("Tmin")
 
                     # Если фаза изменилась, фиксируем переход
                     if next_phase != current_phase and next_Tmin is not None:
                         # Переход происходит в начале следующей записи
                         transition_T = next_Tmin
-                        phase_transitions.append((transition_T, current_phase, next_phase))
+                        phase_transitions.append(
+                            (transition_T, current_phase, next_phase)
+                        )
                         break
 
             # Сохраняем метаданные
             compounds_metadata[formula] = {
-                'records_used': records,
-                'melting_point': melting,
-                'boiling_point': boiling,
-                'phase_transitions': phase_transitions,
-                'is_yaml_cache': is_yaml_cache,
-                'search_stage': search_stage
+                "records_used": records,
+                "melting_point": melting,
+                "boiling_point": boiling,
+                "phase_transitions": phase_transitions,
+                "is_yaml_cache": is_yaml_cache,
+                "search_stage": search_stage,
             }
 
             compound_data[formula] = {
-                'records': records,
-                'melting': melting,
-                'boiling': boiling,
-                'coeff': reaction_coeffs.get(formula, 0)
+                "records": records,
+                "melting": melting,
+                "boiling": boiling,
+                "coeff": reaction_coeffs.get(formula, 0),
             }
 
             source_info = "YAML-кэш" if is_yaml_cache else f"БД (стадия {search_stage})"
@@ -398,13 +439,13 @@ class ReactionEngine:
             delta_S = 0.0
 
             for formula, data in compound_data.items():
-                coeff = data['coeff']
-                records = data['records']
+                coeff = data["coeff"]
+                records = data["records"]
 
                 # Находим подходящую запись для текущей температуры
                 suitable_record = None
                 for record in records:
-                    if record['Tmin'] <= T <= record['Tmax']:
+                    if record["Tmin"] <= T <= record["Tmax"]:
                         suitable_record = record
                         break
 
@@ -412,34 +453,42 @@ class ReactionEngine:
                 # используем первую запись (даже если T вне диапазона)
                 if suitable_record is None and records:
                     suitable_record = records[0]
-                    self.logger.debug(f"⚠ T={T}K: использована первая запись для {formula} (Tmin={records[0]['Tmin']}K)")
+                    self.logger.debug(
+                        f"⚠ T={T}K: использована первая запись для {formula} (Tmin={records[0]['Tmin']}K)"
+                    )
 
                 if suitable_record is None:
-                    self.logger.warning(f"⚠ T={T}K: нет подходящей записи для {formula}")
+                    self.logger.warning(
+                        f"⚠ T={T}K: нет подходящей записи для {formula}"
+                    )
                     continue
 
                 # Рассчитываем термодинамические свойства
                 properties = self.thermo_engine.calculate_properties(suitable_record, T)
 
                 # Добавляем вклад в реакцию (с учетом стехиометрии)
-                delta_H += coeff * properties['enthalpy']
-                delta_S += coeff * properties['entropy']
+                delta_H += coeff * properties["enthalpy"]
+                delta_S += coeff * properties["entropy"]
 
             # Вычисляем ΔG и константу равновесия
             delta_G = delta_H - T * delta_S
 
             # ln(K) = -ΔG / (R * T)
             ln_K = -delta_G / (self.R * T) if T > 0 else 0
-            K = np.exp(ln_K) if abs(ln_K) < 700 else (np.inf if ln_K > 0 else 0)  # Избегаем overflow
+            K = (
+                np.exp(ln_K) if abs(ln_K) < 700 else (np.inf if ln_K > 0 else 0)
+            )  # Избегаем overflow
 
-            results.append({
-                'T': T,
-                'delta_H': delta_H,
-                'delta_S': delta_S,
-                'delta_G': delta_G,
-                'ln_K': ln_K,
-                'K': K
-            })
+            results.append(
+                {
+                    "T": T,
+                    "delta_H": delta_H,
+                    "delta_S": delta_S,
+                    "delta_G": delta_G,
+                    "ln_K": ln_K,
+                    "K": K,
+                }
+            )
 
         df_result = pd.DataFrame(results)
         self.logger.info(f"✓ Расчет завершен: {len(df_result)} температурных точек")

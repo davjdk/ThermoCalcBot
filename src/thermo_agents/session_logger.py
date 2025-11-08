@@ -3,11 +3,12 @@
 Каждая сессия = один пользовательский запрос.
 """
 
-from pathlib import Path
-from datetime import datetime
-from typing import Optional, Any, Dict, List
-import uuid
 import json
+import uuid
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from tabulate import tabulate
 
 
@@ -97,7 +98,9 @@ class SessionLogger:
         status = "ERROR" if exc_type else "SUCCESS"
         self.close(status)
 
-    def log_llm_request(self, query: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def log_llm_request(
+        self, query: str, metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
         """
         Логирование пользовательского запроса к LLM.
 
@@ -107,7 +110,9 @@ class SessionLogger:
         """
         separator = "=" * 80
         self._write(separator)
-        self._write(f"[LLM REQUEST] {datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}")
+        self._write(
+            f"[LLM REQUEST] {datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}"
+        )
         self._write(separator)
         self._write(f"User query:")
         self._write(query)
@@ -128,7 +133,7 @@ class SessionLogger:
         duration: float,
         model: str = "gpt-4-turbo",
         temperature: float = 0.0,
-        max_tokens: int = 1000
+        max_tokens: int = 1000,
     ) -> None:
         """
         Логирование ответа от LLM.
@@ -141,7 +146,7 @@ class SessionLogger:
             max_tokens: Максимальное количество токенов
         """
         separator = "=" * 80
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
         self._write(separator)
         self._write(f"[LLM RESPONSE] {timestamp} (duration: {duration:.3f}s)")
@@ -164,6 +169,19 @@ class SessionLogger:
             display_value = value if value else "not specified"
             self._write(f"  {status} {key}: {display_value}")
 
+        # Специальное логирование для compound_types (классификация веществ)
+        if "compound_types" in response and response["compound_types"]:
+            self._write("")
+            self._write("Классификация веществ:")
+            for formula, is_elemental in response["compound_types"].items():
+                compound_type = "простое" if is_elemental else "сложное"
+                h298_note = (
+                    " (H₂₉₈=0 допустимо)"
+                    if is_elemental
+                    else " (приоритет H₂₉₈≠0, S₂₉₈≠0)"
+                )
+                self._write(f"  • {formula}: {compound_type}{h298_note}")
+
         self._write("")
         self._write("Status: SUCCESS")
         self._write("")
@@ -178,7 +196,7 @@ class SessionLogger:
         """
         import traceback
 
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
         self._write(f"[LLM ERROR] {timestamp}")
         self._write(f"Error type: {type(error).__name__}")
@@ -200,7 +218,7 @@ class SessionLogger:
         parameters: Dict[str, Any],
         results: List[Dict[str, Any]],
         execution_time: float,
-        context: str = ""
+        context: str = "",
     ) -> None:
         """
         Логирование поиска в базе данных.
@@ -213,7 +231,7 @@ class SessionLogger:
             context: Контекст поиска (описание)
         """
         separator = "=" * 80
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
         self._write(separator)
         self._write(f"[DATABASE SEARCH] {timestamp}")
@@ -242,7 +260,7 @@ class SessionLogger:
         self._write("")
 
         # Статистика
-        self._write(f"Execution time: {execution_time*1000:.1f} ms")
+        self._write(f"Execution time: {execution_time * 1000:.1f} ms")
         self._write(f"Total records found: {len(results)}")
         display_count = min(30, len(results))
         self._write(f"Records to display: {display_count} (first batch)")
@@ -296,7 +314,7 @@ class SessionLogger:
         original_results: List[Dict[str, Any]],
         deduplicated_results: List[Dict[str, Any]],
         compound_formula: str,
-        execution_time: float = 0.0
+        execution_time: float = 0.0,
     ) -> None:
         """
         Логирование результатов после дедупликации.
@@ -308,7 +326,7 @@ class SessionLogger:
             execution_time: Время выполнения дедупликации
         """
         separator = "=" * 80
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
         self._write(separator)
         self._write(f"[DEDUPLICATION RESULTS] {timestamp}")
@@ -317,15 +335,21 @@ class SessionLogger:
         self._write(f"Compound: {compound_formula}")
         self._write(f"Original records: {len(original_results)}")
         self._write(f"Deduplicated records: {len(deduplicated_results)}")
-        self._write(f"Duplicates removed: {len(original_results) - len(deduplicated_results)}")
-        self._write(f"Deduplication rate: {((len(original_results) - len(deduplicated_results)) / len(original_results) * 100):.1f}%")
-        self._write(f"Execution time: {execution_time*1000:.1f} ms")
+        self._write(
+            f"Duplicates removed: {len(original_results) - len(deduplicated_results)}"
+        )
+        self._write(
+            f"Deduplication rate: {((len(original_results) - len(deduplicated_results)) / len(original_results) * 100):.1f}%"
+        )
+        self._write(f"Execution time: {execution_time * 1000:.1f} ms")
         self._write("")
 
         # Результаты в виде таблицы после дедупликации
         if deduplicated_results:
             self._write(separator)
-            self._write(f"[RESULTS AFTER DEDUPLICATION] All {len(deduplicated_results)} unique records")
+            self._write(
+                f"[RESULTS AFTER DEDUPLICATION] All {len(deduplicated_results)} unique records"
+            )
             self._write(separator)
 
             # Форматирование через tabulate
@@ -348,7 +372,7 @@ class SessionLogger:
                 headers=headers,
                 tablefmt="grid",
                 numalign="right",
-                stralign="left"
+                stralign="left",
             )
             self._write(table)
 
@@ -375,9 +399,7 @@ class SessionLogger:
         self._write("")
 
     def _log_phase_distribution(
-        self,
-        records: List[Dict[str, Any]],
-        label: str = "Phase distribution"
+        self, records: List[Dict[str, Any]], label: str = "Phase distribution"
     ) -> None:
         """
         Логирование распределения по фазам для каждой формулы.
@@ -414,7 +436,7 @@ class SessionLogger:
         output_count: int,
         input_records: Optional[List[Dict[str, Any]]] = None,
         output_records: Optional[List[Dict[str, Any]]] = None,
-        removal_reasons: Optional[Dict[str, List[str]]] = None
+        removal_reasons: Optional[Dict[str, List[str]]] = None,
     ) -> None:
         """
         Логирование одного этапа фильтрации.
@@ -452,9 +474,7 @@ class SessionLogger:
         if removal_reasons:
             # Сортируем причины по количеству удалённых записей
             sorted_reasons = sorted(
-                removal_reasons.items(),
-                key=lambda x: len(x[1]),
-                reverse=True
+                removal_reasons.items(), key=lambda x: len(x[1]), reverse=True
             )
 
             self._write("Removal reasons (top 3):")
@@ -485,14 +505,11 @@ class SessionLogger:
         self._write("")
 
     def log_filtering_pipeline_start(
-        self,
-        input_count: int,
-        target_temp_range: tuple,
-        required_compounds: List[str]
+        self, input_count: int, target_temp_range: tuple, required_compounds: List[str]
     ) -> None:
         """Начало pipeline фильтрации."""
         separator = "=" * 80
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
         # Сохраняем целевой температурный диапазон для использования в warnings
         self._target_temp_min = target_temp_range[0]
@@ -502,7 +519,9 @@ class SessionLogger:
         self._write(f"[FILTERING PIPELINE] {timestamp}")
         self._write(separator)
         self._write(f"Input: {input_count} records from database search")
-        self._write(f"Target temperature range: {target_temp_range[0]}-{target_temp_range[1]} K")
+        self._write(
+            f"Target temperature range: {target_temp_range[0]}-{target_temp_range[1]} K"
+        )
         compounds_str = ", ".join(f"'{c}'" for c in required_compounds)
         self._write(f"Required compounds: [{compounds_str}]")
         self._write("")
@@ -513,17 +532,19 @@ class SessionLogger:
         initial_count: int,
         duration: float,
         warnings: List[str],
-        final_records: List[Dict[str, Any]]
+        final_records: List[Dict[str, Any]],
     ) -> None:
         """Завершение pipeline фильтрации."""
         separator = "=" * 80
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
         removed = initial_count - final_count
         removal_pct = (removed / initial_count * 100) if initial_count > 0 else 0
 
         self._write(separator)
-        self._write(f"[FILTERING COMPLETE] {timestamp} (duration: {duration*1000:.0f}ms)")
+        self._write(
+            f"[FILTERING COMPLETE] {timestamp} (duration: {duration * 1000:.0f}ms)"
+        )
         self._write(separator)
         self._write(f"Final records: {final_count}")
         self._write(f"Records removed: {removed} ({removal_pct:.1f}%)")
@@ -545,7 +566,9 @@ class SessionLogger:
             self._log_records_table(final_records, max_records=30)
         self._write("")
 
-    def _log_records_table(self, records: List[Dict[str, Any]], max_records: int = 30) -> None:
+    def _log_records_table(
+        self, records: List[Dict[str, Any]], max_records: int = 30
+    ) -> None:
         """Логирование записей в виде таблицы."""
         if not records:
             return
@@ -563,10 +586,10 @@ class SessionLogger:
                 if key in ["h298", "s298"] and value == 0:
                     value = f"{value} ❌"  # Критичная проблема
                 # Проверка temperature coverage (если доступна информация)
-                elif key == "t_max" and hasattr(self, '_target_temp_max'):
+                elif key == "t_max" and hasattr(self, "_target_temp_max"):
                     if value < self._target_temp_max:
                         value = f"{value}⚠"  # Warning
-                elif key == "t_min" and hasattr(self, '_target_temp_min'):
+                elif key == "t_min" and hasattr(self, "_target_temp_min"):
                     if value > self._target_temp_min:
                         value = f"{value}⚠"  # Warning
                 # Сокращение длинных строк
@@ -576,12 +599,7 @@ class SessionLogger:
                 row.append(value)
             table_data.append(row)
 
-        table = tabulate(
-            table_data,
-            headers=headers,
-            tablefmt="grid",
-            numalign="right"
-        )
+        table = tabulate(table_data, headers=headers, tablefmt="grid", numalign="right")
         self._write(table)
 
         if len(records) > max_records:
@@ -595,13 +613,11 @@ class SessionLogger:
         Args:
             message: Информационное сообщение
         """
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         self._write(f"[INFO] {timestamp}: {message}")
 
     def log_validation_check(
-        self,
-        validation_results: Dict[str, Any],
-        issues: List[Dict[str, Any]]
+        self, validation_results: Dict[str, Any], issues: List[Dict[str, Any]]
     ) -> None:
         """Логирование результатов валидации."""
         separator = "-" * 80
@@ -624,7 +640,9 @@ class SessionLogger:
             # Только подсчитываем количество проблем для статистики
             issue_count = len(issues)
             if issue_count > 0:
-                self._write(f"Validation completed with {issue_count} issue(s) detected")
+                self._write(
+                    f"Validation completed with {issue_count} issue(s) detected"
+                )
         self._write("")
 
     def log_console_output(self, output: str) -> None:
@@ -635,7 +653,7 @@ class SessionLogger:
             output: Текст, выводимый в консоль
         """
         separator = "=" * 80
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
         self._write(separator)
         self._write(f"[CONSOLE OUTPUT] {timestamp}")

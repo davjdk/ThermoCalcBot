@@ -94,79 +94,82 @@ from typing import List
 
 
 THERMODYNAMIC_EXTRACTION_PROMPT = """
-Ты — эксперт по термодинамике и химии. Твоя задача — извлечь параметры химической реакции из запроса пользователя.
+You are an expert in thermodynamics and chemistry. Your task is to extract chemical reaction parameters from the user's query.
 
-# Входные данные:
-Запрос пользователя: {user_query}
+# Input:
+User query: {user_query}
 
-# ПРАВИЛА КЛАССИФИКАЦИИ:
+**IMPORTANT:** User queries are MOSTLY in Russian language, sometimes in English. You must understand BOTH languages and extract parameters correctly regardless of the input language.
 
-## compound_data (данные по веществу):
-✓ Запрос содержит одно вещество
-✓ Нет символов реакции (→, =, ⇄, <=>)
-✓ Ключевые слова: "данные", "свойства", "таблица для", "информация о"
-✓ Примеры:
-  - "Дай таблицу для H2O при 300-600K"
-  - "Свойства WCl6 с шагом 50 градусов"
-  - "Термодинамические данные для воды"
+# CLASSIFICATION RULES:
 
-## reaction_calculation (расчёт реакции):
-✓ Присутствуют 2+ вещества
-✓ Есть символы реакции (→, =, ⇄, <=>)
-✓ Ключевые слова: "реакция", "рассчитай", "баланс", "термодинамика"
-✓ Примеры:
-  - "2 W + 4 Cl2 + O2 → 2 WOCl4 при 600-900K"
-  - "Рассчитай термодинамику хлорирования вольфрама"
+## compound_data (compound properties):
+✓ Query contains a single compound
+✓ No reaction symbols (→, =, ⇄, <=>)
+✓ Keywords: "data", "properties", "table for", "information about"
+✓ Examples:
+  - "Give me a table for H2O at 300-600K"
+  - "WCl6 properties with 50 degree step"
+  - "Thermodynamic data for water"
 
-# Задача:
-Извлеки следующие параметры:
-1. **Тип запроса** (query_type) — "compound_data" или "reaction_calculation"
-2. **Шаг температуры** (temperature_step_k) — из фраз "с шагом X", "каждые X", "через X K" (25-250K, по умолчанию 100)
-3. **Уравненное уравнение реакции** — сбалансируй стехиометрические коэффициенты (для reaction_calculation)
-4. **Список всех веществ** (до 10 веществ, включая реагенты и продукты)
-5. **Реагенты** (левая часть уравнения) — для reaction_calculation
-6. **Продукты** (правая часть уравнения) — для reaction_calculation
-7. **Температурный диапазон** в Кельвинах (tmin, tmax)
-8. **Названия веществ** — IUPAC и тривиальные названия для каждого соединения
+## reaction_calculation (reaction calculation):
+✓ Contains 2+ compounds
+✓ Has reaction symbols (→, =, ⇄, <=>)
+✓ Keywords: "reaction", "calculate", "balance", "thermodynamics"
+✓ Examples:
+  - "2 W + 4 Cl2 + O2 → 2 WOCl4 at 600-900K"
+  - "Calculate thermodynamics of tungsten chlorination"
 
-# Важные правила:
-- Максимум 10 веществ в реакции
-- Температурный диапазон обязателен (если не указан, используй 298-1000K по умолчанию)
-- Формулы веществ — без фаз в скобках (например, "H2O", а не "H2O(g)")
-- Для каждого вещества укажи официальное IUPAC название и возможные тривиальные названия
-- Шаг температуры: 25-250K, по умолчанию 100K, кратный 25K рекомендуется
+# Task:
+Extract the following parameters:
+1. **Query type** (query_type) — "compound_data" or "reaction_calculation"
+2. **Temperature step** (temperature_step_k) — from phrases "step X", "every X", "each X K" (25-250K, default 100)
+3. **Balanced reaction equation** — balance stoichiometric coefficients (for reaction_calculation)
+4. **List of all compounds** (up to 10 compounds, including reactants and products)
+5. **Reactants** (left side of equation) — for reaction_calculation
+6. **Products** (right side of equation) — for reaction_calculation
+7. **Temperature range** in Kelvin (tmin, tmax)
+8. **Compound names** — IUPAC and trivial names for each compound
 
-## Определение типа вещества (is_elemental)
+# Important rules:
+- Maximum 10 compounds in reaction
+- Temperature range is mandatory (if not specified, use 298-1000K by default)
+- Compound formulas — without phase in parentheses (e.g., "H2O", not "H2O(g)")
+- For each compound specify official IUPAC name and possible trivial names
+- Temperature step: 25-250K, default 100K, multiples of 25K recommended
 
-Если запрос касается ОДНОГО вещества (query_type="compound_data"), определи:
+## Compound type determination (is_elemental)
 
-**Простое вещество (is_elemental=True):**
-- Состоит из ОДНОГО химического элемента
-- Примеры: O2, N2, H2, Cl2, Br2, I2 (двухатомные газы)
-- C (графит), S (ромбическая), P (белый фосфор)
-- Fe, Cu, Al, Au, Ag, Zn (металлы)
+If query concerns ONE compound (query_type="compound_data"), determine:
 
-**Сложное вещество (is_elemental=False):**
-- Состоит из ДВУХ и более химических элементов
-- Примеры: H2O, CO2, NH3, NaCl, CaCO3, H2SO4
+**Elemental substance (is_elemental=True):**
+- Consists of ONE chemical element
+- Examples: O2, N2, H2, Cl2, Br2, I2 (diatomic gases)
+- C (graphite), S (rhombic), P (white phosphorus)
+- Fe, Cu, Al, Au, Ag, Zn (metals)
 
-**Для запросов с несколькими веществами (query_type="reaction_calculation"):**
-- Установи is_elemental=null
+**Compound substance (is_elemental=False):**
+- Consists of TWO or more chemical elements
+- Examples: H2O, CO2, NH3, NaCl, CaCO3, H2SO4
 
-**Важно:** Для простых веществ в стандартном состоянии (298.15 K):
-- H₂₉₈ = 0.0 кДж/моль (энтальпия образования из элементов)
-- S₂₉₈ ≠ 0.0 Дж/(моль·K) (энтропия может быть ненулевой)
+**For multi-compound queries (query_type="reaction_calculation"):**
+- Set is_elemental=null
+- Fill compound_types for EACH compound in all_compounds
 
-Примеры:
-- "Покажи данные для кислорода O2" → is_elemental=True
-- "Найди свойства воды H2O" → is_elemental=False
-- "Реакция 2H2 + O2 → 2H2O" → is_elemental=null (реакция)
+**Important:** For elemental substances in standard state (298.15 K):
+- H₂₉₈ = 0.0 kJ/mol (enthalpy of formation from elements)
+- S₂₉₈ ≠ 0.0 J/(mol·K) (entropy can be non-zero)
 
-# Примеры:
+Examples:
+- "Show data for oxygen O2" → is_elemental=True, compound_types={{"O2": true}}
+- "Find properties of water H2O" → is_elemental=False, compound_types={{"H2O": false}}
+- "Reaction 2H2 + O2 → 2H2O" → is_elemental=null, compound_types={{"H2": true, "O2": true, "H2O": false}}
 
-## Пример 1: compound_data
-Запрос: "Дай таблицу для H2O при 300-600K с шагом 50 градусов"
-Ответ:
+# Examples:
+
+## Example 1: compound_data
+Query: "Give me a table for H2O at 300-600K with 50 degree step"
+Response:
 {{
   "query_type": "compound_data",
   "temperature_step_k": 50,
@@ -178,14 +181,17 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
   "extraction_confidence": 1.0,
   "missing_fields": [],
   "compound_names": {{
-    "H2O": ["Water", "вода"]
+    "H2O": ["Water"]
   }},
-  "is_elemental": false  # H2O - сложное вещество (H + O)
+  "is_elemental": false  # H2O - compound (H + O)
+  "compound_types": {{
+    "H2O": false  // Compound
+  }}
 }}
 
-## Пример 2: reaction_calculation
-Запрос: "2 W + 4 Cl2 + O2 → 2 WOCl4 при 600-900K, считай каждые 25 кельвинов"
-Ответ:
+## Example 2: reaction_calculation
+Query: "2 W + 4 Cl2 + O2 → 2 WOCl4 at 600-900K, calculate every 25 kelvins"
+Response:
 {{
   "query_type": "reaction_calculation",
   "temperature_step_k": 25,
@@ -201,12 +207,18 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
     "Cl2": ["Chlorine"],
     "O2": ["Oxygen"],
     "WOCl4": ["Tungsten oxychloride"]
+  }},
+  "compound_types": {{
+    "W": true,     // Elemental (metal)
+    "Cl2": true,   // Elemental (diatomic gas)
+    "O2": true,    // Elemental (diatomic gas)
+    "WOCl4": false // Compound (W + Cl + O)
   }}
 }}
 
-## Пример 3: reaction_calculation
-Запрос: "Хлорирование оксида титана при 600-900K"
-Ответ:
+## Example 3: reaction_calculation
+Query: "Titanium oxide chlorination at 600-900K"
+Response:
 {{
   "query_type": "reaction_calculation",
   "temperature_step_k": 100,
@@ -222,12 +234,18 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
     "Cl2": ["Chlorine"],
     "TiCl4": ["Titanium tetrachloride", "Titanium(IV) chloride"],
     "O2": ["Oxygen"]
+  }},
+  "compound_types": {{
+    "TiO2": false,  // Compound (Ti + O)
+    "Cl2": true,    // Elemental
+    "TiCl4": false, // Compound (Ti + Cl)
+    "O2": true      // Elemental
   }}
 }}
 
-## Пример 4: compound_data
-Запрос: "Свойства WCl6 с шагом 50 градусов"
-Ответ:
+## Example 4: compound_data
+Query: "WCl6 properties with 50 degree step"
+Response:
 {{
   "query_type": "compound_data",
   "temperature_step_k": 50,
@@ -239,14 +257,17 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
   "extraction_confidence": 0.90,
   "missing_fields": [],
   "compound_names": {{
-    "WCl6": ["Tungsten hexachloride", "Вольфрам гексахлорид"]
+    "WCl6": ["Tungsten hexachloride"]
   }},
-  "is_elemental": false  # WCl6 - сложное вещество (W + Cl)
+  "is_elemental": false  # WCl6 - compound (W + Cl)
+  "compound_types": {{
+    "WCl6": false  // Compound
+  }}
 }}
 
-## Пример 5: compound_data (простое вещество)
-Запрос: "Данные для кислорода O2 от 300 до 2000 K"
-Ответ:
+## Example 5: compound_data (elemental substance)
+Query: "Oxygen O2 data from 300 to 2000 K"
+Response:
 {{
   "query_type": "compound_data",
   "temperature_step_k": 100,
@@ -258,12 +279,15 @@ THERMODYNAMIC_EXTRACTION_PROMPT = """
   "extraction_confidence": 1.0,
   "missing_fields": [],
   "compound_names": {{
-    "O2": ["Oxygen", "кислород"]
+    "O2": ["Oxygen"]
   }},
-  "is_elemental": true  # O2 - простое вещество (только O)
+  "is_elemental": true  # O2 - elemental (only O)
+  "compound_types": {{
+    "O2": true  // Elemental
+  }}
 }}
 
-# Твой ответ (JSON):
+# Your response (JSON):
 """
 
 
