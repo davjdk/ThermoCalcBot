@@ -125,7 +125,7 @@ class TableFormatter:
 
         # Подготавливаем данные для таблицы
         table_data = []
-        headers = ["T(K)", "ΔH° (кДж/моль)", "ΔS° (Дж/(К·моль))", "ΔG° (кДж/моль)", "Фазовые переходы"]
+        headers = ["T(K)", "ΔH (кДж/моль)", "ΔS (Дж/(К·моль))", "ΔG (кДж/моль)", "Фазовые переходы"]
 
         for _, row in df_result.iterrows():
             T = row['T']
@@ -189,12 +189,12 @@ class TableFormatter:
         """
         # Копируем и преобразуем данные
         df_export = df_result.copy()
-        df_export['ΔH° (кДж/моль)'] = df_export['delta_H'] / 1000
-        df_export['ΔS° (Дж/(К·моль))'] = df_result['delta_S']
-        df_export['ΔG° (кДж/моль)'] = df_result['delta_G'] / 1000
+        df_export['ΔH (кДж/моль)'] = df_export['delta_H'] / 1000
+        df_export['ΔS (Дж/(К·моль))'] = df_result['delta_S']
+        df_export['ΔG (кДж/моль)'] = df_result['delta_G'] / 1000
 
         # Выбираем нужные колонки для экспорта
-        export_columns = ['T', 'ΔH° (кДж/моль)', 'ΔS° (Дж/(К·моль))', 'ΔG° (кДж/моль)', 'ln_K', 'K']
+        export_columns = ['T', 'ΔH (кДж/моль)', 'ΔS (Дж/(К·моль))', 'ΔG (кДж/моль)', 'ln_K', 'K']
         df_export = df_export[export_columns]
 
         return df_export.to_csv(index=False, float_format='%.6f')
@@ -217,7 +217,7 @@ class TableFormatter:
             Таблица сравнения
         """
         table_data = []
-        headers = ["T(K)", "ΔG° (расч.)", "ΔG° (реф.)", "Отклонение", "Статус"]
+        headers = ["T(K)", "ΔG (расч.)", "ΔG (реф.)", "Отклонение", "Статус"]
 
         # Сравниваем данные
         for _, row in df_original.iterrows():

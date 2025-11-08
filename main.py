@@ -106,7 +106,7 @@ async def main_test():
     print("=" * 80)
 
     # Тестовый запрос
-    test_query = "SiO2​+CaO→CaSiO3​"
+    test_query = "SiO2 + 2C = Si + 2CO​"
 
     # Создаем SessionLogger для тестового запроса
     with SessionLogger() as session_logger:

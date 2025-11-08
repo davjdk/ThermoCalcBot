@@ -124,6 +124,18 @@ class UnifiedReactionFormatter:
             if compound_table:
                 lines.append(compound_table)
 
+            # Добавляем таблицу термодинамических свойств вещества
+            thermodynamic_table = self.compound_info.format_compound_thermodynamic_table(
+                formula=formula,
+                records_used=metadata.get('records_used', []),
+                temperature_range_k=params.temperature_range_k,
+                temperature_step_k=params.temperature_step_k,
+                compound_names=names
+            )
+
+            if thermodynamic_table:
+                lines.append(thermodynamic_table)
+
         # Добавляем информацию о веществах в текстовом формате
         lines.append("Данные веществ:")
         lines.append("")
@@ -218,14 +230,14 @@ class UnifiedReactionFormatter:
         Returns:
             Отформатированное описание метода
         """
-        return """1. Энтальпия реакции: ΔH°(T) = Σνᵢ·H°ᵢ(T) (продукты) - Σνⱼ·H°ⱼ(T) (реагенты)
-2. Энтропия реакции: ΔS°(T) = Σνᵢ·S°ᵢ(T) (продукты) - Σνⱼ·S°ⱼ(T) (реагенты)
-3. Энергия Гиббса: ΔG°(T) = ΔH°(T) - T·ΔS°(T)
-4. Константа равновесия: ln(K) = -ΔG°(T)/(R·T), где R = 8.314 Дж/(моль·K)
+        return """1. Энтальпия реакции: ΔH(T) = Σνᵢ·Hᵢ(T) (продукты) - Σνⱼ·Hⱼ(T) (реагенты)
+2. Энтропия реакции: ΔS(T) = Σνᵢ·Sᵢ(T) (продукты) - Σνⱼ·Sⱼ(T) (реагенты)
+3. Энергия Гиббса: ΔG(T) = ΔH(T) - T·ΔS(T)
+4. Константа равновесия: ln(K) = -ΔG(T)/(R·T), где R = 8.314 Дж/(моль·K)
 
 Где термодинамические функции рассчитываются по уравнениям Шомейта:
-  H°(T) = H°₂₉₈ + ∫₂₉₈ᵀ Cp(T)dT
-  S°(T) = S°₂₉₈ + ∫₂₉₈ᵀ [Cp(T)/T]dT
+  H(T) = H₂₉₈ + ∫₂₉₈ᵀ Cp(T)dT
+  S(T) = S₂₉₈ + ∫₂₉₈ᵀ [Cp(T)/T]dT
   Cp(T) = f₁ + f₂·T/1000 + f₃·T⁻²·10⁵ + f₄·T²/10⁶ + f₅·T⁻³·10³ + f₆·T³·10⁻⁹"""
 
     def format_brief_result(

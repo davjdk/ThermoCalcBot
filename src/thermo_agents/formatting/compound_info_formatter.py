@@ -6,7 +6,7 @@
 """
 
 import pandas as pd
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from tabulate import tabulate
 
 
@@ -193,7 +193,7 @@ class CompoundInfoFormatter:
 
         # Подготавливаем данные для таблицы
         table_data = []
-        headers = ["Formula", "FirstName", "Phase", "Tmin", "Tmax", "H298", "S298"]
+        headers = ["Formula", "FirstName", "Phase", "Tmin", "Tmax", "H298", "S298", "f1", "f2", "f3", "f4", "f5", "f6"]
 
         for record in records_used:
             table_data.append([
@@ -203,8 +203,154 @@ class CompoundInfoFormatter:
                 f"{record.get('Tmin', 0):.1f}",
                 f"{record.get('Tmax', 0):.1f}",
                 f"{record.get('H298', 0):.0f}",
-                f"{record.get('S298', 0):.2f}"
+                f"{record.get('S298', 0):.2f}",
+                f"{record.get('f1', 0):.6f}",
+                f"{record.get('f2', 0):.6f}",
+                f"{record.get('f3', 0):.6f}",
+                f"{record.get('f4', 0):.6f}",
+                f"{record.get('f5', 0):.6f}",
+                f"{record.get('f6', 0):.6f}"
             ])
+
+        # Форматируем таблицу
+        formatted_table = tabulate(
+            table_data,
+            headers=headers,
+            tablefmt="grid",
+            stralign="center",
+            numalign="decimal"
+        )
+
+        lines.append(formatted_table)
+        lines.append("")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def format_compound_thermodynamic_table(
+        formula: str,
+        records_used: List[pd.Series],
+        temperature_range_k: Tuple[float, float],
+        temperature_step_k: float,
+        compound_names: List[str]
+    ) -> str:
+        """
+        Форматирует таблицу термодинамических свойств вещества (ΔH, ΔS, ΔG vs T).
+
+        Создает таблицу с температурной зависимостью свойств вещества,
+        с индикаторами смены записей из БД при переходе между температурными диапазонами.
+
+        Структура:
+        === Термодинамические свойства: H2O ===
+
+        | T(K) | ΔH (кДж/моль) | ΔS (Дж/(моль·K)) | ΔG (кДж/моль) | Смена записи |
+        |------|---------------|------------------|---------------|--------------|
+        | 298  | -285.83       | 69.91            | -306.71       | запись 1     |
+        | 398  | -283.12       | 74.15            | -312.54       | запись 1     |
+        | 498  | -280.41       | 77.89            | -319.25       | запись 2     |
+
+        Args:
+            formula: Химическая формула
+            records_used: Список использованных записей, отсортированных по температурным диапазонам
+            temperature_range_k: Кортеж (T_min, T_max) в Кельвинах
+            temperature_step_k: Шаг по температуре в Кельвинах
+            compound_names: Список имен из LLM response
+
+        Returns:
+            Отформатированный раздел с таблицей термодинамических свойств
+        """
+        if not records_used:
+            return ""
+
+        import numpy as np
+        from ..core_logic.thermodynamic_engine import ThermodynamicEngine
+        import logging
+
+        # Создаем временный логгер для движка
+        logger = logging.getLogger(__name__)
+        thermodynamic_engine = ThermodynamicEngine(logger)
+
+        lines = []
+
+        # Заголовок раздела
+        name = compound_names[0] if compound_names else records_used[0].get('FirstName', 'Unknown')
+        lines.append(f"=== Термодинамические свойства: {formula} ===")
+        lines.append("")
+
+        T_min, T_max = temperature_range_k
+        temperatures = np.arange(T_min, T_max + temperature_step_k, temperature_step_k)
+
+        # Подготавливаем данные для таблицы
+        table_data = []
+        headers = ["T(K)", "ΔH (кДж/моль)", "ΔS (Дж/(моль·K))", "ΔG (кДж/моль)", "Смена записи"]
+
+        for i, T in enumerate(temperatures):
+            # Находим подходящую запись для текущей температуры
+            current_record = None
+            record_index = 0
+
+            for j, record in enumerate(records_used):
+                tmin = record.get('Tmin', float('-inf'))
+                tmax = record.get('Tmax', float('inf'))
+                if tmin <= T <= tmax:
+                    current_record = record
+                    record_index = j + 1  # Нумерация с 1 для пользователя
+                    break
+
+            if current_record is None:
+                # Если не найдена подходящая запись, используем последнюю
+                current_record = records_used[-1]
+                record_index = len(records_used)
+
+            # Рассчитываем свойства для этой температуры
+            try:
+                properties = thermodynamic_engine.calculate_properties(current_record, T)
+                delta_H = properties['enthalpy'] / 1000  # Конвертируем в кДж/моль
+                delta_S = properties['entropy']
+                delta_G = properties['gibbs_energy'] / 1000  # Конвертируем в кДж/моль
+
+                # Определяем, нужно ли показывать смену записи
+                record_change = f"запись {record_index}"
+
+                # Проверяем, изменилась ли запись по сравнению с предыдущим шагом
+                if i > 0:
+                    prev_T = temperatures[i-1]
+                    prev_record = None
+                    prev_record_index = 0
+
+                    for j, record in enumerate(records_used):
+                        tmin = record.get('Tmin', float('-inf'))
+                        tmax = record.get('Tmax', float('inf'))
+                        if tmin <= prev_T <= tmax:
+                            prev_record = record
+                            prev_record_index = j + 1
+                            break
+
+                    if prev_record is None:
+                        prev_record = records_used[-1]
+                        prev_record_index = len(records_used)
+
+                    # Если запись не изменилась, оставляем ячейку пустой
+                    if prev_record_index == record_index:
+                        record_change = ""
+
+                table_data.append([
+                    f"{T:.0f}",
+                    f"{delta_H:+.2f}",
+                    f"{delta_S:+.2f}",
+                    f"{delta_G:+.2f}",
+                    record_change
+                ])
+
+            except Exception as e:
+                # В случае ошибки расчета, добавляем строку с прочерками
+                table_data.append([
+                    f"{T:.0f}",
+                    "—",
+                    "—",
+                    "—",
+                    f"запись {record_index}"
+                ])
 
         # Форматируем таблицу
         formatted_table = tabulate(
