@@ -106,7 +106,7 @@ async def main_test():
     print("=" * 80)
 
     # Тестовый запрос
-    test_query = "SiO2 + 2C = Si + 2CO​"
+    test_query = "Возможна ли реакция оксида цинка с серой при 800–1100 °C?​"
 
     # Создаем SessionLogger для тестового запроса
     with SessionLogger() as session_logger:

@@ -1,5 +1,5 @@
 """
-Record range builder with three-level selection strategy.
+Record range builder with three-level selection strategy and optional optimization.
 
 This module implements the record selection logic from calc_example.ipynb
 with three-level strategy and phase transition handling.
@@ -11,6 +11,7 @@ from typing import List, Optional, Tuple
 import pandas as pd
 
 from .phase_transition_detector import PhaseTransitionDetector
+from ..selection.optimal_record_selector import OptimalRecordSelector, OptimizationConfig
 
 
 class RecordRangeBuilder:
@@ -18,9 +19,10 @@ class RecordRangeBuilder:
     Строит список записей для покрытия температурного диапазона.
     """
 
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: logging.Logger, optimizer: Optional[OptimalRecordSelector] = None):
         self.logger = logger
         self.phase_detector = PhaseTransitionDetector()
+        self.optimizer = optimizer
 
     def get_compound_records_for_range(
         self,
@@ -393,3 +395,76 @@ class RecordRangeBuilder:
             f"Используются как есть ({len(records)} записей)."
         )
         return records
+
+    def get_optimal_compound_records_for_range(
+        self,
+        df: pd.DataFrame,
+        t_range: List[float],  # [T_start, T_end]
+        melting: Optional[float],
+        boiling: Optional[float],
+        tolerance: float = 5.0,
+        is_elemental: Optional[bool] = None,
+        use_optimization: bool = False
+    ) -> List[pd.Series]:
+        """
+        Возвращает оптимизированный набор записей для покрытия температурного диапазона.
+
+        Логика:
+        1. Вызов существующего get_compound_records_for_range() (трёхуровневая стратегия)
+        2. Если use_optimization=True, передача результата в OptimalRecordSelector
+        3. Возврат оптимизированного набора
+
+        Args:
+            df: DataFrame с записями вещества
+            t_range: [T_start, T_end]
+            melting: Температура плавления (K)
+            boiling: Температура кипения (K)
+            tolerance: Допустимое отклонение для Tmin (K)
+            is_elemental: True = простое вещество, False = сложное
+            use_optimization: Флаг включения оптимизации (по умолчанию False)
+
+        Returns:
+            Оптимизированный список записей (может содержать VirtualRecord)
+        """
+        # Шаг 1: Трёхуровневая стратегия (текущая логика)
+        selected_records = self.get_compound_records_for_range(
+            df, t_range, melting, boiling, tolerance, is_elemental
+        )
+
+        # Шаг 2: Оптимизация (опционально)
+        if use_optimization and self.optimizer:
+            try:
+                optimized_records = self.optimizer.optimize_selected_records(
+                    selected_records=selected_records,
+                    target_range=tuple(t_range),
+                    all_available_records=df,
+                    melting=melting,
+                    boiling=boiling,
+                    is_elemental=is_elemental
+                )
+
+                # Log optimization results
+                if len(optimized_records) != len(selected_records):
+                    reduction = len(selected_records) - len(optimized_records)
+                    self.logger.info(
+                        f"[OptimalRecordSelector] Оптимизация сокращает количество записей на {reduction}: "
+                        f"{len(selected_records)} → {len(optimized_records)}"
+                    )
+                else:
+                    self.logger.debug(
+                        f"[OptimalRecordSelector] Оптимизация не изменила количество записей: {len(selected_records)}"
+                    )
+
+                return optimized_records
+
+            except Exception as e:
+                self.logger.error(
+                    f"[OptimalRecordSelector] Ошибка оптимизации, используется исходный набор: {e}"
+                )
+                return selected_records
+        elif use_optimization and not self.optimizer:
+            self.logger.warning(
+                "[OptimalRecordSelector] use_optimization=True, но оптимизатор не инициализирован"
+            )
+
+        return selected_records

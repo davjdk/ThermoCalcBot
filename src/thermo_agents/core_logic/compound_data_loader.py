@@ -12,6 +12,7 @@ from typing import Optional, List, Dict, Any
 from ..search.database_connector import DatabaseConnector
 from ..storage.static_data_manager import StaticDataManager
 from ..models.static_data import YAMLCompoundData, YAMLPhaseRecord
+from ..selection.optimal_record_selector import OptimalRecordSelector
 
 
 class CompoundDataLoader:
@@ -23,11 +24,13 @@ class CompoundDataLoader:
         self,
         db_connector: DatabaseConnector,
         static_data_manager: StaticDataManager,
-        logger: logging.Logger
+        logger: logging.Logger,
+        optimizer: Optional[OptimalRecordSelector] = None
     ):
         self.db_connector = db_connector
         self.static_manager = static_data_manager
         self.logger = logger
+        self.optimizer = optimizer
 
     def get_raw_compound_data(
         self,
@@ -291,3 +294,47 @@ class CompoundDataLoader:
             self.logger.warning(f"⚠ {formula}: не найдено записей (все стадии)")
 
         return df, False, None
+
+    def get_raw_compound_data_with_optimization_support(
+        self,
+        formula: str,
+        compound_names: Optional[List[str]] = None,
+        use_optimization: bool = False
+    ) -> tuple[pd.DataFrame, bool, Optional[int], Optional[OptimalRecordSelector]]:
+        """
+        Трехстадийный поиск вещества с поддержкой оптимизации.
+
+        Возвращает:
+            - DataFrame с найденными записями
+            - is_yaml_cache: bool (истинно, если данные из YAML-кэша)
+            - search_stage: Optional[int] (1 или 2 для поиска в БД, None для YAML)
+            - optimizer: Optional[OptimalRecordSelector] (для использования в RecordRangeBuilder)
+
+        Args:
+            formula: Химическая формула (например, "SO2", "H2O")
+            compound_names: Список имен из LLM response (опционально)
+            use_optimization: Флаг включения оптимизации записей
+
+        Returns:
+            (df, is_yaml_cache, search_stage, optimizer)
+        """
+        # Получаем данные с метаданными
+        df, is_yaml_cache, search_stage = self.get_raw_compound_data_with_metadata(
+            formula, compound_names
+        )
+
+        # Возвращаем оптимизатор, если оптимизация включена и он доступен
+        optimizer = self.optimizer if use_optimization else None
+
+        if optimizer and not df.empty:
+            self.logger.debug(
+                f"[CompoundDataLoader] Оптимизатор доступен для {formula} "
+                f"(use_optimization={use_optimization}, {len(df)} записей)"
+            )
+        elif use_optimization and not optimizer:
+            self.logger.warning(
+                f"[CompoundDataLoader] Оптимизация запрошена для {formula}, "
+                f"но оптимизатор не инициализирован"
+            )
+
+        return df, is_yaml_cache, search_stage, optimizer

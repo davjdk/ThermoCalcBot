@@ -61,6 +61,7 @@ from ..models.search import (
     MultiPhaseProperties,
     TransitionType
 )
+from ..selection.optimal_record_selector import VirtualRecord
 from .constants import (
     MIN_TEMPERATURE_K,
     MAX_TEMPERATURE_K,
@@ -106,8 +107,11 @@ class PhaseSegmentBuilder:
         """
         Build phase segments from database records.
 
+        Supports both regular DatabaseRecord and VirtualRecord instances.
+        Virtual records are treated as single records with extended temperature ranges.
+
         Args:
-            records: List of database records for the compound
+            records: List of database records for the compound (may include VirtualRecord)
             temperature_range: Temperature range for calculations (Tmin, Tmax)
             compound_formula: Optional compound formula for logging
 
@@ -177,8 +181,24 @@ class PhaseSegmentBuilder:
 
         # According to database analysis, MeltingPoint and BoilingPoint
         # are 100% populated, so we can use them directly
-        tmelt_values = [r.tmelt for r in records if r.tmelt and r.tmelt > 0]
-        tboil_values = [r.tboil for r in records if r.tboil and r.tboil > 0]
+        # Handle both regular records and virtual records
+        tmelt_values = []
+        tboil_values = []
+
+        for r in records:
+            # For virtual records, get transition temperatures from source records
+            if isinstance(r, VirtualRecord):
+                for source in r.source_records:
+                    if source.tmelt and source.tmelt > 0:
+                        tmelt_values.append(source.tmelt)
+                    if source.tboil and source.tboil > 0:
+                        tboil_values.append(source.tboil)
+            else:
+                # Regular record
+                if r.tmelt and r.tmelt > 0:
+                    tmelt_values.append(r.tmelt)
+                if r.tboil and r.tboil > 0:
+                    tboil_values.append(r.tboil)
 
         # Use most common values (should be consistent)
         tmelt = max(set(tmelt_values), key=tmelt_values.count) if tmelt_values else None
@@ -331,18 +351,40 @@ class PhaseSegmentBuilder:
             compatible_records = list({r.id: r for r in compatible_records if hasattr(r, 'id')}.values())
 
             # Sort by H298/S298 reference priority, then temperature coverage and reliability
-            compatible_records.sort(key=lambda r: (
-                -1000 if r.is_h298_s298_reference else 0,  # H298/S298 reference gets highest priority
-                -(min(r.tmax, segment.T_end) - max(r.tmin, segment.T_start)),  # Coverage
-                r.reliability_class if r.reliability_class else 999  # Reliability
-            ))
+            def get_record_priority(r):
+                # H298/S298 reference gets highest priority
+                reference_priority = -1000 if getattr(r, 'is_h298_s298_reference', False) else 0
+
+                # Temperature coverage calculation (supports virtual records)
+                if isinstance(r, VirtualRecord):
+                    coverage = min(r.merged_tmax, segment.T_end) - max(r.merged_tmin, segment.T_start)
+                else:
+                    coverage = min(r.tmax, segment.T_end) - max(r.tmin, segment.T_start)
+
+                # Reliability (virtual records inherit from source)
+                reliability = getattr(r, 'reliability_class', 999)
+
+                return (reference_priority, -coverage, reliability)
+
+            compatible_records.sort(key=get_record_priority)
 
             # Assign best record (if available)
             if compatible_records:
-                segment.record = compatible_records[0]
-                segment.H_start = compatible_records[0].h298
-                segment.S_start = compatible_records[0].s298
-                logger.debug(f"Assigned record {compatible_records[0].id} to segment {segment.T_start}-{segment.T_end}K")
+                best_record = compatible_records[0]
+                segment.record = best_record
+
+                # Handle H298/S298 for virtual records
+                if isinstance(best_record, VirtualRecord):
+                    segment.H_start = best_record.h298
+                    segment.S_start = best_record.s298
+                    logger.debug(
+                        f"Assigned virtual record to segment {segment.T_start}-{segment.T_end}K "
+                        f"(merged range: {best_record.merged_tmin}-{best_record.merged_tmax}K)"
+                    )
+                else:
+                    segment.H_start = best_record.h298
+                    segment.S_start = best_record.s298
+                    logger.debug(f"Assigned record {best_record.id} to segment {segment.T_start}-{segment.T_end}K")
             else:
                 logger.warning(f"No compatible records found for segment {segment.T_start}-{segment.T_end}K")
 
@@ -350,8 +392,10 @@ class PhaseSegmentBuilder:
         """
         Group records by their phase.
 
+        Supports both regular DatabaseRecord and VirtualRecord instances.
+
         Args:
-            records: Database records
+            records: Database records (may include VirtualRecord)
 
         Returns:
             Dictionary mapping phase to list of records
@@ -359,10 +403,22 @@ class PhaseSegmentBuilder:
         phase_groups = {}
 
         for record in records:
-            phase = record.phase or 'unknown'
+            # Get phase from virtual or regular record
+            if isinstance(record, VirtualRecord):
+                phase = record.phase  # VirtualRecord has phase attribute
+                logger.debug(f"Virtual record phase: {phase}, range: {record.merged_tmin}-{record.merged_tmax}K")
+            else:
+                phase = record.phase or 'unknown'
+
             if phase not in phase_groups:
                 phase_groups[phase] = []
             phase_groups[phase].append(record)
+
+        # Log grouping results
+        for phase, phase_records in phase_groups.items():
+            virtual_count = sum(1 for r in phase_records if isinstance(r, VirtualRecord))
+            if virtual_count > 0:
+                logger.debug(f"Phase '{phase}': {len(phase_records)} records ({virtual_count} virtual)")
 
         return phase_groups
 

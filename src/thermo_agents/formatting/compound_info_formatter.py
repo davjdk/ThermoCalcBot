@@ -355,7 +355,33 @@ class CompoundInfoFormatter:
                 if T > T_max_available:
                     # Экстраполяция: используем последнюю запись
                     current_record = max_record
-                    record_index = records_used.index(max_record) + 1
+                    # Ищем индекс по rowid для корректной работы с pd.Series
+                    max_rowid = (
+                        max_record.get("rowid")
+                        if isinstance(max_record, dict)
+                        else (
+                            max_record.rowid
+                            if hasattr(max_record, "rowid")
+                            else max_record.get("rowid", None)
+                        )
+                    )
+                    record_index = next(
+                        (
+                            i + 1
+                            for i, r in enumerate(records_used)
+                            if (
+                                r.get("rowid")
+                                if isinstance(r, dict)
+                                else (
+                                    r.rowid
+                                    if hasattr(r, "rowid")
+                                    else r.get("rowid", None)
+                                )
+                            )
+                            == max_rowid
+                        ),
+                        len(records_used),
+                    )
                     use_extrapolation = True
                 else:
                     # Температура ниже минимума - используем первую запись
