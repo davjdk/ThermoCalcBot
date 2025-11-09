@@ -1,81 +1,198 @@
 """
-Конфигурация Telegram бота для ThermoSystem.
+Конфигурация Telegram бота ThermoSystem
+
+Модуль содержит централизованную конфигурацию для всех компонентов бота,
+включая параметры Telegram API, настройки производительности, обработки файлов,
+администрирования и функциональные флаги.
 """
 
 import os
+from dataclasses import dataclass
+from typing import Optional, List
 from pathlib import Path
-from typing import Optional
 from pydantic import BaseModel, Field
 
 
-class TelegramBotConfig(BaseModel):
-    """Конфигурация Telegram бота."""
+@dataclass
+class TelegramBotConfig:
+    """Конфигурация Telegram бота"""
 
-    # Basic bot configuration
-    bot_token: str = Field(..., description="Telegram Bot API token")
-    bot_username: str = Field("@ThermoCalcBot", description="Username бота")
+    # Telegram API
+    bot_token: str
+    bot_username: str
+    webhook_url: Optional[str] = None
+    mode: str = "polling"  # polling или webhook
 
-    # ThermoSystem integration
-    thermo_db_path: Path = Field("data/thermo_data.db", description="Путь к БД ThermoSystem")
-    thermo_static_data_dir: Path = Field("data/static_compounds", description="Директория с YAML кэшем")
-
-    # LLM configuration
-    llm_api_key: str = Field(..., description="API ключ для LLM")
-    llm_base_url: str = Field("https://openrouter.ai/api/v1", description="URL LLM API")
-    llm_model: str = Field("openai/gpt-4o", description="Модель LLM")
-
-    # Performance settings
-    max_concurrent_users: int = Field(20, description="Максимум одновременных пользователей")
-    request_timeout_seconds: int = Field(90, description="Таймаут запросов к LLM")
-    bot_timeout_seconds: int = Field(30, description="Таймаут для Telegram Bot API")
+    # Performance limits
+    max_concurrent_users: int = 20
+    request_timeout_seconds: int = 60
+    message_max_length: int = 4000
+    rate_limit_per_minute: int = 30
 
     # File handling
-    temp_file_dir: Path = Field("temp/telegram_files", description="Директория для временных файлов")
-    max_file_size_mb: int = Field(20, description="Максимальный размер файла (MB)")
-    file_cleanup_hours: int = Field(24, description="Часы до очистки временных файлов")
+    enable_file_downloads: bool = True
+    auto_file_threshold: int = 3000
+    file_cleanup_hours: int = 24
+    max_file_size_mb: int = 20
+    temp_file_dir: str = "temp/telegram_files"
 
-    # Message formatting
-    max_message_length: int = Field(4096, description="Максимальная длина сообщения")
-    response_format_threshold: int = Field(3000, description="Порог для отправки файла вместо сообщения")
+    # Admin settings
+    admin_user_id: Optional[int] = None
+    log_errors_to_admin: bool = True
 
-    # Logging and monitoring
-    log_level: str = Field("INFO", description="Уровень логирования")
-    enable_session_logging: bool = Field(True, description="Включить логирование сессий")
-    session_log_dir: Path = Field("logs/telegram_sessions", description="Директория для логов сессий")
+    # Feature flags
+    enable_user_auth: bool = False
+    enable_analytics: bool = True
+    enable_progress_indicators: bool = True
 
-    # Rate limiting
-    rate_limit_messages_per_minute: int = Field(30, description="Лимит сообщений в минуту")
-    rate_limit_burst: int = Field(5, description="Всплеск сообщений")
+    # Logging
+    log_level: str = "INFO"
+    log_requests: bool = True
+    log_responses: bool = True
+
+    # Database
+    db_path: str = "data/thermo_data.db"
+    static_data_dir: str = "data/static_compounds"
 
     @classmethod
-    def from_env(cls) -> "TelegramBotConfig":
-        """Создание конфигурации из переменных окружения."""
+    def from_env(cls) -> 'TelegramBotConfig':
+        """Создание конфигурации из переменных окружения"""
         return cls(
             bot_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
-            thermo_db_path=Path(os.getenv("DB_PATH", "data/thermo_data.db")),
-            thermo_static_data_dir=Path(os.getenv("STATIC_CACHE_DIR", "data/static_compounds")),
-            llm_api_key=os.getenv("OPENROUTER_API_KEY", ""),
-            llm_base_url=os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1"),
-            llm_model=os.getenv("LLM_DEFAULT_MODEL", "openai/gpt-4o"),
-            temp_file_dir=Path(os.getenv("TEMP_FILE_DIR", "temp/telegram_files")),
+            bot_username=os.getenv("TELEGRAM_BOT_USERNAME", "ThermoCalcBot"),
+            webhook_url=os.getenv("TELEGRAM_WEBHOOK_URL"),
+            mode=os.getenv("TELEGRAM_MODE", "polling"),
+
+            max_concurrent_users=int(os.getenv("MAX_CONCURRENT_USERS", "20")),
+            request_timeout_seconds=int(os.getenv("REQUEST_TIMEOUT_SECONDS", "60")),
+            message_max_length=int(os.getenv("MESSAGE_MAX_LENGTH", "4000")),
+            rate_limit_per_minute=int(os.getenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "30")),
+
+            enable_file_downloads=os.getenv("ENABLE_FILE_DOWNLOADS", "true").lower() == "true",
+            auto_file_threshold=int(os.getenv("AUTO_FILE_THRESHOLD", "3000")),
+            file_cleanup_hours=int(os.getenv("FILE_CLEANUP_HOURS", "24")),
+            max_file_size_mb=int(os.getenv("MAX_FILE_SIZE_MB", "20")),
+            temp_file_dir=os.getenv("TEMP_FILE_DIR", "temp/telegram_files"),
+
+            admin_user_id=int(os.getenv("TELEGRAM_ADMIN_USER_ID", "0")) if os.getenv("TELEGRAM_ADMIN_USER_ID") else None,
+            log_errors_to_admin=os.getenv("LOG_BOT_ERRORS", "true").lower() == "true",
+
+            enable_user_auth=os.getenv("ENABLE_USER_AUTH", "false").lower() == "true",
+            enable_analytics=os.getenv("ENABLE_ANALYTICS", "true").lower() == "true",
+            enable_progress_indicators=os.getenv("ENABLE_PROGRESS_INDICATORS", "true").lower() == "true",
+
             log_level=os.getenv("LOG_LEVEL", "INFO"),
-            session_log_dir=Path(os.getenv("TELEGRAM_SESSION_LOG_DIR", "logs/telegram_sessions")),
+            log_requests=os.getenv("LOG_REQUESTS", "true").lower() == "true",
+            log_responses=os.getenv("LOG_RESPONSES", "true").lower() == "true",
+
+            db_path=os.getenv("DB_PATH", "data/thermo_data.db"),
+            static_data_dir=os.getenv("STATIC_DATA_DIR", "data/static_compounds")
         )
 
-    def validate_config(self) -> list[str]:
-        """Проверка конфигурации и возврат ошибок."""
+    def validate(self) -> List[str]:
+        """Валидация конфигурации"""
         errors = []
 
+        # Обязательные поля
         if not self.bot_token:
-            errors.append("TELEGRAM_BOT_TOKEN не указан")
+            errors.append("TELEGRAM_BOT_TOKEN is required")
 
-        if not self.llm_api_key:
-            errors.append("OPENROUTER_API_KEY не указан")
+        if not self.bot_username:
+            errors.append("TELEGRAM_BOT_USERNAME is required")
 
-        if not self.thermo_db_path.exists():
-            errors.append(f"База данных не найдена: {self.thermo_db_path}")
+        # Валидация режима работы
+        if self.mode not in ["polling", "webhook"]:
+            errors.append("TELEGRAM_MODE must be 'polling' or 'webhook'")
+
+        # Валидация webhook
+        if self.mode == "webhook" and not self.webhook_url:
+            errors.append("TELEGRAM_WEBHOOK_URL is required for webhook mode")
+
+        # Валидация лимитов
+        if self.max_concurrent_users <= 0:
+            errors.append("MAX_CONCURRENT_USERS must be positive")
+
+        if self.request_timeout_seconds <= 0:
+            errors.append("REQUEST_TIMEOUT_SECONDS must be positive")
+
+        if self.message_max_length <= 0:
+            errors.append("MESSAGE_MAX_LENGTH must be positive")
+
+        # Валидация файлов
+        if self.auto_file_threshold <= 0:
+            errors.append("AUTO_FILE_THRESHOLD must be positive")
+
+        if self.max_file_size_mb <= 0:
+            errors.append("MAX_FILE_SIZE_MB must be positive")
+
+        # Проверка путей
+        db_file = Path(self.db_path)
+        if not db_file.exists():
+            # Создаем предупреждение, а не ошибку, так как база может быть создана позже
+            print(f"⚠️ Warning: Database file not found: {self.db_path}")
 
         return errors
+
+    def is_production(self) -> bool:
+        """Проверка production окружения"""
+        return (
+            self.mode == "webhook" and
+            self.log_level == "INFO" and
+            self.max_concurrent_users >= 50
+        )
+
+    def is_development(self) -> bool:
+        """Проверка development окружения"""
+        return (
+            self.mode == "polling" and
+            self.log_level in ["DEBUG", "INFO"]
+        )
+
+    def create_directories(self) -> None:
+        """Создание необходимых директорий"""
+        directories = [
+            self.temp_file_dir,
+            "logs/telegram_sessions",
+            "logs/telegram_errors",
+            Path(self.db_path).parent,
+            Path(self.static_data_dir).parent,
+        ]
+
+        for directory in directories:
+            Path(directory).mkdir(parents=True, exist_ok=True)
+
+    def get_log_level_int(self) -> int:
+        """Преобразование строкового уровня логирования в числовой для logging"""
+        level_mapping = {
+            "DEBUG": 10,
+            "INFO": 20,
+            "WARNING": 30,
+            "ERROR": 40,
+            "CRITICAL": 50
+        }
+        return level_mapping.get(self.log_level.upper(), 20)
+
+    def __str__(self) -> str:
+        """Строковое представление конфигурации (без токена!)"""
+        return (
+            f"TelegramBotConfig(\n"
+            f"  bot_username={self.bot_username},\n"
+            f"  mode={self.mode},\n"
+            f"  webhook_url={self.webhook_url},\n"
+            f"  max_concurrent_users={self.max_concurrent_users},\n"
+            f"  request_timeout_seconds={self.request_timeout_seconds},\n"
+            f"  message_max_length={self.message_max_length},\n"
+            f"  rate_limit_per_minute={self.rate_limit_per_minute},\n"
+            f"  enable_file_downloads={self.enable_file_downloads},\n"
+            f"  auto_file_threshold={self.auto_file_threshold},\n"
+            f"  max_file_size_mb={self.max_file_size_mb},\n"
+            f"  log_level={self.log_level},\n"
+            f"  admin_user_id={self.admin_user_id},\n"
+            f"  enable_user_auth={self.enable_user_auth},\n"
+            f"  enable_analytics={self.enable_analytics},\n"
+            f"  db_path={self.db_path}\n"
+            f")"
+        )
 
 
 class BotStatus(BaseModel):

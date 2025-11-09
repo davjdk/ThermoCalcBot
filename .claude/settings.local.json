@@ -44,7 +44,8 @@
       "Bash(findstr:*)",
       "Bash(git rm:*)",
       "Bash(git tag:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []

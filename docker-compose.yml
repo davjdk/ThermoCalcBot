@@ -1,0 +1,243 @@
+version: '3.8'
+
+services:
+  # =============================================================================
+  # ThermoCalcBot Service
+  # =============================================================================
+  thermo-telegram-bot:
+    build:
+      context: .
+      target: runtime  # Use 'development' for dev mode
+    container_name: thermo-telegram-bot
+    restart: unless-stopped
+
+    environment:
+      # Environment
+      - ENVIRONMENT=production
+
+      # Telegram Configuration
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
+      - TELEGRAM_MODE=webhook
+      - TELEGRAM_WEBHOOK_URL=${TELEGRAM_WEBHOOK_URL}
+
+      # Performance Configuration
+      - MAX_CONCURRENT_USERS=100
+      - REQUEST_TIMEOUT_SECONDS=45
+      - MESSAGE_MAX_LENGTH=4000
+      - RATE_LIMIT_REQUESTS_PER_MINUTE=30
+
+      # File Handling Configuration
+      - ENABLE_FILE_DOWNLOADS=true
+      - AUTO_FILE_THRESHOLD=3000
+      - FILE_CLEANUP_HOURS=12
+      - MAX_FILE_SIZE_MB=20
+      - TEMP_FILE_DIR=temp/telegram_files
+
+      # Admin Configuration
+      - TELEGRAM_ADMIN_USER_ID=${TELEGRAM_ADMIN_USER_ID}
+      - LOG_BOT_ERRORS=true
+
+      # Feature Flags
+      - ENABLE_USER_AUTH=true
+      - ENABLE_ANALYTICS=true
+      - ENABLE_PROGRESS_INDICATORS=false
+
+      # Logging Configuration
+      - LOG_LEVEL=INFO
+      - LOG_REQUESTS=true
+      - LOG_RESPONSES=false
+
+      # Database Configuration
+      - DB_PATH=/app/data/thermo_data.db
+      - STATIC_DATA_DIR=/app/data/static_compounds
+
+      # LLM Configuration
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - LLM_BASE_URL=https://openrouter.ai/api/v1
+      - LLM_DEFAULT_MODEL=deepseek/deepseek-chat-v3.1
+
+      # Security Configuration
+      - VERIFY_SSL=true
+      - ENABLE_REQUEST_VALIDATION=true
+
+      # Monitoring Configuration
+      - ENABLE_MONITORING=true
+      - ENABLE_METRICS=true
+
+    volumes:
+      # Данные (read-only для безопасности)
+      - ./data:/app/data:ro
+
+      # Логи и временные файлы
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+      - ./backup:/app/backup
+
+      # SSL сертификаты
+      - ./nginx/ssl:/app/ssl:ro
+
+    ports:
+      - "8443:8443"
+
+    networks:
+      - thermo-bot-network
+
+    depends_on:
+      - redis
+      - nginx
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8443/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    # Ресурсы для production
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '2'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+
+  # =============================================================================
+  # Redis Service (для кэширования и сессий)
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: thermo-redis
+    restart: unless-stopped
+
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+    volumes:
+      - redis_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+
+    ports:
+      - "6379:6379"
+
+    networks:
+      - thermo-bot-network
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  # =============================================================================
+  # Nginx Reverse Proxy
+  # =============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: thermo-nginx
+    restart: unless-stopped
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    networks:
+      - thermo-bot-network
+
+    depends_on:
+      - thermo-telegram-bot
+
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =============================================================================
+  # Monitoring Service (опционально)
+  # =============================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: thermo-prometheus
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+    ports:
+      - "9090:9090"
+
+    networks:
+      - thermo-bot-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: thermo-grafana
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+
+    ports:
+      - "3000:3000"
+
+    networks:
+      - thermo-bot-network
+
+    depends_on:
+      - prometheus
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  logs:
+    driver: local
+  temp:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  thermo-bot-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
