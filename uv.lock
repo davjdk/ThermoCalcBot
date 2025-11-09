@@ -21,11 +21,13 @@ source = { virtual = "." }
 dependencies = [
     { name = "aiohttp" },
     { name = "anthropic" },
+    { name = "asyncio-throttle" },
     { name = "ipykernel" },
     { name = "pandas" },
     { name = "psutil" },
     { name = "pydantic-ai" },
     { name = "python-dotenv" },
+    { name = "python-telegram-bot" },
     { name = "scipy" },
     { name = "tabulate" },
 ]
@@ -39,11 +41,13 @@ dev = [
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.9.0" },
     { name = "anthropic", specifier = ">=0.40.0" },
+    { name = "asyncio-throttle", specifier = ">=1.0.2" },
     { name = "ipykernel", specifier = ">=6.29.0" },
     { name = "pandas", specifier = ">=2.2.0" },
     { name = "psutil", specifier = ">=5.9.0" },
     { name = "pydantic-ai", specifier = "==1.0.8" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "python-telegram-bot", specifier = ">=20.7" },
     { name = "scipy", specifier = ">=1.16.2" },
     { name = "tabulate", specifier = ">=0.9.0" },
 ]
@@ -190,6 +194,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/4a/e7/82da0a03e7ba5141f05cce0d302e6eed121ae055e0456ca228bf693984bc/asttokens-3.0.0.tar.gz", hash = "sha256:0dcd8baa8d62b0c1d118b399b2ddba3c4aff271d0d7a9e0d4c1681c79035bbc7", size = 61978 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/25/8a/c46dcc25341b5bce5472c718902eb3d38600a903b14fa6aeecef3f21a46f/asttokens-3.0.0-py3-none-any.whl", hash = "sha256:e3078351a059199dd5138cb1c706e6430c05eff2ff136af5eb4790f9d28932e2", size = 26918 },
+]
+
+[[package]]
+name = "asyncio-throttle"
+version = "1.0.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/13/6f/0e2d42c0e95d50edf63147b8a742703061945e02760f25d6a0e8f028ccb0/asyncio-throttle-1.0.2.tar.gz", hash = "sha256:2675282e99d9129ecc446f917e174bc205c65e36c602aa18603b4948567fcbd4", size = 3775 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f6/6a/d18c93722fb56dc1ffed5fb7e7fcff4f8031f80f84c5cc0427363a036b0c/asyncio_throttle-1.0.2-py3-none-any.whl", hash = "sha256:4d4c1eb3250f735f59ce842d8d92cd2927c008bd52008797ba030b5787c41f3b", size = 4079 },
 ]
 
 [[package]]
@@ -1814,6 +1827,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f3/87/f44d7c9f274c7ee665a29b885ec97089ec5dc034c7f3fafa03da9e39a09e/python_multipart-0.0.20.tar.gz", hash = "sha256:8dd0cab45b8e23064ae09147625994d090fa46f5b0d1e13af944c331a7fa9d13", size = 37158 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/45/58/38b5afbc1a800eeea951b9285d3912613f2603bdf897a4ab0f4bd7f405fc/python_multipart-0.0.20-py3-none-any.whl", hash = "sha256:8a62d3a8335e06589fe01f2a3e178cdcc632f3fbe0d492ad9ee0ec35aab1f104", size = 24546 },
+]
+
+[[package]]
+name = "python-telegram-bot"
+version = "22.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0b/6b/400f88e5c29a270c1c519a3ca8ad0babc650ec63dbfbd1b73babf625ed54/python_telegram_bot-22.5.tar.gz", hash = "sha256:82d4efd891d04132f308f0369f5b5929e0b96957901f58bcef43911c5f6f92f8", size = 1488269 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bc/c3/340c7520095a8c79455fcf699cbb207225e5b36490d2b9ee557c16a7b21b/python_telegram_bot-22.5-py3-none-any.whl", hash = "sha256:4b7cd365344a7dce54312cc4520d7fa898b44d1a0e5f8c74b5bd9b540d035d16", size = 730976 },
 ]
 
 [[package]]
