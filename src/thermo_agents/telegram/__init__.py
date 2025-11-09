@@ -1,15 +1,17 @@
 """
-Telegram bot integration for ThermoSystem.
+Telegram Bot Integration for ThermoSystem
 
-Основные компоненты:
-- ThermoSystemTelegramBot: Главный класс бота
-- TelegramBotConfig: Конфигурация бота
-- SessionManager: Управление сессиями пользователей
-- ThermoAdapter: Адаптер для интеграции с ThermoSystem
+Модуль интеграции Telegram бота с ThermoSystem v2.2.
+Обеспечивает умную обработку файлов и доставку результатов через Telegram API.
 """
 
+from .file_handler import TelegramFileHandler
+from .smart_response import SmartResponseHandler
+from .config import FileHandlerConfig, TelegramBotConfig
+from .metrics import FileSystemMetrics, MetricsCollector
+
+# Legacy imports для обратной совместимости
 from .bot import ThermoSystemTelegramBot
-from .config import TelegramBotConfig, BotLimits, FileConfig
 from .models import (
     UserSession, BotCommand, BotResponse, FileResponse,
     CommandStatus, MessageType, ProgressMessage
@@ -18,15 +20,18 @@ from .session_manager import SessionManager, RateLimiter
 from .thermo_adapter import ThermoAdapter, ResponseFormatter, FileGenerator
 
 __all__ = [
-    # Основные классы
-    "ThermoSystemTelegramBot",
+    # File Handling System (новые компоненты)
+    "TelegramFileHandler",
+    "SmartResponseHandler",
+    "FileHandlerConfig",
+    "FileSystemMetrics",
+    "MetricsCollector",
+
+    # Configuration
     "TelegramBotConfig",
 
-    # Конфигурация
-    "BotLimits",
-    "FileConfig",
-
-    # Модели
+    # Legacy components (для обратной совместимости)
+    "ThermoSystemTelegramBot",
     "UserSession",
     "BotCommand",
     "BotResponse",
@@ -34,13 +39,11 @@ __all__ = [
     "CommandStatus",
     "MessageType",
     "ProgressMessage",
-
-    # Управление
     "SessionManager",
     "RateLimiter",
-
-    # Интеграция
     "ThermoAdapter",
     "ResponseFormatter",
     "FileGenerator",
 ]
+
+__version__ = "1.1.0"

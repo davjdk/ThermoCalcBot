@@ -1,21 +1,116 @@
 """
-Конфигурация для Telegram бота ThermoSystem.
+File Handler Configuration - Конфигурация системы обработки файлов
 
-Основные классы:
-- TelegramBotConfig: Основная конфигурация бота
-- BotLimits: Ограничения и лимиты
-- FileConfig: Конфигурация файловой системы
+Определяет параметры файловой системы, умных ответов и очистки.
 """
 
-import os
 from dataclasses import dataclass, field
+from typing import List, Optional
+import os
 from pathlib import Path
-from typing import Optional
-
 
 @dataclass
+class FileHandlerConfig:
+    """Конфигурация системы обработки файлов"""
+
+    # Directory configuration
+    temp_file_dir: str = "temp/telegram_files"
+    cleanup_hours: int = 24
+    max_file_size_mb: int = 20  # Лимит Telegram Bot API
+
+    # Smart response configuration
+    auto_file_threshold: int = 3000  # символов
+    max_table_rows: int = 20
+    max_unicode_lines: int = 10
+
+    # File naming
+    max_filename_length: int = 50
+    filename_timestamp_format: str = "%Y%m%d_%H%M%S"
+
+    # Performance
+    enable_file_compression: bool = False
+    max_concurrent_file_operations: int = 5
+
+    # Security
+    sanitize_filenames: bool = True
+    allowed_extensions: List[str] = None
+
+    def __post_init__(self):
+        """Валидация и пост-инициализация"""
+        if self.allowed_extensions is None:
+            self.allowed_extensions = ['.txt']
+
+        # Убедимся, что temp_file_dir это Path
+        if isinstance(self.temp_file_dir, str):
+            self.temp_file_dir = Path(self.temp_file_dir)
+
+    @classmethod
+    def from_env(cls) -> 'FileHandlerConfig':
+        """Создание конфигурации из переменных окружения"""
+        return cls(
+            temp_file_dir=os.getenv("TEMP_FILE_DIR", "temp/telegram_files"),
+            cleanup_hours=int(os.getenv("FILE_CLEANUP_HOURS", "24")),
+            max_file_size_mb=int(os.getenv("MAX_FILE_SIZE_MB", "20")),
+            auto_file_threshold=int(os.getenv("AUTO_FILE_THRESHOLD", "3000")),
+            max_table_rows=int(os.getenv("MAX_TABLE_ROWS", "20")),
+            max_unicode_lines=int(os.getenv("MAX_UNICODE_LINES", "10")),
+            max_filename_length=int(os.getenv("MAX_FILENAME_LENGTH", "50")),
+            enable_file_compression=os.getenv("ENABLE_FILE_COMPRESSION", "false").lower() == "true",
+            max_concurrent_file_operations=int(os.getenv("MAX_CONCURRENT_FILE_OPERATIONS", "5")),
+            sanitize_filenames=os.getenv("SANITIZE_FILENAMES", "true").lower() == "true"
+        )
+
+    def validate(self) -> List[str]:
+        """Валидация конфигурации"""
+        errors = []
+
+        if self.cleanup_hours <= 0:
+            errors.append("FILE_CLEANUP_HOURS must be positive")
+
+        if self.max_file_size_mb <= 0 or self.max_file_size_mb > 50:
+            errors.append("MAX_FILE_SIZE_MB must be between 1 and 50")
+
+        if self.auto_file_threshold < 1000:
+            errors.append("AUTO_FILE_THRESHOLD must be at least 1000 characters")
+
+        if self.max_table_rows < 5:
+            errors.append("MAX_TABLE_ROWS must be at least 5")
+
+        if self.max_filename_length < 10:
+            errors.append("MAX_FILENAME_LENGTH must be at least 10")
+
+        if self.max_concurrent_file_operations < 1:
+            errors.append("MAX_CONCURRENT_FILE_OPERATIONS must be at least 1")
+
+        return errors
+
+    def to_dict(self) -> dict:
+        """Преобразование в словарь для логирования"""
+        return {
+            'temp_file_dir': str(self.temp_file_dir),
+            'cleanup_hours': self.cleanup_hours,
+            'max_file_size_mb': self.max_file_size_mb,
+            'auto_file_threshold': self.auto_file_threshold,
+            'max_table_rows': self.max_table_rows,
+            'max_unicode_lines': self.max_unicode_lines,
+            'max_filename_length': self.max_filename_length,
+            'filename_timestamp_format': self.filename_timestamp_format,
+            'enable_file_compression': self.enable_file_compression,
+            'max_concurrent_file_operations': self.max_concurrent_file_operations,
+            'sanitize_filenames': self.sanitize_filenames,
+            'allowed_extensions': self.allowed_extensions
+        }
+
+    def ensure_temp_directory(self) -> Path:
+        """Создание временной директории если она не существует"""
+        self.temp_file_dir.mkdir(parents=True, exist_ok=True)
+        return self.temp_file_dir
+
+
+# Legacy compatibility classes
+@dataclass
 class BotLimits:
-    """Класс с ограничениями и лимитами бота."""
+    """Класс с ограничениями и лимитами бота (legacy)."""
     max_concurrent_users: int = 20
     request_timeout_seconds: int = 60
     message_max_length: int = 4000
@@ -25,7 +120,7 @@ class BotLimits:
 
 @dataclass
 class FileConfig:
-    """Конфигурация файловой системы."""
+    """Конфигурация файловой системы (legacy)."""
     enable_file_downloads: bool = True
     auto_file_threshold: int = 3000  # Символов
     file_cleanup_hours: int = 24
