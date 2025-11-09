@@ -6,6 +6,7 @@
 
 import time
 import asyncio
+import logging
 from typing import Optional, Tuple
 
 from telegram import Update, Message
@@ -16,22 +17,26 @@ from ..config import TelegramBotConfig, BotStatus
 from ..formatters.response_formatter import ResponseFormatter
 from ..formatters.file_handler import FileHandler
 from ..utils.thermo_integration import ThermoIntegration
+from ..managers.smart_response import SmartResponseHandler
 
 
 class MessageHandler:
-    """Обработчик текстовых сообщений Telegram бота."""
+    """Обработчик текстовых сообщений Telegram бота с умной доставкой ответов."""
 
     def __init__(
         self,
         config: TelegramBotConfig,
         status: BotStatus,
-        thermo_integration: ThermoIntegration
+        thermo_integration: ThermoIntegration,
+        smart_response_handler: SmartResponseHandler = None
     ):
         self.config = config
         self.status = status
         self.thermo_integration = thermo_integration
+        self.smart_response_handler = smart_response_handler
         self.response_formatter = ResponseFormatter(config)
         self.file_handler = FileHandler(config)
+        self.logger = logging.getLogger(__name__)
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Обработка текстового сообщения."""
@@ -111,21 +116,77 @@ class MessageHandler:
             }
 
     async def _send_successful_response(self, message: Message, response_data: dict) -> None:
-        """Отправка успешного ответа."""
+        """Отправка успешного ответа с использованием умной системы доставки."""
         content = response_data["content"]
         query_type = response_data["query_type"]
-        compounds = response_data["compounds"]
+        user_query = response_data.get("user_query", "")
 
-        # Определение способа отправки
-        should_send_file = self.file_handler.should_send_as_file(
-            content,
-            response_data.get("has_large_tables", False)
-        )
+        # Использование Smart Response Handler если доступен
+        if self.smart_response_handler:
+            try:
+                # Импортируем ContextTypes для передачи в smart response
+                from telegram.ext import ContextTypes
+                context = ContextTypes.DEFAULT_TYPE
 
-        if should_send_file:
-            await self._send_file_response(message, content, query_type, compounds)
-        else:
-            await self._send_text_response(message, content, query_type)
+                result = await self.smart_response_handler.send_response(
+                    message_update=message,
+                    context=context,
+                    content=content,
+                    query_type=query_type,
+                    user_query=user_query
+                )
+
+                # Логирование результата доставки
+                delivery_method = result.get("method", "unknown")
+                delivery_time = result.get("delivery_time_ms", 0)
+
+                if result.get("success", False):
+                    self.logger.info(
+                        f"Response sent via {delivery_method} in {delivery_time:.0f}ms"
+                    )
+                else:
+                    self.logger.warning(
+                        f"Smart response failed: {result.get('error', 'unknown error')}"
+                    )
+                    # Fallback на старый метод
+                    await self._fallback_send_response(message, content, query_type)
+
+                return
+
+            except Exception as e:
+                self.logger.error(f"Smart response handler error: {e}")
+                # Fallback на старый метод
+                await self._fallback_send_response(message, content, query_type)
+                return
+
+        # Fallback на старый метод если SmartResponseHandler недоступен
+        await self._fallback_send_response(message, content, query_type)
+
+    async def _fallback_send_response(self, message: Message, content: str, query_type: str) -> None:
+        """Fallback метод отправки ответа."""
+        try:
+            # Определение способа отправки через file handler
+            should_send_file = self.file_handler.should_send_as_file(content)
+
+            if should_send_file:
+                await self._send_file_response(message, content, query_type, [])
+            else:
+                await self._send_text_response(message, content, query_type)
+
+        except Exception as e:
+            self.logger.error(f"Fallback response failed: {e}")
+            # Последний fallback - простое текстовое сообщение
+            try:
+                fallback_content = f"📊 *Результаты расчёта:*\n\n{content[:2000]}..."
+                if len(content) > 2000:
+                    fallback_content += "\n\n_(Обрезано для Telegram)_"
+
+                await message.reply_text(
+                    fallback_content,
+                    parse_mode="Markdown"
+                )
+            except Exception as final_error:
+                self.logger.critical(f"Final fallback failed: {final_error}")
 
     async def _send_text_response(self, message: Message, content: str, query_type: str) -> None:
         """Отправка текстового ответа."""
