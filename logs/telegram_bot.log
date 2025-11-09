@@ -1,0 +1,430 @@
+2025-11-10 00:05:07,222 - root - ERROR - Критическая ошибка при запуске бота
+Traceback (most recent call last):
+  File "C:\IDE\repository\agents_for_david\telegram_bot.py", line 48, in main
+    print(f"  • Макс. пользователей: {config.max_concurrent_users}")
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TelegramBotConfig' object has no attribute 'max_concurrent_users'
+2025-11-10 00:05:32,846 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-10 00:05:32,847 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-10 00:05:33,159 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-10 00:05:33,160 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-10 00:05:33,160 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-10 00:05:33,160 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-10 00:05:33,160 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-10 00:05:33,161 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-10 00:05:33,161 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-10 00:05:33,161 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-10 00:05:33,161 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-10 00:05:33,161 - thermo_agents.telegram.bot - ERROR - Failed to initialize bot: Defaults.__init__() got an unexpected keyword argument 'disable_web_page_preview'
+2025-11-10 00:05:33,161 - thermo_agents.telegram.bot - ERROR - Error starting bot: Defaults.__init__() got an unexpected keyword argument 'disable_web_page_preview'
+2025-11-10 00:05:33,162 - root - ERROR - Критическая ошибка при запуске бота
+Traceback (most recent call last):
+  File "C:\IDE\repository\agents_for_david\telegram_bot.py", line 66, in main
+    await bot.start()
+  File "C:\IDE\repository\agents_for_david\src\thermo_agents\telegram\bot.py", line 252, in start
+    await self.initialize()
+  File "C:\IDE\repository\agents_for_david\src\thermo_agents\telegram\bot.py", line 88, in initialize
+    .defaults(Defaults(
+              ^^^^^^^^^
+TypeError: Defaults.__init__() got an unexpected keyword argument 'disable_web_page_preview'
+2025-11-10 00:06:08,080 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-10 00:06:08,081 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-10 00:06:08,345 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-10 00:06:08,346 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-10 00:06:08,347 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-10 00:06:08,347 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-10 00:06:08,347 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-10 00:06:08,347 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-10 00:06:08,348 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-10 00:06:08,348 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-10 00:06:08,348 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-10 00:06:08,826 - thermo_agents.telegram.bot - ERROR - Failed to initialize bot: CommandHandler.__init__() missing 1 required positional argument: 'thermo_adapter'
+2025-11-10 00:06:08,826 - thermo_agents.telegram.bot - ERROR - Error starting bot: CommandHandler.__init__() missing 1 required positional argument: 'thermo_adapter'
+2025-11-10 00:06:08,828 - root - ERROR - Критическая ошибка при запуске бота
+Traceback (most recent call last):
+  File "C:\IDE\repository\agents_for_david\telegram_bot.py", line 66, in main
+    await bot.start()
+  File "C:\IDE\repository\agents_for_david\src\thermo_agents\telegram\bot.py", line 282, in start
+    await self.initialize()
+  File "C:\IDE\repository\agents_for_david\src\thermo_agents\telegram\bot.py", line 110, in initialize
+    self._register_handlers()
+  File "C:\IDE\repository\agents_for_david\src\thermo_agents\telegram\bot.py", line 128, in _register_handlers
+    CommandHandler("start", self._wrap_command_handler("start"))
+TypeError: CommandHandler.__init__() missing 1 required positional argument: 'thermo_adapter'
+2025-11-10 00:06:57,572 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-10 00:06:57,572 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-10 00:06:57,835 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-10 00:06:57,836 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-10 00:06:57,836 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-10 00:06:57,836 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-10 00:06:57,837 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-10 00:06:57,837 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-10 00:06:57,838 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-10 00:06:57,838 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-10 00:06:57,838 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-10 00:06:58,306 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-10 00:06:58,306 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-10 00:06:58,386 - thermo_agents.telegram.bot - ERROR - Error starting bot: Cannot close a running event loop
+2025-11-10 00:06:58,387 - root - ERROR - Критическая ошибка при запуске бота
+Traceback (most recent call last):
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\ext\_application.py", line 1054, in __run
+    loop.run_until_complete(self._bootstrap_initialize(max_retries=bootstrap_retries))
+  File "C:\Users\davjd\AppData\Roaming\uv\python\cpython-3.12.10-windows-x86_64-none\Lib\asyncio\base_events.py", line 667, in run_until_complete
+    self._check_running()
+  File "C:\Users\davjd\AppData\Roaming\uv\python\cpython-3.12.10-windows-x86_64-none\Lib\asyncio\base_events.py", line 626, in _check_running
+    raise RuntimeError('This event loop is already running')
+RuntimeError: This event loop is already running
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\ext\_application.py", line 1079, in __run
+    loop.run_until_complete(self.shutdown())
+  File "C:\Users\davjd\AppData\Roaming\uv\python\cpython-3.12.10-windows-x86_64-none\Lib\asyncio\base_events.py", line 667, in run_until_complete
+    self._check_running()
+  File "C:\Users\davjd\AppData\Roaming\uv\python\cpython-3.12.10-windows-x86_64-none\Lib\asyncio\base_events.py", line 626, in _check_running
+    raise RuntimeError('This event loop is already running')
+RuntimeError: This event loop is already running
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\IDE\repository\agents_for_david\telegram_bot.py", line 66, in main
+    await bot.start()
+  File "C:\IDE\repository\agents_for_david\src\thermo_agents\telegram\bot.py", line 287, in start
+    await self.application.run_polling(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\ext\_application.py", line 839, in run_polling
+    return self.__run(
+           ^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\ext\_application.py", line 1084, in __run
+    loop.close()
+  File "C:\Users\davjd\AppData\Roaming\uv\python\cpython-3.12.10-windows-x86_64-none\Lib\asyncio\proactor_events.py", line 687, in close
+    raise RuntimeError("Cannot close a running event loop")
+RuntimeError: Cannot close a running event loop
+2025-11-10 00:07:45,626 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-10 00:07:45,626 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-10 00:07:45,890 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-10 00:07:45,890 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-10 00:07:45,891 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-10 00:07:45,891 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-10 00:07:45,892 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-10 00:07:45,892 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-10 00:07:45,893 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-10 00:07:45,893 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-10 00:07:45,893 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-10 00:07:46,367 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-10 00:07:46,368 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-10 00:07:49,446 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getMe "HTTP/1.1 200 OK"
+2025-11-10 00:07:49,447 - telegram.ext.Application - INFO - Application started
+2025-11-10 00:07:49,504 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/deleteWebhook "HTTP/1.1 200 OK"
+2025-11-10 00:07:49,504 - thermo_agents.telegram.bot - INFO - ✅ Bot started successfully! Listening for updates...
+2025-11-10 00:07:49,817 - thermo_agents.telegram.bot - INFO - Stopping bot...
+2025-11-10 00:08:09,582 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-10 00:08:09,583 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-10 00:08:09,846 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-10 00:08:09,846 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-10 00:08:09,846 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-10 00:08:09,846 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-10 00:08:09,846 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-10 00:08:09,847 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-10 00:08:09,848 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-10 00:08:09,848 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-10 00:08:09,849 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-10 00:08:10,321 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-10 00:08:10,322 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-10 00:08:14,405 - thermo_agents.telegram.bot - INFO - Stopping bot...
+2025-11-10 00:08:14,406 - thermo_agents.telegram.bot - ERROR - Error stopping bot: This Updater is not running!
+2025-11-10 00:08:15,361 - thermo_agents.telegram.bot - ERROR - Error starting bot: Timed out
+2025-11-10 00:08:15,362 - root - ERROR - Критическая ошибка при запуске бота
+Traceback (most recent call last):
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_transports\default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_async\connection.py", line 101, in handle_async_request
+    raise exc
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_async\connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_async\connection.py", line 124, in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_backends\auto.py", line 31, in connect_tcp
+    return await self._backend.connect_tcp(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_backends\anyio.py", line 113, in connect_tcp
+    with map_exceptions(exc_map):
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\davjd\AppData\Roaming\uv\python\cpython-3.12.10-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\request\_httpxrequest.py", line 279, in do_request
+    res = await self._client.request(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_transports\default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\davjd\AppData\Roaming\uv\python\cpython-3.12.10-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\IDE\repository\agents_for_david\telegram_bot.py", line 66, in main
+    await bot.start()
+  File "C:\IDE\repository\agents_for_david\src\thermo_agents\telegram\bot.py", line 287, in start
+    await self.application.initialize()
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\ext\_application.py", line 489, in initialize
+    await self.bot.initialize()
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 318, in initialize
+    await super().initialize()
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\_bot.py", line 854, in initialize
+    await self.get_me()
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 1999, in get_me
+    return await super().get_me(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\_bot.py", line 985, in get_me
+    result = await self._post(
+             ^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 372, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 305, in _request_wrapper
+    code, payload = await self.do_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\request\_httpxrequest.py", line 296, in do_request
+    raise TimedOut from err
+telegram.error.TimedOut: Timed out
+2025-11-10 00:09:11,755 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-10 00:09:11,756 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-10 00:09:12,040 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-10 00:09:12,041 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-10 00:09:12,041 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-10 00:09:12,041 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-10 00:09:12,041 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-10 00:09:12,042 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-10 00:09:12,042 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-10 00:09:12,042 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-10 00:09:12,044 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-10 00:09:12,549 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-10 00:09:12,550 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-10 00:09:15,784 - thermo_agents.telegram.bot - INFO - Stopping bot...
+2025-11-10 00:09:15,784 - thermo_agents.telegram.bot - ERROR - Error stopping bot: This Updater is not running!
+2025-11-10 00:09:23,910 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getMe "HTTP/1.1 200 OK"
+2025-11-10 00:09:23,911 - telegram.ext.Application - INFO - Application started
+2025-11-10 00:09:24,000 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/deleteWebhook "HTTP/1.1 200 OK"
+2025-11-10 00:09:24,001 - thermo_agents.telegram.bot - INFO - ✅ Bot started successfully! Listening for updates...
+2025-11-10 00:09:32,918 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-10 00:09:32,919 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-10 00:09:33,218 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-10 00:09:33,218 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-10 00:09:33,218 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-10 00:09:33,218 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-10 00:09:33,219 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-10 00:09:33,219 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-10 00:09:33,219 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-10 00:09:33,219 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-10 00:09:33,219 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-10 00:09:33,742 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-10 00:09:33,742 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-10 00:09:40,579 - thermo_agents.telegram.bot - INFO - Stopping bot...
+2025-11-10 00:09:40,579 - thermo_agents.telegram.bot - ERROR - Error stopping bot: This Updater is not running!
+2025-11-10 00:09:45,067 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getMe "HTTP/1.1 200 OK"
+2025-11-10 00:09:45,067 - telegram.ext.Application - INFO - Application started
+2025-11-10 00:09:45,148 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/deleteWebhook "HTTP/1.1 200 OK"
+2025-11-10 00:09:45,148 - thermo_agents.telegram.bot - INFO - ✅ Bot started successfully! Listening for updates...
+2025-11-10 00:11:04,295 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-10 00:11:04,295 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-10 00:11:04,562 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-10 00:11:04,564 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-10 00:11:04,564 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-10 00:11:04,564 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-10 00:11:04,564 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-10 00:11:04,565 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-10 00:11:04,565 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-10 00:11:04,565 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-10 00:11:04,565 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-10 00:11:05,040 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-10 00:11:05,040 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-10 00:11:05,236 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getMe "HTTP/1.1 200 OK"
+2025-11-10 00:11:05,236 - telegram.ext.Application - INFO - Application started
+2025-11-10 00:11:05,286 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/deleteWebhook "HTTP/1.1 200 OK"
+2025-11-10 00:11:05,287 - thermo_agents.telegram.bot - INFO - ✅ Bot started successfully! Listening for updates...
+2025-11-10 00:11:07,769 - thermo_agents.telegram.bot - INFO - Stopping bot...
+2025-11-10 00:11:07,770 - thermo_agents.telegram.bot - INFO - Stop event received, shutting down...
+2025-11-10 00:11:12,782 - telegram.ext.Updater - ERROR - Error while calling `get_updates` one more time to mark all fetched updates as read: %s. Suppressing error to ensure graceful shutdown. When polling for updates is restarted, updates may be fetched again. Please adjust timeouts via `ApplicationBuilder` or the parameter `get_updates_request` of `Bot`.
+Traceback (most recent call last):
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_transports\default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_async\connection.py", line 101, in handle_async_request
+    raise exc
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_async\connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_async\connection.py", line 124, in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_backends\auto.py", line 31, in connect_tcp
+    return await self._backend.connect_tcp(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_backends\anyio.py", line 113, in connect_tcp
+    with map_exceptions(exc_map):
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\davjd\AppData\Roaming\uv\python\cpython-3.12.10-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\request\_httpxrequest.py", line 279, in do_request
+    res = await self._client.request(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_transports\default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\davjd\AppData\Roaming\uv\python\cpython-3.12.10-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\ext\_updater.py", line 400, in _get_updates_cleanup
+    await self.bot.get_updates(
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 676, in get_updates
+    updates = await super().get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\_bot.py", line 4780, in get_updates
+    await self._post(
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 372, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 305, in _request_wrapper
+    code, payload = await self.do_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\IDE\repository\agents_for_david\.venv\Lib\site-packages\telegram\request\_httpxrequest.py", line 296, in do_request
+    raise TimedOut from err
+telegram.error.TimedOut: Timed out
+2025-11-10 00:11:12,790 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-11-10 00:11:12,792 - telegram.ext.Application - INFO - Application.stop() complete
+2025-11-10 00:11:12,792 - thermo_agents.telegram.thermo_adapter - INFO - ThermoAdapter shutting down
+2025-11-10 00:11:12,792 - thermo_agents.telegram.bot - INFO - Bot stopped successfully
+2025-11-10 00:11:39,739 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-10 00:11:39,739 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-10 00:11:40,004 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-10 00:11:40,004 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-10 00:11:40,005 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-10 00:11:40,005 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-10 00:11:40,005 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-10 00:11:40,006 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-10 00:11:40,006 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-10 00:11:40,006 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-10 00:11:40,006 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-10 00:11:40,477 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-10 00:11:40,477 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-10 00:12:17,606 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-10 00:12:17,606 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-10 00:12:17,862 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-10 00:12:17,862 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-10 00:12:17,862 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-10 00:12:17,863 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-10 00:12:17,863 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-10 00:12:17,863 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-10 00:12:17,864 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-10 00:12:17,864 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-10 00:12:17,864 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-10 00:12:18,321 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-10 00:12:18,323 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-10 00:12:18,532 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getMe "HTTP/1.1 200 OK"
+2025-11-10 00:12:18,534 - telegram.ext.Application - INFO - Application started
+2025-11-10 00:12:18,605 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/deleteWebhook "HTTP/1.1 200 OK"
+2025-11-10 00:12:18,605 - thermo_agents.telegram.bot - INFO - ✅ Bot started successfully! Listening for updates...
+2025-11-10 00:12:28,793 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 00:12:34,772 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 00:12:44,828 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 00:12:46,132 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/sendMessage "HTTP/1.1 200 OK"
+2025-11-10 00:12:54,911 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 00:13:04,960 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 00:13:15,027 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 00:13:25,099 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 00:13:25,208 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 00:13:25,210 - thermo_agents.telegram.thermo_adapter - ERROR - Error processing query for user 547393337: 'SessionLogger' object has no attribute 'info'
+2025-11-10 00:13:25,473 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/sendMessage "HTTP/1.1 200 OK"
+2025-11-10 00:13:35,278 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"

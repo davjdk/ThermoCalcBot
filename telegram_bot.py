@@ -15,10 +15,15 @@ import logging
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+# Загрузка переменных окружения из .env файла
+load_dotenv()
+
 # Добавление пути к исходникам
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from thermo_agents.telegram import ThermoSystemTelegramBot, TelegramBotConfig
+from thermo_agents.telegram import TelegramBotConfig, ThermoSystemTelegramBot
 
 
 async def main():
@@ -40,24 +45,17 @@ async def main():
         print(f"✅ Конфигурация загружена:")
         print(f"  • База данных: {config.thermo_db_path}")
         print(f"  • LLM модель: {config.llm_model}")
-        print(f"  • Макс. пользователей: {config.max_concurrent_users}")
-        print(f"  • Директория временных файлов: {config.temp_file_dir}")
+        print(f"  • Макс. пользователей: {config.limits.max_concurrent_users}")
+        print(f"  • Директория временных файлов: {config.file_config.temp_file_dir}")
 
         # Создание и запуск бота
         print("\n🚀 Запуск ThermoSystem Telegram Bot...")
         bot = ThermoSystemTelegramBot(config)
 
-        # Установка обработчиков для graceful shutdown
-        def signal_handler():
-            print("\n🛑 Получен сигнал остановки. Завершение работы...")
-            asyncio.create_task(bot.stop())
-
-        import signal
-        signal.signal(signal.SIGINT, lambda s, f: signal_handler())
-        signal.signal(signal.SIGTERM, lambda s, f: signal_handler())
-
-        # Запуск бота
+        # Запуск бота (будет работать до получения сигнала остановки)
         await bot.start()
+
+        return 0
 
     except KeyboardInterrupt:
         print("\n👋 Бот остановлен пользователем")
@@ -72,11 +70,11 @@ if __name__ == "__main__":
     # Настройка логирования
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
             logging.StreamHandler(),
-            logging.FileHandler('logs/telegram_bot.log', encoding='utf-8')
-        ]
+            logging.FileHandler("logs/telegram_bot.log", encoding="utf-8"),
+        ],
     )
 
     # Создание директории для логов

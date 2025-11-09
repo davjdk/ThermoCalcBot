@@ -12,13 +12,13 @@ from pathlib import Path
 from typing import Optional
 
 from telegram import Update
-from telegram.ext import (
-    Application, CommandHandler, MessageHandler, filters,
-    ContextTypes, Defaults
-)
+from telegram.ext import Application, ContextTypes, Defaults, filters
+from telegram.ext import CommandHandler as TelegramCommandHandler
+from telegram.ext import MessageHandler as TelegramMessageHandler
 
 from .config import TelegramBotConfig
-from .handlers import CommandHandler, MessageHandler
+from .handlers import CommandHandler as BotCommandHandler
+from .handlers import MessageHandler as BotMessageHandler
 from .models import BotResponse, FileResponse, MessageType
 from .session_manager import SessionManager
 from .thermo_adapter import ThermoAdapter
@@ -30,7 +30,9 @@ class BotErrorHandler:
     """Обработчик ошибок бота."""
 
     @staticmethod
-    async def error_handler(update: Optional[Update], context: ContextTypes.DEFAULT_TYPE):
+    async def error_handler(
+        update: Optional[Update], context: ContextTypes.DEFAULT_TYPE
+    ):
         """Глобальный обработчик ошибок."""
         logger.error(f"Exception while handling update {update}: {context.error}")
 
@@ -38,14 +40,13 @@ class BotErrorHandler:
             user_id = update.effective_user.id
 
             # Отправляем сообщение об ошибке пользователю
-            error_message = "😔 *Произошла системная ошибка*\n\n" \
-                          "Попробуйте повторить запрос позже или используйте /help"
+            error_message = (
+                "😔 *Произошла системная ошибка*\n\n"
+                "Попробуйте повторить запрос позже или используйте /help"
+            )
 
             try:
-                await update.message.reply_text(
-                    error_message,
-                    parse_mode="Markdown"
-                )
+                await update.message.reply_text(error_message, parse_mode="Markdown")
             except Exception as e:
                 logger.error(f"Failed to send error message to user {user_id}: {e}")
 
@@ -58,10 +59,11 @@ class ThermoSystemTelegramBot:
         self.application: Optional[Application] = None
         self.session_manager: Optional[SessionManager] = None
         self.thermo_adapter: Optional[ThermoAdapter] = None
-        self.command_handler: Optional[CommandHandler] = None
-        self.message_handler: Optional[MessageHandler] = None
+        self.command_handler: Optional[BotCommandHandler] = None
+        self.message_handler: Optional[BotMessageHandler] = None
 
         self._running = False
+        self._stop_event = asyncio.Event()
 
     async def initialize(self):
         """Инициализация бота."""
@@ -79,17 +81,38 @@ class ThermoSystemTelegramBot:
             await self.thermo_adapter.initialize()
 
             # Создаем обработчики
-            self.command_handler = CommandHandler(self.config, self.session_manager, self.thermo_adapter)
-            self.message_handler = MessageHandler(self.config, self.session_manager, self.thermo_adapter)
+            self.command_handler = BotCommandHandler(
+                self.config, self.session_manager, self.thermo_adapter
+            )
+            self.message_handler = BotMessageHandler(
+                self.config, self.session_manager, self.thermo_adapter
+            )
 
             # Создаем приложение Telegram
-            self.application = Application.builder() \
-                .token(self.config.bot_token) \
-                .defaults(Defaults(
-                    parse_mode="Markdown",
-                    disable_web_page_preview=True
-                )) \
+            from telegram import LinkPreviewOptions
+            from telegram.request import HTTPXRequest
+
+            # Создаем кастомный request с увеличенными таймаутами
+            request = HTTPXRequest(
+                connection_pool_size=8,
+                connect_timeout=30.0,
+                read_timeout=30.0,
+                write_timeout=30.0,
+                pool_timeout=30.0,
+            )
+
+            self.application = (
+                Application.builder()
+                .token(self.config.bot_token)
+                .request(request)
+                .defaults(
+                    Defaults(
+                        parse_mode="Markdown",
+                        link_preview_options=LinkPreviewOptions(is_disabled=True),
+                    )
+                )
                 .build()
+            )
 
             # Регистрируем обработчики команд
             self._register_handlers()
@@ -109,31 +132,42 @@ class ThermoSystemTelegramBot:
             raise RuntimeError("Application not initialized")
 
         # Обработчики команд
-        self.application.add_handler(CommandHandler("start", self._wrap_command_handler("start")))
-        self.application.add_handler(CommandHandler("help", self._wrap_command_handler("help")))
-        self.application.add_handler(CommandHandler("calculate", self._wrap_command_handler("calculate")))
-        self.application.add_handler(CommandHandler("status", self._wrap_command_handler("status")))
-        self.application.add_handler(CommandHandler("examples", self._wrap_command_handler("examples")))
-        self.application.add_handler(CommandHandler("about", self._wrap_command_handler("about")))
+        self.application.add_handler(
+            TelegramCommandHandler("start", self._wrap_command_handler("start"))
+        )
+        self.application.add_handler(
+            TelegramCommandHandler("help", self._wrap_command_handler("help"))
+        )
+        self.application.add_handler(
+            TelegramCommandHandler("calculate", self._wrap_command_handler("calculate"))
+        )
+        self.application.add_handler(
+            TelegramCommandHandler("status", self._wrap_command_handler("status"))
+        )
+        self.application.add_handler(
+            TelegramCommandHandler("examples", self._wrap_command_handler("examples"))
+        )
+        self.application.add_handler(
+            TelegramCommandHandler("about", self._wrap_command_handler("about"))
+        )
 
         # Обработчик текстовых сообщений (не команд)
         self.application.add_handler(
-            MessageHandler(
-                filters.TEXT & ~filters.COMMAND,
-                self._wrap_message_handler()
+            TelegramMessageHandler(
+                filters.TEXT & ~filters.COMMAND, self._wrap_message_handler()
             )
         )
 
         # Обработчик неизвестных команд
         self.application.add_handler(
-            MessageHandler(
-                filters.COMMAND,
-                self._wrap_unknown_command_handler()
+            TelegramMessageHandler(
+                filters.COMMAND, self._wrap_unknown_command_handler()
             )
         )
 
     def _wrap_command_handler(self, command_name: str):
         """Обертка для обработчиков команд."""
+
         async def wrapped_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try:
                 if not self.command_handler:
@@ -157,12 +191,15 @@ class ThermoSystemTelegramBot:
 
     def _wrap_message_handler(self):
         """Обертка для обработчика текстовых сообщений."""
+
         async def wrapped_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try:
                 if not self.message_handler:
                     return
 
-                response = await self.message_handler.handle_text_message(update, context)
+                response = await self.message_handler.handle_text_message(
+                    update, context
+                )
                 if response:
                     await self._send_response(update, response)
 
@@ -174,12 +211,15 @@ class ThermoSystemTelegramBot:
 
     def _wrap_unknown_command_handler(self):
         """Обертка для обработчика неизвестных команд."""
+
         async def wrapped_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try:
                 if not self.message_handler:
                     return
 
-                response = await self.message_handler.handle_unknown_command(update, context)
+                response = await self.message_handler.handle_unknown_command(
+                    update, context
+                )
                 await self._send_response(update, response)
 
             except Exception as e:
@@ -197,10 +237,10 @@ class ThermoSystemTelegramBot:
             if isinstance(response, FileResponse):
                 # Отправляем файл
                 await update.message.reply_document(
-                    document=response.file_path.open('rb'),
+                    document=response.file_path.open("rb"),
                     caption=response.caption,
                     parse_mode="Markdown",
-                    disable_web_page_preview=True
+                    disable_web_page_preview=True,
                 )
 
                 # Добавляем файл в сессию пользователя для последующей очистки
@@ -214,7 +254,7 @@ class ThermoSystemTelegramBot:
                 await update.message.reply_text(
                     text=response.text,
                     parse_mode=response.parse_mode if response.use_markdown else None,
-                    disable_web_page_preview=True
+                    disable_web_page_preview=True,
                 )
 
             else:
@@ -237,7 +277,7 @@ class ThermoSystemTelegramBot:
                 await update.message.reply_text(
                     "😔 *Произошла ошибка*\n\n"
                     "Попробуйте повторить запрос или используйте /help",
-                    parse_mode="Markdown"
+                    parse_mode="Markdown",
                 )
         except Exception as e:
             logger.error(f"Failed to send error response: {e}")
@@ -255,11 +295,18 @@ class ThermoSystemTelegramBot:
             self._running = True
 
             if self.config.mode == "polling":
-                # Запуск в режиме polling
-                await self.application.run_polling(
-                    drop_pending_updates=True,
-                    allowed_updates=Update.ALL_TYPES
+                # Запуск в режиме polling с async API
+                await self.application.initialize()
+                await self.application.start()
+                await self.application.updater.start_polling(
+                    drop_pending_updates=True, allowed_updates=Update.ALL_TYPES
                 )
+                logger.info("✅ Bot started successfully! Listening for updates...")
+
+                # Ожидание события остановки вместо бесконечного цикла
+                await self._stop_event.wait()
+                logger.info("Stop event received, shutting down...")
+
             elif self.config.mode == "webhook":
                 # Запуск в режиме webhook
                 await self.application.run_webhook(
@@ -267,7 +314,7 @@ class ThermoSystemTelegramBot:
                     port=8443,
                     url_path="telegram",
                     webhook_url=self.config.webhook_url,
-                    drop_pending_updates=True
+                    drop_pending_updates=True,
                 )
             else:
                 raise ValueError(f"Unknown mode: {self.config.mode}")
@@ -285,7 +332,14 @@ class ThermoSystemTelegramBot:
         logger.info("Stopping bot...")
         self._running = False
 
+        # Устанавливаем событие остановки
+        self._stop_event.set()
+
         try:
+            # Остановка polling/updater
+            if self.application and self.application.updater:
+                await self.application.updater.stop()
+
             # Остановка приложения
             if self.application:
                 await self.application.stop()
@@ -314,6 +368,6 @@ class ThermoSystemTelegramBot:
             "file_config": {
                 "enabled": self.config.file_config.enable_file_downloads,
                 "threshold": self.config.file_config.auto_file_threshold,
-                "cleanup_hours": self.config.file_config.file_cleanup_hours
-            }
+                "cleanup_hours": self.config.file_config.file_cleanup_hours,
+            },
         }
