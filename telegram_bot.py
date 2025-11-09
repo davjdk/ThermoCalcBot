@@ -18,7 +18,7 @@ from pathlib import Path
 # Добавление пути к исходникам
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from thermo_agents.telegram_bot import ThermoSystemTelegramBot, TelegramBotConfig
+from thermo_agents.telegram import ThermoSystemTelegramBot, TelegramBotConfig
 
 
 async def main():
