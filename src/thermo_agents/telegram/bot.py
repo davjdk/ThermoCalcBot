@@ -240,7 +240,6 @@ class ThermoSystemTelegramBot:
                     document=response.file_path.open("rb"),
                     caption=response.caption,
                     parse_mode="Markdown",
-                    disable_web_page_preview=True,
                 )
 
                 # Добавляем файл в сессию пользователя для последующей очистки

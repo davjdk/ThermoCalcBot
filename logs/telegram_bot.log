@@ -428,3 +428,139 @@ telegram.error.TimedOut: Timed out
 2025-11-10 00:13:25,210 - thermo_agents.telegram.thermo_adapter - ERROR - Error processing query for user 547393337: 'SessionLogger' object has no attribute 'info'
 2025-11-10 00:13:25,473 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/sendMessage "HTTP/1.1 200 OK"
 2025-11-10 00:13:35,278 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:22:20,314 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-10 08:22:20,315 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-10 08:22:20,681 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-10 08:22:20,682 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-10 08:22:20,682 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-10 08:22:20,682 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-10 08:22:20,682 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-10 08:22:20,684 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-10 08:22:20,685 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-10 08:22:20,685 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-10 08:22:20,685 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-10 08:22:21,117 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-10 08:22:21,117 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-10 08:22:33,346 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getMe "HTTP/1.1 200 OK"
+2025-11-10 08:22:33,348 - telegram.ext.Application - INFO - Application started
+2025-11-10 08:22:33,397 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/deleteWebhook "HTTP/1.1 200 OK"
+2025-11-10 08:22:33,397 - thermo_agents.telegram.bot - INFO - ✅ Bot started successfully! Listening for updates...
+2025-11-10 08:22:43,551 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:22:52,843 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:23:02,897 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:23:05,030 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/sendMessage "HTTP/1.1 200 OK"
+2025-11-10 08:23:12,989 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:23:14,039 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:23:14,045 - thermo_agents.telegram.thermo_adapter - ERROR - Error processing query for user 547393337: 'SessionLogger' object has no attribute 'info'
+2025-11-10 08:23:14,245 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/sendMessage "HTTP/1.1 200 OK"
+2025-11-10 08:23:24,100 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:24:35,058 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-10 08:24:35,058 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-10 08:24:35,318 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-10 08:24:35,318 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-10 08:24:35,318 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-10 08:24:35,318 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-10 08:24:35,318 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-10 08:24:35,319 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-10 08:24:35,320 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-10 08:24:35,320 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-10 08:24:35,320 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-10 08:24:35,784 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-10 08:24:35,785 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-10 08:24:47,040 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getMe "HTTP/1.1 200 OK"
+2025-11-10 08:24:47,041 - telegram.ext.Application - INFO - Application started
+2025-11-10 08:24:47,090 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/deleteWebhook "HTTP/1.1 200 OK"
+2025-11-10 08:24:47,090 - thermo_agents.telegram.bot - INFO - ✅ Bot started successfully! Listening for updates...
+2025-11-10 08:24:57,275 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:25:02,920 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:25:08,764 - openai._base_client - INFO - Retrying request to /chat/completions in 0.410414 seconds
+2025-11-10 08:25:13,746 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:25:14,204 - openai._base_client - INFO - Retrying request to /chat/completions in 0.955664 seconds
+2025-11-10 08:25:18,559 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 08:25:23,606 - thermo_agents.thermodynamic_agent - INFO - Successfully extracted parameters for 1 compounds
+2025-11-10 08:25:23,813 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:25:33,869 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:25:34,943 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/sendMessage "HTTP/1.1 400 Bad Request"
+2025-11-10 08:25:34,944 - thermo_agents.telegram.bot - ERROR - Error sending response: Can't parse entities: can't find end of the entity starting at byte offset 194
+2025-11-10 08:25:35,044 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/sendMessage "HTTP/1.1 200 OK"
+2025-11-10 08:25:43,979 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:25:54,054 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:25:57,882 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:26:02,894 - openai._base_client - INFO - Retrying request to /chat/completions in 0.469528 seconds
+2025-11-10 08:26:04,298 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 08:26:07,942 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:26:10,465 - thermo_agents.thermodynamic_agent - INFO - Successfully extracted parameters for 4 compounds
+2025-11-10 08:26:10,468 - thermo_agents.orchestrator - INFO - ═══ РАСЧЕТ РЕАКЦИИ: ZnO + S → ZnS + O2
+2025-11-10 08:26:10,469 - thermo_agents.orchestrator - INFO - Стехиометрия: {'ZnO': -1.0, 'S': 0.0, 'ZnS': 1.0, 'O2': 1.0}
+2025-11-10 08:26:10,484 - thermo_agents.search.database_connector - INFO - Successfully connected to database: data\thermo_data.db
+2025-11-10 08:26:10,619 - thermo_agents.orchestrator - INFO - ✓ ZnO (стадия 1: формула + 'Zinc oxide'): найдено 64 записей
+2025-11-10 08:26:10,625 - thermo_agents.orchestrator - INFO - ✓ ZnO: подготовлено 2 записей, coeff=-1.0 (БД (стадия 1))
+2025-11-10 08:26:10,689 - thermo_agents.orchestrator - INFO - ✓ S (стадия 1: формула + 'Sulfur'): найдено 108 записей
+2025-11-10 08:26:10,692 - thermo_agents.orchestrator - INFO - ✓ S: подготовлено 7 записей, coeff=0.0 (БД (стадия 1))
+2025-11-10 08:26:10,744 - thermo_agents.orchestrator - INFO - ✓ ZnS (стадия 1: формула + 'Zinc sulfide'): найдено 27 записей
+2025-11-10 08:26:10,748 - thermo_agents.orchestrator - INFO - ✓ ZnS: подготовлено 2 записей, coeff=1.0 (БД (стадия 1))
+2025-11-10 08:26:10,748 - thermo_agents.orchestrator - INFO - ⚡ O2: найдено в YAML-кэше
+2025-11-10 08:26:10,756 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - ✅ Loaded from YAML: O2 (3 phases)
+2025-11-10 08:26:10,761 - thermo_agents.orchestrator - INFO - ✓ O2: подготовлено 3 записей, coeff=1.0 (YAML-кэш)
+2025-11-10 08:26:10,777 - thermo_agents.orchestrator - INFO - ✓ Расчет завершен: 24 температурных точек
+2025-11-10 08:26:10,807 - thermo_agents.telegram.bot - ERROR - Error sending response: Message.reply_document() got an unexpected keyword argument 'disable_web_page_preview'
+2025-11-10 08:26:11,032 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/sendMessage "HTTP/1.1 200 OK"
+2025-11-10 08:26:17,999 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:26:28,077 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:28:40,334 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-10 08:28:40,334 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-10 08:28:40,609 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-10 08:28:40,609 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-10 08:28:40,609 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-10 08:28:40,609 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-10 08:28:40,609 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-10 08:28:40,610 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-10 08:28:40,610 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-10 08:28:40,610 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-10 08:28:40,610 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-10 08:28:41,093 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-10 08:28:41,093 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-10 08:28:52,368 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getMe "HTTP/1.1 200 OK"
+2025-11-10 08:28:52,369 - telegram.ext.Application - INFO - Application started
+2025-11-10 08:28:52,447 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/deleteWebhook "HTTP/1.1 200 OK"
+2025-11-10 08:28:52,447 - thermo_agents.telegram.bot - INFO - ✅ Bot started successfully! Listening for updates...
+2025-11-10 08:28:58,895 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:29:00,914 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 08:29:09,126 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:29:09,492 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 08:29:10,171 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 08:29:16,352 - thermo_agents.thermodynamic_agent - INFO - Successfully extracted parameters for 4 compounds
+2025-11-10 08:29:16,355 - thermo_agents.orchestrator - INFO - ═══ РАСЧЕТ РЕАКЦИИ: ZnO + S → ZnS + O2
+2025-11-10 08:29:16,356 - thermo_agents.orchestrator - INFO - Стехиометрия: {'ZnO': -1.0, 'S': 0.0, 'ZnS': 1.0, 'O2': 1.0}
+2025-11-10 08:29:16,357 - thermo_agents.search.database_connector - INFO - Successfully connected to database: data\thermo_data.db
+2025-11-10 08:29:16,431 - thermo_agents.orchestrator - INFO - ✓ ZnO (стадия 1: формула + 'Zinc oxide'): найдено 64 записей
+2025-11-10 08:29:16,434 - thermo_agents.orchestrator - INFO - ✓ ZnO: подготовлено 2 записей, coeff=-1.0 (БД (стадия 1))
+2025-11-10 08:29:16,495 - thermo_agents.orchestrator - INFO - ✓ S (стадия 1: формула + 'Sulfur'): найдено 108 записей
+2025-11-10 08:29:16,499 - thermo_agents.orchestrator - INFO - ✓ S: подготовлено 7 записей, coeff=0.0 (БД (стадия 1))
+2025-11-10 08:29:16,556 - thermo_agents.orchestrator - INFO - ✓ ZnS (стадия 1: формула + 'Zinc sulfide'): найдено 27 записей
+2025-11-10 08:29:16,559 - thermo_agents.orchestrator - INFO - ✓ ZnS: подготовлено 2 записей, coeff=1.0 (БД (стадия 1))
+2025-11-10 08:29:16,561 - thermo_agents.orchestrator - INFO - ⚡ O2: найдено в YAML-кэше
+2025-11-10 08:29:16,564 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - ✅ Loaded from YAML: O2 (3 phases)
+2025-11-10 08:29:16,570 - thermo_agents.orchestrator - INFO - ✓ O2: подготовлено 3 записей, coeff=1.0 (YAML-кэш)
+2025-11-10 08:29:16,586 - thermo_agents.orchestrator - INFO - ✓ Расчет завершен: 24 температурных точек
+2025-11-10 08:29:19,198 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:29:27,986 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/sendDocument "HTTP/1.1 200 OK"
+2025-11-10 08:29:29,260 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:29:39,320 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:29:49,387 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:29:59,469 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:30:09,559 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:30:19,632 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:30:29,682 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:30:39,761 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:30:49,835 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:30:59,985 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:31:10,097 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:31:20,165 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:31:30,271 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:31:40,334 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:31:50,394 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:32:00,479 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:32:10,540 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:32:20,623 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-10 08:32:30,685 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
