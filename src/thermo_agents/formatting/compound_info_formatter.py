@@ -249,7 +249,7 @@ class CompoundInfoFormatter:
         formatted_table = tabulate(
             table_data,
             headers=headers,
-            tablefmt="grid",
+            tablefmt="simple",
             stralign="center",
             numalign="decimal",
         )
@@ -448,7 +448,7 @@ class CompoundInfoFormatter:
         formatted_table = tabulate(
             table_data,
             headers=headers,
-            tablefmt="grid",
+            tablefmt="simple",
             stralign="center",
             numalign="decimal",
         )
