@@ -329,6 +329,20 @@ class CompoundInfoFormatter:
             "Смена записи",
         ]
 
+        # Отслеживаем референсную запись для каждой фазы
+        # Ключ = фаза, значение = первая запись этой фазы (для H298, S298)
+        phase_reference_records = {}
+        # Ключ = фаза, значение = список всех записей этой фазы
+        phase_all_records = {}
+
+        # Группируем записи по фазам
+        for record in records_used:
+            phase = record.get("Phase", "unknown")
+            if phase not in phase_all_records:
+                phase_all_records[phase] = []
+                phase_reference_records[phase] = record  # Первая запись фазы
+            phase_all_records[phase].append(record)
+
         for i, T in enumerate(temperatures):
             # Находим подходящую запись для текущей температуры
             current_record = None
@@ -390,6 +404,15 @@ class CompoundInfoFormatter:
 
             # Рассчитываем свойства для этой температуры
             try:
+                # Определяем текущую фазу из записи
+                current_phase = current_record.get("Phase", "unknown")
+
+                # Получаем референсную запись и все записи текущей фазы
+                reference_record = phase_reference_records.get(
+                    current_phase, current_record
+                )
+                phase_records = phase_all_records.get(current_phase, [current_record])
+
                 if use_extrapolation and T_max_available:
                     # Используем экстраполяцию
                     properties = (
@@ -398,8 +421,9 @@ class CompoundInfoFormatter:
                         )
                     )
                 else:
-                    properties = thermodynamic_engine.calculate_properties(
-                        current_record, T
+                    # Используем кусочное интегрирование через все записи фазы
+                    properties = thermodynamic_engine.calculate_properties_piecewise(
+                        phase_records, T, reference_record
                     )
                 delta_H = properties["enthalpy"] / 1000  # Конвертируем в кДж/моль
                 delta_S = properties["entropy"]
@@ -440,7 +464,7 @@ class CompoundInfoFormatter:
                     ]
                 )
 
-            except Exception as e:
+            except Exception:
                 # В случае ошибки расчета, добавляем строку с прочерками
                 table_data.append([f"{T:.0f}", "—", "—", "—", f"запись {record_index}"])
 

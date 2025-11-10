@@ -21,7 +21,9 @@ class ThermodynamicEngine:
         self.logger = logger
         self.T_ref = 298.15  # Референсная температура (K)
 
-    def calculate_properties(self, record: pd.Series, T: float) -> Dict[str, float]:
+    def calculate_properties(
+        self, record: pd.Series, T: float, reference_record: pd.Series = None
+    ) -> Dict[str, float]:
         """
         Расчет термодинамических свойств при температуре T.
 
@@ -38,8 +40,10 @@ class ThermodynamicEngine:
         G(T) = H(T) - T·S(T)
 
         Args:
-            record: Строка DataFrame с коэффициентами (f1-f6, H298, S298, Tmin, Tmax)
+            record: Строка DataFrame с коэффициентами (f1-f6) для текущего T-диапазона
             T: Температура расчета (K)
+            reference_record: Референсная запись с H₂₉₈ и S₂₉₈. Если None, используется record.
+                             Это позволяет избежать скачков при смене записи внутри одной фазы.
 
         Returns:
             {
@@ -56,26 +60,44 @@ class ThermodynamicEngine:
             - Метод: трапеций (np.trapz)
             - Точек интегрирования: 100
         """
+
+        # Вспомогательная функция для получения значения из записи (поддержка pd.Series и DatabaseRecord)
+        def get_value(rec, key: str, default=0):
+            """Получает значение из записи, поддерживая и словари/pd.Series, и Pydantic модели."""
+            if hasattr(rec, "get"):  # pd.Series или словарь
+                return rec.get(key, default)
+            else:  # Pydantic модель (DatabaseRecord)
+                return getattr(rec, key.lower(), default)
+
         # Проверка температурного диапазона с допуском ±0.2K для избежания ложных предупреждений
         # (298.0 vs 298.15K считаются эквивалентными)
         tolerance = 0.2
-        if "Tmin" in record and "Tmax" in record:
-            if T < (record["Tmin"] - tolerance) or T > (record["Tmax"] + tolerance):
-                formula = record.get("Formula", "unknown")
+        tmin = get_value(record, "tmin", float("-inf"))
+        tmax = get_value(record, "tmax", float("inf"))
+
+        if tmin != float("-inf") and tmax != float("inf"):
+            if T < (tmin - tolerance) or T > (tmax + tolerance):
+                formula = get_value(record, "formula", "unknown")
                 self.logger.warning(
                     f"⚠ Температура {T}K выходит за пределы "
-                    f"{record['Tmin']}-{record['Tmax']}K для {formula}"
+                    f"{tmin}-{tmax}K для {formula}"
                 )
 
-        # Извлечение коэффициентов
-        f1 = record.get("f1", 0)
-        f2 = record.get("f2", 0)
-        f3 = record.get("f3", 0)
-        f4 = record.get("f4", 0)
-        f5 = record.get("f5", 0)
-        f6 = record.get("f6", 0)
-        H298 = record.get("H298", 0)
-        S298 = record.get("S298", 0)
+        # Извлечение коэффициентов Шомейта из текущей записи
+        f1 = get_value(record, "f1", 0)
+        f2 = get_value(record, "f2", 0)
+        f3 = get_value(record, "f3", 0)
+        f4 = get_value(record, "f4", 0)
+        f5 = get_value(record, "f5", 0)
+        f6 = get_value(record, "f6", 0)
+
+        # Извлечение H₂₉₈ и S₂₉₈ из референсной записи (если указана) или текущей
+        if reference_record is not None:
+            H298 = get_value(reference_record, "h298", 0)
+            S298 = get_value(reference_record, "s298", 0)
+        else:
+            H298 = get_value(record, "h298", 0)
+            S298 = get_value(record, "s298", 0)
 
         # Функция для расчета теплоемкости при любой температуре
         def cp_function(temp: float) -> float:
@@ -121,6 +143,136 @@ class ThermodynamicEngine:
         entropy = S298 + delta_S
 
         # Расчет энергии Гиббса
+        gibbs_energy = enthalpy - T * entropy
+
+        return {
+            "cp": cp,
+            "enthalpy": enthalpy,
+            "entropy": entropy,
+            "gibbs_energy": gibbs_energy,
+        }
+
+    def calculate_properties_piecewise(
+        self,
+        records: list,
+        T: float,
+        reference_record: pd.Series = None,
+    ) -> Dict[str, float]:
+        """
+        Расчет термодинамических свойств с КУСОЧНЫМ интегрированием через все записи фазы.
+
+        КРИТИЧЕСКИ ВАЖНО: Интегрирование от 298.15K до T нельзя выполнять с коэффициентами
+        одной записи, если T выходит за её диапазон. Нужно интегрировать ПОЭТАПНО:
+
+        Например, для SO2 при T=2098K:
+        - ∫(298→700)Cp₁(T)dT  (запись 1: 298-700K)
+        - ∫(700→2000)Cp₂(T)dT (запись 2: 700-2000K)
+        - ∫(2000→2098)Cp₃(T)dT (запись 3: 2000-3000K)
+
+        Args:
+            records: Список ВСЕХ записей фазы, отсортированных по Tmin
+            T: Целевая температура
+            reference_record: Запись с H₂₉₈ и S₂₉₈ (обычно первая запись фазы)
+
+        Returns:
+            Словарь с термодинамическими свойствами
+        """
+
+        # Вспомогательная функция
+        def get_value(rec, key: str, default=0):
+            if hasattr(rec, "get"):
+                return rec.get(key, default)
+            else:
+                return getattr(rec, key.lower(), default)
+
+        # Сортируем записи по Tmin
+        sorted_records = sorted(records, key=lambda r: get_value(r, "tmin", 0))
+
+        # Используем первую запись как reference, если не указана
+        if reference_record is None:
+            reference_record = sorted_records[0]
+
+        H298 = get_value(reference_record, "h298", 0)
+        S298 = get_value(reference_record, "s298", 0)
+
+        # Функция для расчета Cp по коэффициентам записи
+        def cp_function(temp: float, record) -> float:
+            f1 = get_value(record, "f1", 0)
+            f2 = get_value(record, "f2", 0)
+            f3 = get_value(record, "f3", 0)
+            f4 = get_value(record, "f4", 0)
+            f5 = get_value(record, "f5", 0)
+            f6 = get_value(record, "f6", 0)
+
+            temp = float(temp)
+            return (
+                f1
+                + f2 * temp / 1000
+                + f3 * (temp**-2 if temp != 0 else 0) * 100_000
+                + f4 * temp**2 / 1_000_000
+                + f5 * (temp**-3 if temp != 0 else 0) * 1_000
+                + f6 * temp**3 * 10 ** (-9)
+            )
+
+        # Находим запись для целевой температуры T
+        target_record = None
+        for rec in sorted_records:
+            tmin = get_value(rec, "tmin", float("-inf"))
+            tmax = get_value(rec, "tmax", float("inf"))
+            if tmin <= T <= tmax:
+                target_record = rec
+                break
+
+        if target_record is None:
+            # Если T вне всех диапазонов, используем последнюю запись
+            target_record = sorted_records[-1]
+
+        # Кусочное интегрирование от 298.15K до T
+        delta_H_total = 0.0
+        delta_S_total = 0.0
+        T_start = self.T_ref
+        num_points = 100
+
+        for record in sorted_records:
+            tmin = get_value(record, "tmin", float("-inf"))
+            tmax = get_value(record, "tmax", float("inf"))
+
+            # Определяем границы интегрирования для текущей записи
+            if T <= tmin:
+                # T ниже этой записи - пропускаем
+                continue
+            elif T_start >= tmax:
+                # Уже прошли эту запись - пропускаем
+                continue
+
+            # Границы сегмента интегрирования
+            segment_start = max(T_start, tmin)
+            segment_end = min(T, tmax)
+
+            if segment_end <= segment_start:
+                continue
+
+            # Интегрируем на этом сегменте
+            temp_points = np.linspace(segment_start, segment_end, num_points)
+            cp_values = np.array([cp_function(t, record) for t in temp_points])
+
+            delta_H_segment = np.trapz(cp_values, temp_points)
+            delta_S_segment = np.trapz(cp_values / temp_points, temp_points)
+
+            delta_H_total += delta_H_segment
+            delta_S_total += delta_S_segment
+
+            # Обновляем начало для следующей записи
+            T_start = segment_end
+
+            # Если достигли целевой температуры, выходим
+            if segment_end >= T:
+                break
+
+        # Финальные значения
+        enthalpy = H298 * 1000 + delta_H_total
+        entropy = S298 + delta_S_total
+        cp = cp_function(T, target_record)
         gibbs_energy = enthalpy - T * entropy
 
         return {
