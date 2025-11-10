@@ -1,6 +1,0 @@
-Formula	Structure	FirstName	SecondName	Phase	CAS	MeltingPoint	BoilingPoint	Density	Solubility	Color	H298	S298	Tmin	Tmax	f1	f2	f3	f4	f5	f6	ReliabilityClass	Reference
-FeO		Iron(II) oxide	Wuestite	s	1345-25-1	1650	3687	6	0	19	-265.053011	59.80700058	298.15	600	50.27824936	3.651039988	-1.941079923	8.23385983	0	0	1	Fabri 10; Patnaik 03; Landolt 99; Sa
-FeO		Iron(II) oxide	Wuestite	s	1345-25-1	1650	3687	0	0	0	0	0	600	900	30.84863062	46.22826288	11.69395013	-19.27753093	0	0	1	JANAF 85; Landolt 00
-FeO		Iron(II) oxide	Wuestite	s	1345-25-1	1650	3687	0	0	0	0	0	900	1300	90.40824856	-38.02058958	-83.81109309	15.35838034	0	0	1	JANAF 85; Landolt 00
-FeO		Iron(II) oxide	Wuestite	s	1345-25-1	1650	3687	0	0	0	0	0	1300	1650	153.6984032	-82.06175432	-374.8145189	21.97529112	0	0	1	JANAF 85; Landolt 00
-FeO		Iron(II) oxide	Wuestite	l	1345-25-1	1650	3687	0	0	0	24.058	14.58124	1650	5000	68.1989908	0	0	0	0	0	1	Barin 93; JANAF 85; Landolt 00
