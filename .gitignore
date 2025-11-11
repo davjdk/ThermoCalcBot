@@ -8,16 +8,48 @@ wheels/
 
 # Virtual environments
 .venv
+venv/
+env/
 
-# Environment variables
+# Environment variables (НЕ коммитим секреты!)
 .env
+.env.local
+.env.*.local
 
 # IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
+.claude/
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Test cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Database files (если нужно коммитить БД, удалите эту строку)
+# *.db
+# *.sqlite
+# *.sqlite3
+
+# Backup files
+*.bak
+backup/
+backups/
+
+# UV lock file (можно коммитить для воспроизводимости сборки)
+# uv.lock

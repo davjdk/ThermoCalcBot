@@ -10,8 +10,11 @@ from typing import List, Optional, Tuple
 
 import pandas as pd
 
+from ..selection.optimal_record_selector import (
+    OptimalRecordSelector,
+    OptimizationConfig,
+)
 from .phase_transition_detector import PhaseTransitionDetector
-from ..selection.optimal_record_selector import OptimalRecordSelector, OptimizationConfig
 
 
 class RecordRangeBuilder:
@@ -19,7 +22,9 @@ class RecordRangeBuilder:
     Строит список записей для покрытия температурного диапазона.
     """
 
-    def __init__(self, logger: logging.Logger, optimizer: Optional[OptimalRecordSelector] = None):
+    def __init__(
+        self, logger: logging.Logger, optimizer: Optional[OptimalRecordSelector] = None
+    ):
         self.logger = logger
         self.phase_detector = PhaseTransitionDetector()
         self.optimizer = optimizer
@@ -151,9 +156,20 @@ class RecordRangeBuilder:
                             candidate, current_T, melting, boiling
                         )
 
+                        # Определяем приоритет на основе соответствия фазы
+                        # Если фаза совпадает с ожидаемой - приоритет 3, иначе - 4 (ниже)
+                        strategy_priority = 3
+                        if candidate["Phase"] != expected_phase:
+                            strategy_priority = 4
+                            self.logger.debug(
+                                f"[Стратегия 3] Фаза кандидата '{candidate['Phase']}' "
+                                f"не совпадает с ожидаемой '{expected_phase}' при T={current_T}K. "
+                                f"Снижен приоритет до 4."
+                            )
+
                         if phase_fraction > 0.5:
                             valid_candidates.append(
-                                (idx, candidate, candidate["Phase"], 3)
+                                (idx, candidate, candidate["Phase"], strategy_priority)
                             )
 
                 if not valid_candidates:
@@ -404,7 +420,7 @@ class RecordRangeBuilder:
         boiling: Optional[float],
         tolerance: float = 5.0,
         is_elemental: Optional[bool] = None,
-        use_optimization: bool = False
+        use_optimization: bool = False,
     ) -> List[pd.Series]:
         """
         Возвращает оптимизированный набор записей для покрытия температурного диапазона.
@@ -440,7 +456,7 @@ class RecordRangeBuilder:
                     all_available_records=df,
                     melting=melting,
                     boiling=boiling,
-                    is_elemental=is_elemental
+                    is_elemental=is_elemental,
                 )
 
                 # Log optimization results

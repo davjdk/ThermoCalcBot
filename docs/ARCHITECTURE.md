@@ -676,9 +676,9 @@ async def test_reaction_calculation():
 ```bash
 # 1. Клонирование репозитория
 git clone <repository-url>
-cd agents_for_david
+cd ThermoCalcBot
 
-# 2. Установка зависимостей с uv
+# 2. Установка зависимостей с помощью uv
 uv sync
 
 # 3. Активация виртуального окружения
@@ -745,7 +745,7 @@ uv run python -c "from thermo_agents.orchestrator import ThermoOrchestrator; pri
 ## Структура проекта
 
 ```
-agents_for_david/
+ThermoCalcBot/
 ├── main.py                          # Точка входа (интерактивный режим)
 ├── pyproject.toml                   # Конфигурация проекта и зависимости
 ├── pytest.ini                       # Конфигурация pytest

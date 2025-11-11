@@ -107,13 +107,7 @@ class CompoundInfoFormatter:
             f"  H₂₉₈: {h298 / 1000:.3f} кДж/моль | S₂₉₈: {s298:.3f} Дж/(моль·K)"
         )
 
-        # Cp коэффициенты
-        cp_coeffs = []
-        for i in range(1, 7):
-            coeff = first_record.get(f"f{i}", 0)
-            cp_coeffs.append(f"{coeff:.6f}")
-        lines.append(f"  Cp коэффициенты: [{', '.join(cp_coeffs)}]")
-
+  
         # Источник данных
         reference = first_record.get("Reference", "Неизвестно")
         reliability = first_record.get("ReliabilityClass", 0)
@@ -216,6 +210,7 @@ class CompoundInfoFormatter:
             "Phase",
             "Tmin",
             "Tmax",
+            "Cp (Дж/(моль·K))",
             "H298",
             "S298",
             "f1",
@@ -226,7 +221,17 @@ class CompoundInfoFormatter:
             "f6",
         ]
 
+        # Импортируем ThermodynamicEngine для расчета Cp
+        from ..core_logic.thermodynamic_engine import ThermodynamicEngine
+        import logging
+
+        logger = logging.getLogger(__name__)
+        thermodynamic_engine = ThermodynamicEngine(logger)
+
         for record in records_used:
+            # Рассчитываем Cp для 298.15K (стандартная температура)
+            cp_298 = thermodynamic_engine._calculate_cp_direct(record, 298.15)
+
             table_data.append(
                 [
                     record.get("Formula", formula),
@@ -234,6 +239,7 @@ class CompoundInfoFormatter:
                     record.get("Phase", "unknown"),
                     f"{record.get('Tmin', 0):.1f}",
                     f"{record.get('Tmax', 0):.1f}",
+                    f"{cp_298:.2f}",
                     f"{record.get('H298', 0):.0f}",
                     f"{record.get('S298', 0):.2f}",
                     f"{record.get('f1', 0):.6f}",
@@ -249,7 +255,7 @@ class CompoundInfoFormatter:
         formatted_table = tabulate(
             table_data,
             headers=headers,
-            tablefmt="grid",
+            tablefmt="simple",
             stralign="center",
             numalign="decimal",
         )
@@ -323,11 +329,26 @@ class CompoundInfoFormatter:
         table_data = []
         headers = [
             "T(K)",
+            "Cp (Дж/(моль·K))",
             "ΔH (кДж/моль)",
             "ΔS (Дж/(моль·K))",
             "ΔG (кДж/моль)",
             "Смена записи",
         ]
+
+        # Отслеживаем референсную запись для каждой фазы
+        # Ключ = фаза, значение = первая запись этой фазы (для H298, S298)
+        phase_reference_records = {}
+        # Ключ = фаза, значение = список всех записей этой фазы
+        phase_all_records = {}
+
+        # Группируем записи по фазам
+        for record in records_used:
+            phase = record.get("Phase", "unknown")
+            if phase not in phase_all_records:
+                phase_all_records[phase] = []
+                phase_reference_records[phase] = record  # Первая запись фазы
+            phase_all_records[phase].append(record)
 
         for i, T in enumerate(temperatures):
             # Находим подходящую запись для текущей температуры
@@ -390,6 +411,15 @@ class CompoundInfoFormatter:
 
             # Рассчитываем свойства для этой температуры
             try:
+                # Определяем текущую фазу из записи
+                current_phase = current_record.get("Phase", "unknown")
+
+                # Получаем референсную запись и все записи текущей фазы
+                reference_record = phase_reference_records.get(
+                    current_phase, current_record
+                )
+                phase_records = phase_all_records.get(current_phase, [current_record])
+
                 if use_extrapolation and T_max_available:
                     # Используем экстраполяцию
                     properties = (
@@ -398,12 +428,14 @@ class CompoundInfoFormatter:
                         )
                     )
                 else:
-                    properties = thermodynamic_engine.calculate_properties(
-                        current_record, T
+                    # Используем кусочное интегрирование через все записи фазы
+                    properties = thermodynamic_engine.calculate_properties_piecewise(
+                        phase_records, T, reference_record
                     )
                 delta_H = properties["enthalpy"] / 1000  # Конвертируем в кДж/моль
                 delta_S = properties["entropy"]
                 delta_G = properties["gibbs_energy"] / 1000  # Конвертируем в кДж/моль
+                cp_value = properties["cp"]  # Получаем значение Cp
 
                 # Определяем, нужно ли показывать смену записи
                 record_change = f"запись {record_index}"
@@ -433,6 +465,7 @@ class CompoundInfoFormatter:
                 table_data.append(
                     [
                         f"{T:.0f}",
+                        f"{cp_value:.2f}",
                         f"{delta_H:+.2f}",
                         f"{delta_S:+.2f}",
                         f"{delta_G:+.2f}",
@@ -440,15 +473,15 @@ class CompoundInfoFormatter:
                     ]
                 )
 
-            except Exception as e:
+            except Exception:
                 # В случае ошибки расчета, добавляем строку с прочерками
-                table_data.append([f"{T:.0f}", "—", "—", "—", f"запись {record_index}"])
+                table_data.append([f"{T:.0f}", "—", "—", "—", "—", f"запись {record_index}"])
 
         # Форматируем таблицу
         formatted_table = tabulate(
             table_data,
             headers=headers,
-            tablefmt="grid",
+            tablefmt="simple",
             stralign="center",
             numalign="decimal",
         )

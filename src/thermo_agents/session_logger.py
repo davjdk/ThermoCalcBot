@@ -616,6 +616,15 @@ class SessionLogger:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         self._write(f"[INFO] {timestamp}: {message}")
 
+    def info(self, message: str) -> None:
+        """
+        Alias для log_info для совместимости с интерфейсом стандартного logger.
+
+        Args:
+            message: Информационное сообщение
+        """
+        self.log_info(message)
+
     def log_validation_check(
         self, validation_results: Dict[str, Any], issues: List[Dict[str, Any]]
     ) -> None:

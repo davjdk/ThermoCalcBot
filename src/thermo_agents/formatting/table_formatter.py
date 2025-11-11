@@ -5,8 +5,9 @@
 включая информацию о фазовых переходах.
 """
 
+from typing import Any, Dict, List, Optional, Tuple
+
 import pandas as pd
-from typing import Dict, List, Tuple, Optional, Any
 from tabulate import tabulate
 
 
@@ -258,7 +259,7 @@ class TableFormatter:
         return tabulate(
             table_data,
             headers=headers,
-            tablefmt="grid",
+            tablefmt="simple",
             stralign="center",
             numalign="decimal"
         )

@@ -1,23 +1,33 @@
 [project]
-name = "agents-for-david"
-version = "2.0.0"
-description = "Термодинамическая система с детерминированной фильтрацией"
+name = "thermocalcbot"
+version = "2.2.0"
+description = "Термодинамическая AI-система с Telegram ботом для анализа химических реакций"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+	# Научные вычисления
 	"pandas>=2.2.0",
-	"ipykernel>=6.29.0",
-	"python-dotenv>=1.0.0",
+	"scipy>=1.16.2",
+	
+	# LLM и AI
 	"pydantic-ai==1.0.8",
-	"anthropic>=0.40.0",
+	"pydantic>=2.0.0",
+	
+	# Telegram Bot
+	"python-telegram-bot>=20.7",
+	
+	# Утилиты
+	"python-dotenv>=1.0.0",
 	"tabulate>=0.9.0",
+	"pyyaml>=6.0.0",
+	
+	# Мониторинг и производительность
 	"psutil>=5.9.0",
 	"aiohttp>=3.9.0",
-	"scipy>=1.16.2",
 ]
 
 [project.scripts]
-agents-for-david = "main:main"
+thermocalcbot = "telegram_bot:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -28,4 +38,34 @@ where = ["src"]
 [dependency-groups]
 dev = [
     "pytest>=8.4.2",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.14.0",
 ]
+
+notebook = [
+    "ipykernel>=6.29.0",
+    "jupyter>=1.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--disable-warnings",
+    "--tb=short",
+]
+markers = [
+    "unit: Модульные тесты отдельных компонентов",
+    "integration: Интеграционные тесты взаимодействия модулей",
+    "e2e: End-to-end тесты полных сценариев",
+    "performance: Тесты производительности и нагрузки",
+    "slow: Медленные тесты (>1 секунды)",
+    "external: Тесты, требующие внешних сервисов (API, сеть)",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
