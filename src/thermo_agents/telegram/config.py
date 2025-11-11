@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 @dataclass
 class FileHandlerConfig:
@@ -154,6 +155,10 @@ class TelegramBotConfig:
     @classmethod
     def from_env(cls) -> "TelegramBotConfig":
         """Создание конфигурации из переменных окружения."""
+        # Явно загружаем .env файл из директории проекта
+        env_path = Path(__file__).parent.parent.parent / ".env"
+        load_dotenv(env_path)
+
         return cls(
             bot_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
             bot_username=os.getenv("TELEGRAM_BOT_USERNAME", "ThermoCalcBot"),
