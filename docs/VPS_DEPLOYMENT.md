@@ -58,8 +58,8 @@ su - thermobot
 
 ```bash
 cd ~
-git clone https://github.com/davjdk/agents_for_david.git
-cd agents_for_david
+git clone https://github.com/davjdk/ThermoCalcBot.git
+cd ThermoCalcBot
 ```
 
 ### 2. Установка UV (пакетный менеджер)
@@ -181,7 +181,7 @@ After=network.target
 [Service]
 Type=simple
 User=thermobot
-WorkingDirectory=/home/thermobot/agents_for_david
+WorkingDirectory=/home/thermobot/ThermoCalcBot
 Environment="PATH=/home/thermobot/.cargo/bin:/usr/bin"
 
 # Команда запуска через UV
@@ -303,7 +303,7 @@ sudo nano /etc/logrotate.d/thermobot
 crontab -e
 
 # Добавьте строку (очистка файлов старше 24 часов каждый день в 3:00)
-0 3 * * * find /home/thermobot/agents_for_david/temp/telegram_files -type f -mtime +1 -delete
+0 3 * * * find /home/thermobot/ThermoCalcBot/temp/telegram_files -type f -mtime +1 -delete
 ```
 
 ## Обновление бота
@@ -317,7 +317,7 @@ sudo systemctl stop thermobot
 ### 2. Обновление кода
 
 ```bash
-cd ~/agents_for_david
+cd ~/ThermoCalcBot
 
 # Сохранение текущих изменений (если есть)
 git stash
@@ -367,9 +367,9 @@ sudo systemctl stop thermobot
 
 # Создание архива
 tar -czf "$BACKUP_DIR/$BACKUP_NAME" \
-    ~/agents_for_david/data/ \
-    ~/agents_for_david/logs/ \
-    ~/agents_for_david/.env
+    ~/ThermoCalcBot/data/ \
+    ~/ThermoCalcBot/logs/ \
+    ~/ThermoCalcBot/.env
 
 # Запуск бота
 sudo systemctl start thermobot
@@ -422,7 +422,7 @@ sudo journalctl -u thermobot -n 100
 uv run python -c "from dotenv import load_dotenv; load_dotenv(); import os; print('Token:', os.getenv('TELEGRAM_BOT_TOKEN')[:10] + '...')"
 
 # Проверьте доступ к базе данных
-sqlite3 ~/agents_for_david/data/thermo_data.db "SELECT COUNT(*) FROM sqlite_master;"
+sqlite3 ~/ThermoCalcBot/data/thermo_data.db "SELECT COUNT(*) FROM sqlite_master;"
 ```
 
 ### Бот не отвечает на сообщения
@@ -453,7 +453,7 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 ```bash
 # Проверьте процессы, использующие базу данных
-lsof ~/agents_for_david/data/thermo_data.db
+lsof ~/ThermoCalcBot/data/thermo_data.db
 
 # Перезапустите бота
 sudo systemctl restart thermobot
@@ -481,10 +481,10 @@ sudo ufw status
 
 ```bash
 # Установите правильные права доступа
-chmod 600 ~/agents_for_david/.env
+chmod 600 ~/ThermoCalcBot/.env
 
 # Проверьте права
-ls -l ~/agents_for_david/.env
+ls -l ~/ThermoCalcBot/.env
 ```
 
 ### Регулярные обновления системы
@@ -592,7 +592,7 @@ echo "=== Использование диска ===" && df -h
 - **Основная документация:** `docs/ARCHITECTURE.md`
 - **Архитектура бота:** `docs/TELEGRAM_BOT_ARCHITECTURE.md`
 - **Руководство пользователя:** `docs/user_guide.md`
-- **GitHub репозиторий:** https://github.com/davjdk/agents_for_david
+- **GitHub репозиторий:** https://github.com/davjdk/ThermoCalcBot
 
 ---
 

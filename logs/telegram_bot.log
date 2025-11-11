@@ -695,3 +695,20 @@ telegram.error.TimedOut: Timed out
 2025-11-11 04:31:48,499 - thermo_agents.orchestrator - INFO - ✓ Расчет завершен: 24 температурных точек
 2025-11-11 04:31:48,914 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/sendDocument "HTTP/1.1 200 OK"
 2025-11-11 04:31:55,153 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 04:54:14,604 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-11 04:54:14,604 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-11 04:54:14,867 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-11 04:54:14,867 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-11 04:54:14,868 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-11 04:54:14,868 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-11 04:54:14,868 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-11 04:54:14,869 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-11 04:54:14,869 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-11 04:54:14,869 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-11 04:54:14,870 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-11 04:54:15,303 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-11 04:54:15,303 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-11 04:54:26,620 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getMe "HTTP/1.1 200 OK"
+2025-11-11 04:54:26,621 - telegram.ext.Application - INFO - Application started
+2025-11-11 04:54:26,670 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/deleteWebhook "HTTP/1.1 200 OK"
+2025-11-11 04:54:26,671 - thermo_agents.telegram.bot - INFO - ✅ Bot started successfully! Listening for updates...
