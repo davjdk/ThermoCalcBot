@@ -1,0 +1,21 @@
+================================================================================
+SESSION START: 2025-11-11 03:46:58
+SESSION ID: 51cd08
+LOG FILE: logs\sessions\session_20251111_034658_51cd08.log
+================================================================================
+
+Symbols legend:
+  ✓ - Success / Data OK
+  ○ - Not specified / Optional
+  ⚠ - Warning / Potential issue
+  ❌ - Error / Critical problem
+
+[INFO] 2025-11-11 03:46:58.000: Processing query from user 547393337: Возможна ли реакция оксида цинка с серой при 800–1100 °C?
+[INFO] 2025-11-11 03:47:02.556: Query processed successfully
+[INFO] 2025-11-11 03:47:02.558: File response generated
+
+================================================================================
+SESSION END: 2025-11-11 03:47:02
+TOTAL DURATION: 4.6s
+STATUS: SUCCESS
+================================================================================

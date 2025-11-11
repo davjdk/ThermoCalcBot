@@ -617,3 +617,46 @@ telegram.error.TimedOut: Timed out
 2025-11-10 16:54:11,126 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
 2025-11-10 16:54:21,177 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
 2025-11-10 16:54:31,232 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 03:46:36,901 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-11 03:46:36,902 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-11 03:46:37,259 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-11 03:46:37,259 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-11 03:46:37,259 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-11 03:46:37,259 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-11 03:46:37,261 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-11 03:46:37,261 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-11 03:46:37,261 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-11 03:46:37,261 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-11 03:46:37,262 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-11 03:46:37,727 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-11 03:46:37,728 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-11 03:46:38,018 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getMe "HTTP/1.1 200 OK"
+2025-11-11 03:46:38,018 - telegram.ext.Application - INFO - Application started
+2025-11-11 03:46:38,081 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/deleteWebhook "HTTP/1.1 200 OK"
+2025-11-11 03:46:38,082 - thermo_agents.telegram.bot - INFO - ✅ Bot started successfully! Listening for updates...
+2025-11-11 03:46:48,351 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 03:46:57,999 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 03:47:00,624 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-11 03:47:02,148 - thermo_agents.thermodynamic_agent - INFO - Successfully extracted parameters for 4 compounds
+2025-11-11 03:47:02,150 - thermo_agents.orchestrator - INFO - ═══ РАСЧЕТ РЕАКЦИИ: ZnO + S → ZnS + O2
+2025-11-11 03:47:02,150 - thermo_agents.orchestrator - INFO - Стехиометрия: {'ZnO': -1.0, 'S': 0.0, 'ZnS': 1.0, 'O2': 1.0}
+2025-11-11 03:47:02,157 - thermo_agents.search.database_connector - INFO - Successfully connected to database: data\thermo_data.db
+2025-11-11 03:47:02,294 - thermo_agents.orchestrator - INFO - ✓ ZnO (стадия 1: формула + 'Zinc oxide'): найдено 64 записей
+2025-11-11 03:47:02,301 - thermo_agents.orchestrator - INFO - ✓ ZnO: подготовлено 2 записей, coeff=-1.0 (БД (стадия 1))
+2025-11-11 03:47:02,358 - thermo_agents.orchestrator - INFO - ✓ S (стадия 1: формула + 'Sulfur'): найдено 108 записей
+2025-11-11 03:47:02,362 - thermo_agents.orchestrator - INFO - ✓ S: подготовлено 7 записей, coeff=0.0 (БД (стадия 1))
+2025-11-11 03:47:02,419 - thermo_agents.orchestrator - INFO - ✓ ZnS (стадия 1: формула + 'Zinc sulfide'): найдено 27 записей
+2025-11-11 03:47:02,428 - thermo_agents.orchestrator - INFO - ✓ ZnS: подготовлено 2 записей, coeff=1.0 (БД (стадия 1))
+2025-11-11 03:47:02,429 - thermo_agents.orchestrator - INFO - ⚡ O2: найдено в YAML-кэше
+2025-11-11 03:47:02,440 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - ✅ Loaded from YAML: O2 (3 phases)
+2025-11-11 03:47:02,445 - thermo_agents.orchestrator - INFO - ✓ O2: подготовлено 3 записей, coeff=1.0 (YAML-кэш)
+2025-11-11 03:47:02,465 - thermo_agents.orchestrator - INFO - ✓ Расчет завершен: 24 температурных точек
+2025-11-11 03:47:02,870 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/sendDocument "HTTP/1.1 200 OK"
+2025-11-11 03:47:09,379 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 03:47:19,619 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 03:47:29,757 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 03:47:39,890 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 03:47:49,940 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 03:47:59,982 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 03:48:10,038 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 03:48:20,098 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
