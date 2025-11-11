@@ -107,10 +107,14 @@ User query: {user_query}
 ✓ Query contains a single compound
 ✓ No reaction symbols (→, =, ⇄, <=>)
 ✓ Keywords: "data", "properties", "table for", "information about"
+✓ Russian keywords: "свойства", "данные", "характеристики", "таблица", "температурная зависимость"
 ✓ Examples:
   - "Give me a table for H2O at 300-600K"
   - "WCl6 properties with 50 degree step"
   - "Thermodynamic data for water"
+  - "Термодинамические свойства оксида меди с шагом 50 Кельвин"
+  - "Свойства воды H2O от 300 до 600K"
+  - "Характеристики CO2 газообразная фаза"
 
 ## reaction_calculation (reaction calculation):
 ✓ Contains 2+ compounds
@@ -189,7 +193,29 @@ Response:
   }}
 }}
 
-## Example 2: reaction_calculation
+## Example 2: compound_data (Russian language)
+Query: "Термодинамические свойства оксида меди с шагом 50 Кельвин"
+Response:
+{{
+  "query_type": "compound_data",
+  "temperature_step_k": 50,
+  "balanced_equation": "",
+  "all_compounds": ["CuO"],
+  "reactants": [],
+  "products": [],
+  "temperature_range_k": [298, 1000],
+  "extraction_confidence": 0.95,
+  "missing_fields": [],
+  "compound_names": {{
+    "CuO": ["Copper oxide", "Cupric oxide", "Оксид меди"]
+  }},
+  "is_elemental": false,
+  "compound_types": {{
+    "CuO": false  // Compound (Cu + O)
+  }}
+}}
+
+## Example 3: reaction_calculation
 Query: "2 W + 4 Cl2 + O2 → 2 WOCl4 at 600-900K, calculate every 25 kelvins"
 Response:
 {{
