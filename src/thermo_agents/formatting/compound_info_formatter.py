@@ -107,13 +107,7 @@ class CompoundInfoFormatter:
             f"  H₂₉₈: {h298 / 1000:.3f} кДж/моль | S₂₉₈: {s298:.3f} Дж/(моль·K)"
         )
 
-        # Cp коэффициенты
-        cp_coeffs = []
-        for i in range(1, 7):
-            coeff = first_record.get(f"f{i}", 0)
-            cp_coeffs.append(f"{coeff:.6f}")
-        lines.append(f"  Cp коэффициенты: [{', '.join(cp_coeffs)}]")
-
+  
         # Источник данных
         reference = first_record.get("Reference", "Неизвестно")
         reliability = first_record.get("ReliabilityClass", 0)
