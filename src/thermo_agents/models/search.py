@@ -1183,6 +1183,18 @@ class MultiPhaseCompoundData(BaseModel):
         # For now, segments contain one record each, but this prepares for multiple records
         selected_record = target_segment.record
 
+        # Validate coefficients before returning
+        if not self._has_valid_shomate_coefficients(selected_record):
+            # Try to find alternative record in the same segment with valid coefficients
+            alternative_record = self._find_alternative_valid_record(
+                temperature, target_segment
+            )
+            if alternative_record:
+                selected_record = alternative_record
+                print(f"Warning: Using alternative record for {self.formula} at {temperature}K due to zero coefficients")
+            else:
+                print(f"Error: No valid coefficient record found for {self.formula} at {temperature}K")
+
         # Cache the result
         self.active_records_cache[temperature] = selected_record
 
@@ -1332,6 +1344,55 @@ class MultiPhaseCompoundData(BaseModel):
                         return True
 
         return False
+
+    def _has_valid_shomate_coefficients(self, record: DatabaseRecord) -> bool:
+        """
+        Проверяет, имеет ли запись хотя бы один ненулевой коэффициент Шомейта.
+
+        Args:
+            record: Запись с коэффициентами Шомейта
+
+        Returns:
+            True если хотя бы один коэффициент не равен нулю, иначе False
+        """
+        # Допуск для численных ошибок
+        tolerance = 1e-10
+
+        # Проверяем, что хотя бы один коэффициент не равен нулю
+        coefficients = [record.f1, record.f2, record.f3, record.f4, record.f5, record.f6]
+        return any(abs(coef) > tolerance for coef in coefficients)
+
+    def _find_alternative_valid_record(
+        self, temperature: float, target_segment: 'PhaseSegment'
+    ) -> Optional[DatabaseRecord]:
+        """
+        Ищет альтернативную запись с валидными коэффициентами в той же фазе.
+
+        Args:
+            temperature: Целевая температура
+            target_segment: Целевой сегмент фазы
+
+        Returns:
+            Альтернативная запись с валидными коэффициентами или None
+        """
+        # Ищем все записи в той же фазе, которые покрывают температуру
+        phase_records = [
+            record for record in self.all_records
+            if (record.phase == target_segment.record.phase and
+                record.tmin <= temperature <= record.tmax)
+        ]
+
+        # Фильтруем записи с валидными коэффициентами
+        valid_records = [
+            record for record in phase_records
+            if self._has_valid_shomate_coefficients(record)
+        ]
+
+        # Возвращаем запись с лучшим классом надежности
+        if valid_records:
+            return min(valid_records, key=lambda r: r.reliability_class or 3)
+
+        return None
 
     def to_dict(self) -> dict:
         """Serialize to dictionary."""

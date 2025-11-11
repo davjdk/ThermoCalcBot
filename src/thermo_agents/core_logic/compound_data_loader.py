@@ -213,8 +213,23 @@ class CompoundDataLoader:
         phase_order = {'g': 0, 'l': 1, 's': 2, 'aq': 3}
         df['_phase_score'] = df['Phase'].map(phase_order).fillna(4)
 
-        # Вычисляем общий приоритет
+        # Приоритет валидных коэффициентов Шомейта (0 = валидные, 1 = невалидные)
+        df['_valid_shomate_score'] = df.apply(
+            lambda row: 0 if self._has_valid_shomate_coefficients(row) else 1,
+            axis=1
+        )
+
+        # Логируем отфильтрованные записи
+        invalid_count = df['_valid_shomate_score'].sum()
+        if invalid_count > 0:
+            self.logger.info(
+                f"[CompoundDataLoader] Найдено {invalid_count} записей с нулевыми коэффициентами Шомейта, "
+                f"они будут иметь более низкий приоритет"
+            )
+
+        # Вычисляем общий приоритет (валидные коэффициенты имеют приоритет)
         df['_priority'] = (
+            df['_valid_shomate_score'].astype(str) + '_' +  # 0 = валидные, 1 = невалидные
             df['_reliability_score'].astype(str) + '_' +
             (-(df['Tmax'] - df['Tmin'])).astype(str) + '_' +
             df['Formula'].str.len().astype(str) + '_' +
@@ -222,9 +237,34 @@ class CompoundDataLoader:
             df.index.astype(str)
         )
 
-        df_sorted = df.sort_values('_priority').drop(columns=['_reliability_score', '_phase_score', '_priority'])
+        df_sorted = df.sort_values('_priority').drop(columns=['_reliability_score', '_phase_score', '_valid_shomate_score', '_priority'])
 
         return df_sorted.reset_index(drop=True)
+
+    def _has_valid_shomate_coefficients(self, record: pd.Series) -> bool:
+        """
+        Проверяет, имеет ли запись хотя бы один ненулевой коэффициент Шомейта.
+
+        Args:
+            record: Запись с коэффициентами Шомейта
+
+        Returns:
+            True если хотя бы один коэффициент не равен нулю, иначе False
+        """
+        # Допуск для численных ошибок
+        tolerance = 1e-10
+
+        # Извлекаем коэффициенты
+        f1 = record.get("f1", 0)
+        f2 = record.get("f2", 0)
+        f3 = record.get("f3", 0)
+        f4 = record.get("f4", 0)
+        f5 = record.get("f5", 0)
+        f6 = record.get("f6", 0)
+
+        # Проверяем, что хотя бы один коэффициент не равен нулю
+        coefficients = [f1, f2, f3, f4, f5, f6]
+        return any(abs(coef) > tolerance for coef in coefficients)
 
     def get_raw_compound_data_with_metadata(
         self,

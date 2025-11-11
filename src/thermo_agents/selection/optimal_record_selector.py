@@ -364,10 +364,21 @@ class OptimalRecordSelector:
 
         For complex compounds (is_elemental=False), the first record of each phase
         must have non-zero H298 and S298 values.
+        All records must have at least one non-zero Shomate coefficient.
         """
         filtered = []
 
         for record in records:
+            # Check Shomate coefficients validity
+            if not self._has_valid_shomate_coefficients(record):
+                formula = self._get_formula(record)
+                phase = self._get_phase(record)
+                logger.debug(
+                    f"[OptimalRecordSelector] Отфильтрована запись {formula} (фаза: {phase}) "
+                    f"с нулевыми коэффициентами Шомейта"
+                )
+                continue
+
             # Check base data requirements for complex compounds
             if not is_elemental and is_first_in_phase:
                 h298 = self._get_h298(record)
@@ -1016,3 +1027,36 @@ class OptimalRecordSelector:
                 covered_transitions += 1
 
         return covered_transitions / total_transitions if total_transitions > 0 else 1.0
+
+    def _has_valid_shomate_coefficients(
+        self, record: Union[pd.Series, DatabaseRecord]
+    ) -> bool:
+        """
+        Проверяет, имеет ли запись хотя бы один ненулевой коэффициент Шомейта.
+
+        Args:
+            record: Запись с коэффициентами Шомейта
+
+        Returns:
+            True если хотя бы один коэффициент не равен нулю, иначе False
+        """
+        # Допуск для численных ошибок
+        tolerance = 1e-10
+
+        # Извлекаем коэффициенты
+        coeffs = self._get_shomate_coeffs(record)
+
+        # Проверяем, что хотя бы один коэффициент не равен нулю
+        return any(abs(coef) > tolerance for coef in coeffs)
+
+    def _get_formula(self, record: Union[pd.Series, DatabaseRecord]) -> str:
+        """Get formula from record."""
+        if hasattr(record, "Formula"):
+            return record.Formula
+        elif hasattr(record, "formula"):
+            return record.formula
+        elif "Formula" in record:
+            return record["Formula"]
+        elif "formula" in record:
+            return record["formula"]
+        return "unknown"

@@ -91,6 +91,27 @@ class ThermodynamicEngine:
         f5 = get_value(record, "f5", 0)
         f6 = get_value(record, "f6", 0)
 
+        # Валидация коэффициентов Шомейта
+        if not self._has_valid_shomate_coefficients(f1, f2, f3, f4, f5, f6):
+            formula = get_value(record, "formula", "unknown")
+            phase = get_value(record, "phase", "")
+            tmin = get_value(record, "tmin", 0)
+            tmax = get_value(record, "tmax", 0)
+
+            self.logger.error(
+                f"❌ Запись для {formula} (фаза: {phase}, T: {tmin}-{tmax}K) "
+                f"имеет все нулевые коэффициенты Шомейта (f1-f6). "
+                f"Расчет термодинамических свойств невозможен."
+            )
+
+            # Возвращаем нулевые значения с предупреждением
+            return {
+                "cp": 0.0,
+                "enthalpy": 0.0,
+                "entropy": 0.0,
+                "gibbs_energy": 0.0,
+            }
+
         # Извлечение H₂₉₈ и S₂₉₈ из референсной записи (если указана) или текущей
         if reference_record is not None:
             H298 = get_value(reference_record, "h298", 0)
@@ -203,6 +224,19 @@ class ThermodynamicEngine:
             f4 = get_value(record, "f4", 0)
             f5 = get_value(record, "f5", 0)
             f6 = get_value(record, "f6", 0)
+
+            # Валидация коэффициентов для каждой записи
+            if not self._has_valid_shomate_coefficients(f1, f2, f3, f4, f5, f6):
+                formula = get_value(record, "formula", "unknown")
+                phase = get_value(record, "phase", "")
+                tmin = get_value(record, "tmin", 0)
+                tmax = get_value(record, "tmax", 0)
+
+                self.logger.error(
+                    f"❌ Запись для {formula} (фаза: {phase}, T: {tmin}-{tmax}K) "
+                    f"имеет все нулевые коэффициенты Шомейта при кусочном интегрировании."
+                )
+                return 0.0
 
             temp = float(temp)
             return (
@@ -363,3 +397,22 @@ class ThermodynamicEngine:
             + f5 * (temp**-3 if temp != 0 else 0) * 1_000
             + f6 * temp**3 * 10**(-9)
         )
+
+    def _has_valid_shomate_coefficients(
+        self, f1: float, f2: float, f3: float, f4: float, f5: float, f6: float
+    ) -> bool:
+        """
+        Проверяет, имеют ли коэффициенты Шомейта хотя бы одно ненулевое значение.
+
+        Args:
+            f1-f6: Коэффициенты Шомейта
+
+        Returns:
+            True если хотя бы один коэффициент не равен нулю, иначе False
+        """
+        # Допуск для численных ошибок
+        tolerance = 1e-10
+
+        # Проверяем, что хотя бы один коэффициент не равен нулю
+        coefficients = [f1, f2, f3, f4, f5, f6]
+        return any(abs(coef) > tolerance for coef in coefficients)

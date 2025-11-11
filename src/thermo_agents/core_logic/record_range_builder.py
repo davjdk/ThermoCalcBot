@@ -108,6 +108,12 @@ class RecordRangeBuilder:
                     matching_records, current_T, last_phase, expected_phase
                 )
 
+            # Фильтрация записей с нулевыми коэффициентами Шомейта
+            if not matching_records.empty:
+                matching_records = self._filter_valid_shomate_coefficients(
+                    matching_records, "Стратегия 1", current_T
+                )
+
             if not matching_records.empty:
                 # Нашли запись для ожидаемой фазы
                 record = matching_records.iloc[0]
@@ -137,7 +143,14 @@ class RecordRangeBuilder:
                             candidate, melting, boiling
                         )
                         if dominant_phase == candidate["Phase"]:
-                            valid_candidates.append((idx, candidate, dominant_phase, 2))
+                            # Проверка коэффициентов Шомейта
+                            if self._has_valid_shomate_coefficients(candidate):
+                                valid_candidates.append((idx, candidate, dominant_phase, 2))
+                            else:
+                                formula = candidate.get("Formula", "unknown")
+                                self.logger.debug(
+                                    f"[Стратегия 2] Отфильтрована запись {formula} с нулевыми коэффициентами Шомейта"
+                                )
 
                 # СТРАТЕГИЯ 3: Ищем запись, которая ПОКРЫВАЕТ current_T
                 if not valid_candidates:
@@ -149,6 +162,14 @@ class RecordRangeBuilder:
                         if not self._is_valid_phase_transition(
                             last_phase, candidate["Phase"]
                         ):
+                            continue
+
+                        # Проверка коэффициентов Шомейта
+                        if not self._has_valid_shomate_coefficients(candidate):
+                            formula = candidate.get("Formula", "unknown")
+                            self.logger.debug(
+                                f"[Стратегия 3] Отфильтрована запись {formula} с нулевыми коэффициентами Шомейта"
+                            )
                             continue
 
                         # Проверка: >50% ОСТАВШЕГОСЯ диапазона в правильной фазе
@@ -484,3 +505,68 @@ class RecordRangeBuilder:
             )
 
         return selected_records
+
+    def _filter_valid_shomate_coefficients(
+        self, records: pd.DataFrame, strategy: str, temperature: float
+    ) -> pd.DataFrame:
+        """
+        Фильтрует записи с валидными коэффициентами Шомейта.
+
+        Args:
+            records: DataFrame с записями для фильтрации
+            strategy: Название стратегии для логирования
+            temperature: Текущая температура для логирования
+
+        Returns:
+            Отфильтрованный DataFrame с записями, имеющими хотя бы один ненулевой коэффициент
+        """
+        if records.empty:
+            return records
+
+        valid_records = []
+        filtered_count = 0
+
+        for idx, record in records.iterrows():
+            if self._has_valid_shomate_coefficients(record):
+                valid_records.append(record)
+            else:
+                filtered_count += 1
+                formula = record.get("Formula", "unknown")
+                phase = record.get("Phase", "")
+                self.logger.debug(
+                    f"[{strategy}] Отфильтрована запись {formula} (фаза: {phase}) "
+                    f"с нулевыми коэффициентами Шомейта при T={temperature}K"
+                )
+
+        if filtered_count > 0:
+            self.logger.info(
+                f"[{strategy}] Отфильтровано {filtered_count} записей с нулевыми коэффициентами Шомейта, "
+                f"осталось {len(valid_records)} валидных записей"
+            )
+
+        return pd.DataFrame(valid_records) if valid_records else pd.DataFrame()
+
+    def _has_valid_shomate_coefficients(self, record: pd.Series) -> bool:
+        """
+        Проверяет, имеет ли запись хотя бы один ненулевой коэффициент Шомейта.
+
+        Args:
+            record: Запись с коэффициентами Шомейта
+
+        Returns:
+            True если хотя бы один коэффициент не равен нулю, иначе False
+        """
+        # Допуск для численных ошибок
+        tolerance = 1e-10
+
+        # Извлекаем коэффициенты
+        f1 = record.get("f1", 0)
+        f2 = record.get("f2", 0)
+        f3 = record.get("f3", 0)
+        f4 = record.get("f4", 0)
+        f5 = record.get("f5", 0)
+        f6 = record.get("f6", 0)
+
+        # Проверяем, что хотя бы один коэффициент не равен нулю
+        coefficients = [f1, f2, f3, f4, f5, f6]
+        return any(abs(coef) > tolerance for coef in coefficients)
