@@ -258,6 +258,28 @@ class ThermoOrchestrator:
                 self.session_logger.log_llm_error(str(e))
             return f"❌ Ошибка: {str(e)}"
 
+    def _is_elemental(self, formula: str) -> bool:
+        """
+        Определяет, является ли формула простым веществом (элементом).
+
+        Простое вещество: один химический элемент (с индексом или без).
+        Примеры: O2, H2, C, Fe, S, Cl2.
+        Сложное вещество: два и более элементов.
+        Примеры: H2O, CO2, CrCl3, Fe2O3.
+
+        Args:
+            formula: Химическая формула
+
+        Returns:
+            True если простое вещество, False если сложное
+        """
+        import re
+
+        # Паттерн: заглавная буква + опционально строчная + опционально цифры
+        # Примеры: O2, H2, C, Fe, Cl2
+        pattern = r"^[A-Z][a-z]?\d*$"
+        return bool(re.match(pattern, formula))
+
     async def _process_compound_data(self, params: ExtractedReactionParameters) -> str:
         """
         Обработка compound_data запросов (термодинамические свойства одного вещества).
@@ -325,9 +347,38 @@ class ThermoOrchestrator:
                     f"Phase transitions detected: {', '.join(transitions)}"
                 )
 
-            # 4. Форматирование через существующие форматтеры
-            records_list = df.to_dict("records")
+            # 4. Выбор записей через RecordRangeBuilder для температурного диапазона
+            # Определяем, является ли вещество простым (элемент)
+            is_elemental = self._is_elemental(formula)
 
+            # Выбираем записи, покрывающие запрошенный температурный диапазон
+            selected_records = self.range_builder.get_compound_records_for_range(
+                df=df,
+                t_range=params.temperature_range_k,
+                melting=melting_point,
+                boiling=boiling_point,
+                tolerance=1.0,
+                is_elemental=is_elemental,
+            )
+
+            # Логирование выбранных записей
+            self.logger.info(
+                f"Selected {len(selected_records)} records for range {params.temperature_range_k}"
+            )
+            if self.session_logger:
+                phase_counts = {}
+                for rec in selected_records:
+                    phase = rec["Phase"]
+                    phase_counts[phase] = phase_counts.get(phase, 0) + 1
+                self.session_logger.log_info(
+                    f"Выбрано записей: {len(selected_records)} "
+                    f"({', '.join(f'{k}: {v}' for k, v in phase_counts.items())})"
+                )
+
+            # Преобразуем pd.Series в dict для форматтеров
+            records_list = [dict(rec) for rec in selected_records]
+
+            # 5. Форматирование через существующие форматтеры
             # Формируем полный ответ с информацией о веществе и таблицами
             lines = []
 

@@ -95,6 +95,76 @@ class RecordRangeBuilder:
                 current_T, melting, boiling
             )
 
+            # ПРЕДВАРИТЕЛЬНАЯ ПРОВЕРКА для начальной точки диапазона
+            if current_T == t_range[0]:
+                # СНАЧАЛА ищем записи, которые ПОКРЫВАЮТ начальную точку
+                # С учётом tolerance в ОБЕ СТОРОНЫ (например, 298.1K покрывает 298.0K с tolerance=1.0)
+                covering_records = df[
+                    (df["Phase"] == expected_phase)
+                    & (df["Tmin"] <= current_T + tolerance)
+                    & (df["Tmax"] >= current_T - tolerance)
+                ]
+
+                # ПРИОРИТИЗАЦИЯ: Записи с Tmin ближе к 298K имеют высший приоритет
+                # (записи от 298K обычно имеют высокое качество данных)
+                if not covering_records.empty and len(covering_records) > 1:
+                    # Ищем записи с Tmin ≈ 298K (297-299K)
+                    records_near_298 = covering_records[
+                        (covering_records["Tmin"] >= 297.0)
+                        & (covering_records["Tmin"] <= 299.0)
+                    ]
+
+                    # Если нашли записи от 298K - используем их (идеальный случай)
+                    if not records_near_298.empty:
+                        self.logger.debug(
+                            f"[Начальная точка] Приоритет записям с Tmin≈298K "
+                            f"(найдено {len(records_near_298)} из {len(covering_records)})"
+                        )
+                        covering_records = records_near_298
+                    else:
+                        # Иначе среди записей, покрывающих 298K, выбираем ту,
+                        # у которой Tmin БЛИЖЕ ВСЕГО к 298K снизу (но Tmin <= 298K)
+                        # Это отдаёт приоритет записям, начинающимся ближе к 298K,
+                        # а не записям с очень низким Tmin (например, 100K)
+                        covering_records = covering_records.copy()
+                        # Вычисляем расстояние от Tmin до 298K (только для Tmin <= 298K)
+                        # Чем меньше расстояние, тем лучше (200K лучше 100K)
+                        covering_records["_tmin_distance_to_298"] = (
+                            298.0 - covering_records["Tmin"]
+                        )
+                        # Сортируем: записи с Tmin ближе к 298K (меньшее расстояние) — в начале
+                        covering_records = covering_records.sort_values(
+                            "_tmin_distance_to_298"
+                        )
+                        self.logger.debug(
+                            f"[Начальная точка] Сортировка по близости Tmin к 298K снизу "
+                            f"(лучший Tmin: {covering_records.iloc[0]['Tmin']}K)"
+                        )
+
+                # Для сложных веществ: приоритет записям с H298≠0, S298≠0
+                if not covering_records.empty and is_elemental is False:
+                    covering_records = self._prioritize_nonzero_h298_s298(
+                        covering_records, current_T, last_phase, expected_phase
+                    )
+
+                # Фильтрация коэффициентов Шомейта
+                if not covering_records.empty:
+                    covering_records = self._filter_valid_shomate_coefficients(
+                        covering_records, "Начальная точка", current_T
+                    )
+
+                # Если нашли подходящую запись - используем её
+                if not covering_records.empty:
+                    record = covering_records.iloc[0]
+                    records.append(record)
+                    last_phase = expected_phase
+                    self.logger.debug(
+                        f"[Начальная точка] Использована запись фазы '{expected_phase}' "
+                        f"(Tmin={record['Tmin']}, Tmax={record['Tmax']}, покрывает T={current_T}K)"
+                    )
+                    current_T = record["Tmax"]
+                    continue  # Переходим к следующей итерации
+
             # СТРАТЕГИЯ 1: Ищем запись для ожидаемой фазы, начинающуюся с current_T
             matching_records = df[
                 (df["Phase"] == expected_phase)
@@ -145,7 +215,9 @@ class RecordRangeBuilder:
                         if dominant_phase == candidate["Phase"]:
                             # Проверка коэффициентов Шомейта
                             if self._has_valid_shomate_coefficients(candidate):
-                                valid_candidates.append((idx, candidate, dominant_phase, 2))
+                                valid_candidates.append(
+                                    (idx, candidate, dominant_phase, 2)
+                                )
                             else:
                                 formula = candidate.get("Formula", "unknown")
                                 self.logger.debug(
