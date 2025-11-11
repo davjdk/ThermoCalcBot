@@ -210,6 +210,7 @@ class CompoundInfoFormatter:
             "Phase",
             "Tmin",
             "Tmax",
+            "Cp (Дж/(моль·K))",
             "H298",
             "S298",
             "f1",
@@ -220,7 +221,17 @@ class CompoundInfoFormatter:
             "f6",
         ]
 
+        # Импортируем ThermodynamicEngine для расчета Cp
+        from ..core_logic.thermodynamic_engine import ThermodynamicEngine
+        import logging
+
+        logger = logging.getLogger(__name__)
+        thermodynamic_engine = ThermodynamicEngine(logger)
+
         for record in records_used:
+            # Рассчитываем Cp для 298.15K (стандартная температура)
+            cp_298 = thermodynamic_engine._calculate_cp_direct(record, 298.15)
+
             table_data.append(
                 [
                     record.get("Formula", formula),
@@ -228,6 +239,7 @@ class CompoundInfoFormatter:
                     record.get("Phase", "unknown"),
                     f"{record.get('Tmin', 0):.1f}",
                     f"{record.get('Tmax', 0):.1f}",
+                    f"{cp_298:.2f}",
                     f"{record.get('H298', 0):.0f}",
                     f"{record.get('S298', 0):.2f}",
                     f"{record.get('f1', 0):.6f}",
@@ -317,6 +329,7 @@ class CompoundInfoFormatter:
         table_data = []
         headers = [
             "T(K)",
+            "Cp (Дж/(моль·K))",
             "ΔH (кДж/моль)",
             "ΔS (Дж/(моль·K))",
             "ΔG (кДж/моль)",
@@ -422,6 +435,7 @@ class CompoundInfoFormatter:
                 delta_H = properties["enthalpy"] / 1000  # Конвертируем в кДж/моль
                 delta_S = properties["entropy"]
                 delta_G = properties["gibbs_energy"] / 1000  # Конвертируем в кДж/моль
+                cp_value = properties["cp"]  # Получаем значение Cp
 
                 # Определяем, нужно ли показывать смену записи
                 record_change = f"запись {record_index}"
@@ -451,6 +465,7 @@ class CompoundInfoFormatter:
                 table_data.append(
                     [
                         f"{T:.0f}",
+                        f"{cp_value:.2f}",
                         f"{delta_H:+.2f}",
                         f"{delta_S:+.2f}",
                         f"{delta_G:+.2f}",
@@ -460,7 +475,7 @@ class CompoundInfoFormatter:
 
             except Exception:
                 # В случае ошибки расчета, добавляем строку с прочерками
-                table_data.append([f"{T:.0f}", "—", "—", "—", f"запись {record_index}"])
+                table_data.append([f"{T:.0f}", "—", "—", "—", "—", f"запись {record_index}"])
 
         # Форматируем таблицу
         formatted_table = tabulate(

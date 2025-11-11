@@ -333,3 +333,33 @@ class ThermodynamicEngine:
             "entropy": entropy,
             "gibbs_energy": gibbs_energy,
         }
+
+    def _calculate_cp_direct(self, record: pd.Series, T: float) -> float:
+        """
+        Прямой расчет Cp для записи по формуле Шомейта.
+
+        Args:
+            record: Запись с коэффициентами Шомейта
+            T: Температура в Кельвинах
+
+        Returns:
+            Теплоемкость Cp в Дж/(моль·K)
+        """
+        def get_value(rec, key, default=0):
+            return rec.get(key, default) if isinstance(rec, dict) else getattr(rec, key, default)
+
+        f1 = get_value(record, "f1", 0)
+        f2 = get_value(record, "f2", 0)
+        f3 = get_value(record, "f3", 0)
+        f4 = get_value(record, "f4", 0)
+        f5 = get_value(record, "f5", 0)
+        f6 = get_value(record, "f6", 0)
+
+        temp = float(T)
+        return (
+            f1 + f2 * temp / 1000
+            + f3 * (temp**-2 if temp != 0 else 0) * 100_000
+            + f4 * temp**2 / 1_000_000
+            + f5 * (temp**-3 if temp != 0 else 0) * 1_000
+            + f6 * temp**3 * 10**(-9)
+        )
