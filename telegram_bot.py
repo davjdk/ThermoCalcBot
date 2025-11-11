@@ -18,7 +18,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Загрузка переменных окружения из .env файла
-load_dotenv()
+env_path = Path(__file__).parent / ".env"
+load_dotenv(env_path)
 
 # Добавление пути к исходникам
 sys.path.insert(0, str(Path(__file__).parent / "src"))
