@@ -156,8 +156,27 @@ class TelegramBotConfig:
     def from_env(cls) -> "TelegramBotConfig":
         """Создание конфигурации из переменных окружения."""
         # Явно загружаем .env файл из директории проекта
-        env_path = Path(__file__).parent.parent.parent / ".env"
-        load_dotenv(env_path)
+        # Ищем .env в текущей рабочей директории и в родительских директориях
+        current_dir = Path.cwd()
+        env_path = current_dir / ".env"
+
+        # Если не нашли в текущей директории, ищем в родительских
+        if not env_path.exists():
+            # Идем вверх по дереву директорий в поисках .env
+            search_dir = current_dir
+            for _ in range(5):  # ищем до 5 уровней вверх
+                search_dir = search_dir.parent
+                test_path = search_dir / ".env"
+                if test_path.exists():
+                    env_path = test_path
+                    break
+
+        print(f"DEBUG: Загружаем .env из пути: {env_path}")
+        print(f"DEBUG: Файл существует: {env_path.exists()}")
+        result = load_dotenv(env_path)
+        print(f"DEBUG: load_dotenv() результат: {result}")
+        print(f"DEBUG: OPENROUTER_API_KEY после загрузки: {os.getenv('OPENROUTER_API_KEY', 'NOT_FOUND')[:20]}...")
+        print(f"DEBUG: TELEGRAM_BOT_TOKEN после загрузки: {os.getenv('TELEGRAM_BOT_TOKEN', 'NOT_FOUND')[:20]}...")
 
         return cls(
             bot_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
