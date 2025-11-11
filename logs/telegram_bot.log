@@ -1040,3 +1040,26 @@ telegram.error.NetworkError: httpx.RemoteProtocolError: Server disconnected with
 2025-11-11 14:55:49,768 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
 2025-11-11 14:55:59,819 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
 2025-11-11 14:56:09,879 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 15:06:40,239 - thermo_agents.telegram.bot - INFO - Initializing ThermoSystem Telegram Bot...
+2025-11-11 15:06:40,239 - thermo_agents.orchestrator - INFO - Инициализация оркестратора с core-логикой (Этап 2)
+2025-11-11 15:06:40,538 - thermo_agents.thermodynamic_agent - INFO - ThermodynamicAgent 'thermo_agent' initialized
+2025-11-11 15:06:40,538 - thermo_agents.orchestrator - INFO - ✅ ThermodynamicAgent инициализирован
+2025-11-11 15:06:40,538 - thermo_agents.search.database_connector - INFO - DatabaseConnector initialized with path: data\thermo_data.db
+2025-11-11 15:06:40,539 - thermo_agents.orchestrator - INFO - ✅ DatabaseConnector инициализирован: data\thermo_data.db
+2025-11-11 15:06:40,539 - thermo_agents.storage.static_data_manager.StaticDataManager - INFO - StaticDataManager initialized: data\static_compounds
+2025-11-11 15:06:40,539 - thermo_agents.orchestrator - INFO - ✅ StaticDataManager инициализирован: 10 веществ
+2025-11-11 15:06:40,540 - thermo_agents.orchestrator - INFO - ✅ Core-логика компоненты инициализированы
+2025-11-11 15:06:40,540 - thermo_agents.orchestrator - INFO - ✅ Новые форматтеры инициализированы (Этап 3)
+2025-11-11 15:06:40,541 - thermo_agents.telegram.thermo_adapter - INFO - ThermoOrchestrator успешно инициализирован
+2025-11-11 15:06:40,993 - thermo_agents.telegram.bot - INFO - Bot initialized successfully
+2025-11-11 15:06:40,993 - thermo_agents.telegram.bot - INFO - Starting bot in polling mode...
+2025-11-11 15:06:41,214 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getMe "HTTP/1.1 200 OK"
+2025-11-11 15:06:41,217 - telegram.ext.Application - INFO - Application started
+2025-11-11 15:06:41,281 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/deleteWebhook "HTTP/1.1 200 OK"
+2025-11-11 15:06:41,282 - thermo_agents.telegram.bot - INFO - ✅ Bot started successfully! Listening for updates...
+2025-11-11 15:06:51,464 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 15:06:52,302 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 15:07:02,383 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 15:07:03,565 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/sendMessage "HTTP/1.1 200 OK"
+2025-11-11 15:07:12,446 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
+2025-11-11 15:07:22,503 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8556976404:AAH_Zxj-yWY9DRSWQVcn5FOq03_mgIim80o/getUpdates "HTTP/1.1 200 OK"
